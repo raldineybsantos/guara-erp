@@ -64,3 +64,34 @@ def formatar_documento(valor):
     if len(d) == 14:
         return f"{d[:2]}.{d[2:5]}.{d[5:8]}/{d[8:12]}-{d[12:]}"
     return valor or ""
+
+
+# --------------------------------------------------------------------------- uploads
+EXTENSOES_BLOQUEADAS = {
+    ".exe", ".dll", ".com", ".bat", ".cmd", ".msi", ".msp", ".scr", ".ps1", ".psm1", ".vbs", ".vbe", ".js",
+    ".jse", ".wsf", ".wsh", ".hta", ".jar", ".sh", ".php", ".phtml", ".asp", ".aspx", ".jsp", ".cgi", ".py",
+    ".lnk", ".reg", ".cpl", ".html", ".htm", ".xhtml", ".svg",
+}
+
+
+def validar_arquivo_seguro(arquivo):
+    """Bloqueia executáveis/scripts/HTML e arquivos acima do limite (ARQUIVO_MAX_MB, padrão 50)."""
+    import os
+
+    from django.conf import settings
+
+    nome = (getattr(arquivo, "name", "") or "").lower()
+    ext = os.path.splitext(nome)[1]
+    if ext in EXTENSOES_BLOQUEADAS:
+        raise ValidationError(f"Tipo de arquivo não permitido ({ext}). Compacte em .zip se for realmente necessário.")
+    limite = getattr(settings, "ARQUIVO_MAX_MB", 50)
+    if getattr(arquivo, "size", 0) > limite * 1024 * 1024:
+        raise ValidationError(f"Arquivo maior que o limite de {limite} MB.")
+
+
+def validar_xml(arquivo):
+    import os
+
+    validar_arquivo_seguro(arquivo)
+    if os.path.splitext((arquivo.name or "").lower())[1] != ".xml":
+        raise ValidationError("Envie um arquivo .xml.")

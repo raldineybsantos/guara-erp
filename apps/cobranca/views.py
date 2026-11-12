@@ -15,7 +15,12 @@ def gerar_cobranca(request, pk):
     if titulo.status in ("pago", "cancelado"):
         messages.error(request, "Título já está pago ou cancelado.")
         return redirect(titulo.get_absolute_url())
-    tipo = request.GET.get("tipo", "pix")
+    if request.method != "POST":
+        return render(request, "confirmar.html", {
+            "titulo": "Gerar cobrança", "voltar": titulo.get_absolute_url(),
+            "mensagem": f"Gerar cobrança PIX de {titulo.saldo} para “{titulo}”?",
+        })
+    tipo = request.POST.get("tipo", "pix") if request.POST.get("tipo") in dict(Cobranca.TIPOS) else "pix"
     cob = Cobranca.objects.create(conta_receber=titulo, tipo=tipo, valor=titulo.saldo, vencimento=titulo.vencimento)
     if tipo == "pix" and not cob.pix_copia_cola:
         messages.warning(request, "Cadastre a chave PIX da empresa para gerar o PIX copia-e-cola automaticamente.")

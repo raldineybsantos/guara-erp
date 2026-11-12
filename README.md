@@ -28,14 +28,16 @@ Requer Docker (no Windows: Docker Desktop).
 git clone <url-do-repositorio> erp-empresa
 cd erp-empresa
 cp .env.example .env        # no Windows: copy .env.example .env
-# edite o .env: senhas, chave secreta e, se quiser dados de exemplo, CARREGAR_DEMO=1
+# edite o .env: senhas (POSTGRES_PASSWORD, POSTGRES_ADMIN_PASSWORD, PGADMIN_PASSWORD...) e a chave secreta:
+#   python -c "import secrets; print(secrets.token_urlsafe(50))"
 docker compose up -d --build
+# opcional, HTTPS com o proxy Caddy:  docker compose --profile https up -d
 ```
 
 | Serviço | Endereço |
 |---|---|
 | ERP | http://localhost:8000 (usuário/senha do `DJANGO_SUPERUSER_*` do `.env`) |
-| pgAdmin | http://localhost:5050 (`PGADMIN_EMAIL` / `PGADMIN_PASSWORD`; o servidor "ERP Empresa" já aparece cadastrado) |
+| pgAdmin | http://localhost:5050, **só no próprio servidor** (`PGADMIN_EMAIL` / `PGADMIN_PASSWORD`; conecte com o usuário `postgres` e a `POSTGRES_ADMIN_PASSWORD`) |
 
 O serviço `agendador` executa a régua de cobrança todo dia às 08:00.
 
@@ -75,7 +77,7 @@ serviços `erp-web` (gunicorn, porta 8000) e `erp-agendador` no systemd.
 4. Ajuste o plano de contas, a régua de cobrança e os processos de workflow conforme sua empresa.
 
 Dados de demonstração (empresa fictícia, colaboradores, títulos, notas, processos e usuários
-`financeiro`, `rh`, `fiscal`, `diretor` com senha `demo1234`):
+`financeiro`, `rh`, `fiscal`, `diretor` com senha `demo1234`). **Só para testes, nunca em produção:**
 
 ```bash
 python manage.py seed_demo          # Docker: docker compose exec web python manage.py seed_demo
@@ -90,7 +92,20 @@ python manage.py seed_demo          # Docker: docker compose exec web python man
 | `python manage.py executar_regua` | Envia agora as cobranças previstas pela régua. |
 | `python manage.py agendador --hora 08:00` | Fica rodando e executa a régua todo dia no horário. |
 | `python manage.py test tests` | Roda a suíte de testes automatizados. |
-| `docker compose exec db pg_dump -U erp erp > backup.sql` | Backup pelo terminal. |
+| `docker compose exec db pg_dump -U postgres erp > backup.sql` | Backup pelo terminal. |
+
+## Segurança
+
+Resumo do que já vem configurado (detalhes, portas e checklist em **[SEGURANCA.md](SEGURANCA.md)**):
+
+- O ERP conecta ao PostgreSQL com um usuário **sem superusuário**. O banco não fica exposto fora do Docker
+  e o pgAdmin só escuta no próprio servidor.
+- Bloqueio de login após tentativas erradas, auditoria de logins com IP e sessões que expiram.
+- Permissões por grupo e por registro: solicitações de workflow só para os envolvidos, pastas do GED por grupo.
+  Dados de colaboradores ficam restritos ao RH.
+- Proteção contra injeção de SQL e de template, XSS, XXE, upload de executáveis e fórmulas em CSV.
+  Tudo coberto por testes automatizados.
+- A página **Administração → Banco de dados** mostra uma verificação de segurança da instalação.
 
 ## Desenvolvimento
 
@@ -98,6 +113,8 @@ python manage.py seed_demo          # Docker: docker compose exec web python man
 python -m venv .venv && source .venv/bin/activate     # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env    # POSTGRES_HOST=localhost e DJANGO_DEBUG=1
+# os testes criam um banco temporário: no ambiente de DESENVOLVIMENTO dê CREATEDB ao usuário
+#   ALTER ROLE erp CREATEDB;   (em produção, não)
 python manage.py migrate && python manage.py seed_demo && python manage.py createsuperuser
 python manage.py runserver
 ```
@@ -113,7 +130,7 @@ apps/fiscal/       produtos, notas fiscais, importador de XML NF-e
 apps/workflow/     processos BPM, etapas, solicitações e histórico
 apps/ged/          pastas, documentos e versões
 templates/         telas (Bootstrap 5)
-docker/            entrypoint e configuração do pgAdmin
+docker/            entrypoint, criação do usuário restrito do banco, pgAdmin e proxy HTTPS (Caddy)
 scripts/           instaladores Linux/Windows
 tests/             testes automatizados
 ```

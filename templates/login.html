@@ -8,12 +8,13 @@
     <p class="text-secondary small">Gestão empresarial integrada</p>
   </div>
   <div class="card"><div class="card-body p-4">
-    {% if form.errors %}<div class="alert alert-danger small">Usuário ou senha inválidos.</div>{% endif %}
+    {% if bloqueado %}<div class="alert alert-warning small">Muitas tentativas sem sucesso. Aguarde alguns minutos e tente novamente.</div>
+    {% elif form.errors %}<div class="alert alert-danger small">Usuário ou senha inválidos.</div>{% endif %}
     <form method="post">{% csrf_token %}
       <div class="mb-3"><label class="form-label">Usuário</label>
-        <input name="username" class="form-control" autofocus required></div>
+        <input name="username" class="form-control" autocomplete="username" autofocus required></div>
       <div class="mb-3"><label class="form-label">Senha</label>
-        <input type="password" name="password" class="form-control" required></div>
+        <input type="password" name="password" class="form-control" autocomplete="current-password" required></div>
       <input type="hidden" name="next" value="{{ next }}">
       <button class="btn btn-primary w-100">Entrar</button>
     </form>

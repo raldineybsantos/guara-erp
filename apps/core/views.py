@@ -1,3 +1,4 @@
+import datetime
 import os
 import shutil
 import subprocess
@@ -70,11 +71,18 @@ def banco_dados(request):
         tabelas = cur.fetchall()
         cur.execute("SELECT count(*) FROM pg_stat_activity WHERE datname = current_database()")
         conexoes = cur.fetchone()[0]
+        cur.execute("SELECT current_user, rolsuper, rolcreatedb, rolcreaterole FROM pg_roles WHERE rolname = current_user")
+        usuario_db, eh_super, cria_db, cria_role = cur.fetchone()
     return render(request, "banco_dados.html", {
         "titulo": "Banco de dados", "icone": "database", "versao": versao, "tamanho": tamanho,
         "nome_banco": nome_banco, "tabelas": tabelas, "conexoes": conexoes,
         "pg_dump": bool(shutil.which("pg_dump")), "host": settings.DATABASES["default"]["HOST"],
         "logs": LogAuditoria.objects.select_related("usuario")[:15],
+        "usuario_db": usuario_db, "eh_super": eh_super, "cria_db": cria_db, "cria_role": cria_role,
+        "debug": settings.DEBUG, "https": settings.SESSION_COOKIE_SECURE,
+        "falhas_login": LogAuditoria.objects.filter(
+            modelo="auth.login", descricao__startswith="FALHA",
+            data__gte=timezone.now() - datetime.timedelta(days=1)).count(),
     })
 
 
@@ -106,3 +114,33 @@ def banco_backup(request):
     resp = HttpResponse(proc.stdout, content_type="application/sql")
     resp["Content-Disposition"] = f'attachment; filename="erp_{timezone.now():%Y%m%d_%H%M}.sql"'
     return resp
+
+
+# --------------------------------------------------------------------------- login com bloqueio
+from django.contrib.auth import views as auth_views  # noqa: E402
+
+from .signals import ip_da_requisicao  # noqa: E402
+
+
+class LoginView(auth_views.LoginView):
+    """Bloqueia temporariamente após várias senhas erradas (por usuário e por IP)."""
+
+    template_name = "login.html"
+    redirect_authenticated_user = True
+
+    def bloqueado(self):
+        limite = settings.LOGIN_MAX_TENTATIVAS
+        desde = timezone.now() - datetime.timedelta(minutes=settings.LOGIN_BLOQUEIO_MINUTOS)
+        falhas = LogAuditoria.objects.filter(modelo="auth.login", descricao__startswith="FALHA", data__gte=desde)
+        username = (self.request.POST.get("username") or "").strip()[:50]
+        ip = ip_da_requisicao(self.request)
+        por_usuario = falhas.filter(objeto_id__iexact=username).count() if username else 0
+        por_ip = falhas.filter(ip=ip).count() if ip else 0
+        return por_usuario >= limite or por_ip >= limite * 3
+
+    def post(self, request, *args, **kwargs):
+        if self.bloqueado():
+            form = self.get_form()
+            form.errors.clear()
+            return self.render_to_response(self.get_context_data(form=form, bloqueado=True), status=429)
+        return super().post(request, *args, **kwargs)

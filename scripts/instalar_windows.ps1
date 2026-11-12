@@ -31,10 +31,19 @@ Get-Content .env | Where-Object { $_ -match "^\s*[^#].*=" } | ForEach-Object {
 $psql = Get-Command psql -ErrorAction SilentlyContinue
 if ($psql) {
     Write-Host "Informe a senha do usuário 'postgres' quando solicitado."
-    $sql = "DO `$`$BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='$($envs.POSTGRES_USER)') THEN CREATE ROLE $($envs.POSTGRES_USER) LOGIN PASSWORD '$($envs.POSTGRES_PASSWORD)' CREATEDB; END IF; END`$`$;"
+    $sql = "DO `$`$BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='$($envs.POSTGRES_USER)') THEN CREATE ROLE $($envs.POSTGRES_USER) LOGIN PASSWORD '$($envs.POSTGRES_PASSWORD)' NOSUPERUSER NOCREATEDB NOCREATEROLE; END IF; END`$`$;"
     & psql -U postgres -h localhost -c $sql
     & psql -U postgres -h localhost -tc "SELECT 1 FROM pg_database WHERE datname='$($envs.POSTGRES_DB)'" | Out-String | ForEach-Object {
-        if (-not $_.Trim()) { & psql -U postgres -h localhost -c "CREATE DATABASE $($envs.POSTGRES_DB) OWNER $($envs.POSTGRES_USER);" }
+        if (-not $_.Trim()) {
+            & psql -U postgres -h localhost -c "CREATE DATABASE $($envs.POSTGRES_DB) OWNER $($envs.POSTGRES_USER);"
+            & psql -U postgres -h localhost -c "REVOKE ALL ON DATABASE $($envs.POSTGRES_DB) FROM PUBLIC;"
+            & psql -U postgres -h localhost -d $envs.POSTGRES_DB -c "REVOKE CREATE ON SCHEMA public FROM PUBLIC; ALTER SCHEMA public OWNER TO $($envs.POSTGRES_USER);"
+        }
+    }
+    $listen = (& psql -U postgres -h localhost -tAc "SHOW listen_addresses").Trim()
+    if ($listen -ne "localhost") {
+        Write-Host "ATENÇÃO: o PostgreSQL escuta em '$listen' (porta 5432 na rede)." -ForegroundColor Yellow
+        Write-Host "Se o banco é só do ERP, ajuste listen_addresses = 'localhost' no postgresql.conf e reinicie o serviço." -ForegroundColor Yellow
     }
 } else {
     Write-Host "psql não encontrado no PATH. Crie o banco '$($envs.POSTGRES_DB)' e o usuário '$($envs.POSTGRES_USER)' pelo pgAdmin." -ForegroundColor Yellow
@@ -48,6 +57,16 @@ Write-Host "==> Aplicando estrutura do banco e configuração inicial" -Foregrou
 Write-Host "==> Criando o administrador (se ainda não existir)" -ForegroundColor Cyan
 & .\.venv\Scripts\python.exe manage.py shell -c "from django.contrib.auth.models import User; import sys; sys.exit(0 if User.objects.filter(is_superuser=True).exists() else 1)"
 if ($LASTEXITCODE -ne 0) { & .\.venv\Scripts\python.exe manage.py createsuperuser }
+
+Write-Host "==> Restringindo o .env ao usuário atual" -ForegroundColor Cyan
+icacls .env /inheritance:r /grant:r "$($env:USERNAME):(R,W)" | Out-Null
+
+Write-Host "==> Liberando a porta 8000 no Firewall do Windows (somente rede privada/domínio)" -ForegroundColor Cyan
+if (-not (Get-NetFirewallRule -DisplayName "ERP Empresa 8000" -ErrorAction SilentlyContinue)) {
+    try { New-NetFirewallRule -DisplayName "ERP Empresa 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 `
+            -Action Allow -Profile Domain,Private | Out-Null }
+    catch { Write-Host "Execute o PowerShell como Administrador para criar a regra de firewall." -ForegroundColor Yellow }
+}
 
 Write-Host ""
 Write-Host "Instalação concluída. Para iniciar: .\scripts\iniciar_windows.bat" -ForegroundColor Green

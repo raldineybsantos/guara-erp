@@ -24,6 +24,7 @@ from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.formats import date_format, number_format
 from django.utils.html import format_html
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.utils.text import capfirst
 from django.views import generic
 
@@ -99,6 +100,17 @@ def valor_exibicao(obj, nome, html=True):
         if url and url != "#":
             return format_html('<a href="{}">{}</a>', url, valor)
     return valor
+
+
+def celula_csv(valor):
+    """Evita injeção de fórmulas no Excel/LibreOffice (=, +, -, @ no início da célula)."""
+    texto = "" if valor is None else str(valor)
+    if texto[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        try:
+            float(texto.replace(".", "").replace(",", "."))  # número negativo legítimo
+        except ValueError:
+            return "'" + texto
+    return texto
 
 
 def rotulo(model, nome):
@@ -265,9 +277,17 @@ def crud_urls(*cruds):
 class CrudMixin(LoginRequiredMixin, PermissionRequiredMixin):
     crud = None
     acao_perm = "view"
+    HABILITADO = {"add": "can_create", "change": "can_edit", "delete": "can_delete"}
 
     def get_permission_required(self):
         return [self.crud.perm(self.acao_perm)]
+
+    def has_permission(self):
+        # Ações desabilitadas na tela também ficam bloqueadas pela URL (não só escondidas).
+        flag = self.HABILITADO.get(self.acao_perm)
+        if flag and not getattr(self.crud, flag):
+            return False
+        return super().has_permission()
 
     def get_queryset(self):
         return self.crud.get_queryset(self.request)
@@ -351,7 +371,8 @@ class ListaView(CrudMixin, generic.ListView):
         cols = self.colunas()
         w.writerow([c[1] for c in cols])
         for obj in self.get_queryset():
-            w.writerow([str(obj) if c[0] == "__str__" else valor_exibicao(obj, c[0], html=False) for c in cols])
+            w.writerow([celula_csv(str(obj) if c[0] == "__str__" else valor_exibicao(obj, c[0], html=False))
+                        for c in cols])
         return resp
 
     def get_context_data(self, **kwargs):
@@ -471,7 +492,8 @@ class FormMixin:
         if "_continuar" in self.request.POST:
             return reverse(self.crud.url_name("create"))
         nxt = self.request.GET.get("next")
-        if nxt and nxt.startswith("/"):
+        if nxt and url_has_allowed_host_and_scheme(nxt, allowed_hosts={self.request.get_host()},
+                                                   require_https=self.request.is_secure()):
             return nxt
         return reverse(self.crud.url_name("detail"), args=[self.object.pk])
 

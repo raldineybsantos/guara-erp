@@ -238,6 +238,7 @@ class LogAuditoria(models.Model):
     objeto_id = models.CharField("ID do objeto", max_length=50, blank=True)
     descricao = models.CharField("descrição", max_length=300)
     alteracoes = models.JSONField("alterações", default=dict, blank=True)
+    ip = models.GenericIPAddressField("IP", null=True, blank=True)
 
     class Meta:
         verbose_name = "log de auditoria"

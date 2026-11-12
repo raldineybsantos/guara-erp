@@ -1,8 +1,8 @@
 """Importação de XML de NF-e (modelo 55) recebida de fornecedores."""
 import datetime
-import xml.etree.ElementTree as ET
 from decimal import Decimal
 
+import defusedxml.ElementTree as ET  # protege contra XXE e "bomba de entidades"
 from django.db import transaction
 
 from apps.core.models import Fornecedor
@@ -25,6 +25,9 @@ def _dec(no, caminho):
 @transaction.atomic
 def importar_nfe(arquivo, empresa=None):
     """Lê o XML, cadastra o fornecedor se não existir e cria a nota de entrada com seus itens."""
+    from apps.core.validators import validar_xml
+
+    validar_xml(arquivo)
     conteudo = arquivo.read()
     raiz = ET.fromstring(conteudo)
     inf = raiz.find(".//n:infNFe", NS)

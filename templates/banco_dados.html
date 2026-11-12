@@ -6,6 +6,17 @@
   <div class="col-md-3"><div class="card kpi"><div class="card-body"><div class="rotulo">Conexões ativas</div><div class="valor">{{ conexoes }}</div></div></div></div>
   <div class="col-md-3"><div class="card kpi"><div class="card-body"><div class="rotulo">Tabelas</div><div class="valor">{{ tabelas|length }}</div></div></div></div>
 </div>
+<div class="card mb-3">
+  <div class="card-header bg-body"><strong><i class="bi bi-shield-lock me-1"></i>Verificação de segurança</strong></div>
+  <ul class="list-group list-group-flush small">
+    <li class="list-group-item">{% if eh_super %}<i class="bi bi-x-octagon-fill text-danger"></i> O ERP conecta como <code>{{ usuario_db }}</code>, que é <strong>superusuário</strong>. Use um usuário sem privilégios (veja o README).
+      {% else %}<i class="bi bi-check-circle-fill text-success"></i> O ERP conecta como <code>{{ usuario_db }}</code>, sem superusuário{% if not cria_db and not cria_role %}, sem CREATEDB/CREATEROLE{% endif %}.{% endif %}</li>
+    {% if cria_db or cria_role %}<li class="list-group-item"><i class="bi bi-exclamation-triangle-fill text-warning"></i> O usuário do banco pode {% if cria_db %}criar bancos{% endif %}{% if cria_db and cria_role %} e {% endif %}{% if cria_role %}criar usuários{% endif %}. Em produção remova: <code>ALTER ROLE {{ usuario_db }} NOCREATEDB NOCREATEROLE;</code></li>{% endif %}
+    <li class="list-group-item">{% if debug %}<i class="bi bi-exclamation-triangle-fill text-warning"></i> <strong>DEBUG ligado</strong>: desligue em produção (DJANGO_DEBUG=0).{% else %}<i class="bi bi-check-circle-fill text-success"></i> DEBUG desligado.{% endif %}</li>
+    <li class="list-group-item">{% if https %}<i class="bi bi-check-circle-fill text-success"></i> Cookies somente via HTTPS.{% else %}<i class="bi bi-info-circle-fill text-info"></i> Acesso por HTTP: senhas trafegam sem criptografia na rede. Ative o proxy HTTPS e DJANGO_HTTPS=1.{% endif %}</li>
+    <li class="list-group-item"><i class="bi bi-{% if falhas_login > 20 %}exclamation-triangle-fill text-warning{% else %}info-circle text-secondary{% endif %}"></i> {{ falhas_login }} falha(s) de login nas últimas 24h. <a href="{% url 'core:logauditoria_list' %}?q=FALHA">Ver</a></li>
+  </ul>
+</div>
 <div class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
   <small class="text-secondary me-auto">{{ versao }}</small>
   <a href="{{ PGADMIN_URL }}" target="_blank" class="btn btn-sm btn-primary"><i class="bi bi-box-arrow-up-right"></i> Abrir pgAdmin</a>

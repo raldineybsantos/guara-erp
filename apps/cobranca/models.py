@@ -1,8 +1,9 @@
 import datetime
+import re
 
+from django.core.exceptions import ValidationError
 from django.core.mail import send_mail
 from django.db import models
-from django.template import Context, Template
 from django.utils import timezone
 
 from apps.core.models import Cliente, Empresa, ModeloBase
@@ -58,19 +59,37 @@ class Cobranca(ModeloBase):
         super().save(*args, **kwargs)
 
     def contexto_mensagem(self):
+        """Somente textos simples: o modelo de mensagem não tem acesso a objetos do banco."""
         emp = Empresa.padrao()
-        return {"cobranca": self, "cliente": self.cliente, "titulo": self.conta_receber, "empresa": emp,
-                "valor": f"R$ {self.valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
-                "vencimento": self.vencimento.strftime("%d/%m/%Y"),
-                "dias_atraso": max((timezone.localdate() - self.vencimento).days, 0)}
+        titulo = self.conta_receber
+        linhas = []
+        if self.linha_digitavel:
+            linhas.append(f"Linha digitável: {self.linha_digitavel}")
+        if self.pix_copia_cola:
+            linhas.append(f"PIX copia-e-cola: {self.pix_copia_cola}")
+        if self.url_pagamento:
+            linhas.append(f"Pague pelo link: {self.url_pagamento}")
+        return {
+            "cliente": str(self.cliente or ""),
+            "titulo.descricao": titulo.descricao,
+            "titulo.documento": titulo.documento,
+            "valor": f"R$ {self.valor:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+            "vencimento": self.vencimento.strftime("%d/%m/%Y"),
+            "dias_atraso": str(max((timezone.localdate() - self.vencimento).days, 0)),
+            "cobranca.linha_digitavel": self.linha_digitavel,
+            "cobranca.pix_copia_cola": self.pix_copia_cola,
+            "cobranca.url_pagamento": self.url_pagamento,
+            "dados_pagamento": "\n".join(linhas),
+            "empresa": str(emp or ""),
+        }
 
     def enviar(self, regra=None, usuario=None):
         """Envia a cobrança por e-mail e registra no histórico."""
         assunto_tpl = regra.assunto if regra else "Cobrança {{ titulo.descricao }} - vencimento {{ vencimento }}"
         corpo_tpl = regra.mensagem if regra else MENSAGEM_PADRAO
-        ctx = Context(self.contexto_mensagem())
-        assunto = Template(assunto_tpl).render(ctx)
-        corpo = Template(corpo_tpl).render(ctx)
+        ctx = self.contexto_mensagem()
+        assunto = renderizar_mensagem(assunto_tpl, ctx).replace("\n", " ")
+        corpo = renderizar_mensagem(corpo_tpl, ctx)
         destino = self.email_destino
         sucesso, erro = False, ""
         if not destino:
@@ -96,12 +115,31 @@ MENSAGEM_PADRAO = """Olá {{ cliente }},
 Segue a cobrança referente a "{{ titulo.descricao }}".
 Valor: {{ valor }}
 Vencimento: {{ vencimento }}
-{% if cobranca.linha_digitavel %}Linha digitável: {{ cobranca.linha_digitavel }}
-{% endif %}{% if cobranca.pix_copia_cola %}PIX copia-e-cola: {{ cobranca.pix_copia_cola }}
-{% endif %}{% if cobranca.url_pagamento %}Pague pelo link: {{ cobranca.url_pagamento }}
-{% endif %}
+{{ dados_pagamento }}
+
 Atenciosamente,
 {{ empresa }}"""
+
+VARIAVEIS_MENSAGEM = ("cliente", "titulo.descricao", "titulo.documento", "valor", "vencimento", "dias_atraso",
+                      "cobranca.linha_digitavel", "cobranca.pix_copia_cola", "cobranca.url_pagamento",
+                      "dados_pagamento", "empresa")
+_RE_VARIAVEL = re.compile(r"{{\s*([\w.]+)\s*}}")
+
+
+def renderizar_mensagem(modelo, contexto):
+    """Substitui {{ variavel }} por texto. NÃO usa o motor de templates do Django: assim quem edita a
+    régua não consegue executar tags nem navegar em objetos (ex.: ler dados de usuários)."""
+    modelo = re.sub(r"{%.*?%}", "", modelo or "", flags=re.S)  # descarta tags de modelos antigos
+    return _RE_VARIAVEL.sub(lambda m: str(contexto.get(m.group(1), "")), modelo)
+
+
+def validar_modelo_mensagem(texto):
+    if "{%" in (texto or ""):
+        raise ValidationError("Tags {% %} não são permitidas. Use apenas variáveis {{ ... }}.")
+    desconhecidas = sorted(set(_RE_VARIAVEL.findall(texto or "")) - set(VARIAVEIS_MENSAGEM))
+    if desconhecidas:
+        raise ValidationError("Variáveis não permitidas: %s. Disponíveis: %s." % (
+            ", ".join(desconhecidas), ", ".join(VARIAVEIS_MENSAGEM)))
 
 
 class ReguaCobranca(ModeloBase):
@@ -110,11 +148,13 @@ class ReguaCobranca(ModeloBase):
     nome = models.CharField(max_length=100)
     dias = models.IntegerField("dias em relação ao vencimento",
                                help_text="Negativo = antes do vencimento (-3), 0 = no dia, positivo = após (5).")
-    assunto = models.CharField(max_length=200, default="Lembrete: {{ titulo.descricao }} vence em {{ vencimento }}")
-    mensagem = models.TextField(default=MENSAGEM_PADRAO,
-                                help_text="Variáveis: {{ cliente }}, {{ titulo.descricao }}, {{ valor }}, "
-                                          "{{ vencimento }}, {{ dias_atraso }}, {{ cobranca.pix_copia_cola }}, "
-                                          "{{ cobranca.linha_digitavel }}, {{ empresa }}")
+    assunto = models.CharField(max_length=200, default="Lembrete: {{ titulo.descricao }} vence em {{ vencimento }}",
+                               validators=[validar_modelo_mensagem])
+    mensagem = models.TextField(default=MENSAGEM_PADRAO, validators=[validar_modelo_mensagem],
+                                help_text="Variáveis: {{ cliente }}, {{ titulo.descricao }}, {{ titulo.documento }}, "
+                                          "{{ valor }}, {{ vencimento }}, {{ dias_atraso }}, {{ dados_pagamento }}, "
+                                          "{{ cobranca.pix_copia_cola }}, {{ cobranca.linha_digitavel }}, "
+                                          "{{ cobranca.url_pagamento }}, {{ empresa }}")
     ativa = models.BooleanField(default=True)
 
     class Meta:

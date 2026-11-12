@@ -16,7 +16,27 @@ def admin_generico(model):
     })
 
 
+SOMENTE_LEITURA = {"core.logauditoria", "workflow.historico", "cobranca.historicocobranca"}
+
+
+class SomenteLeituraAdmin(admin.ModelAdmin):
+    """Trilhas de auditoria não podem ser alteradas nem apagadas, nem por administradores."""
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
 for label in APPS_ERP:
     for model in apps.get_app_config(label).get_models():
-        if not admin.site.is_registered(model):
-            admin.site.register(model, admin_generico(model))
+        if admin.site.is_registered(model):
+            continue
+        base = admin_generico(model)
+        if model._meta.label_lower in SOMENTE_LEITURA:
+            base = type(base.__name__, (SomenteLeituraAdmin, base), {})
+        admin.site.register(model, base)

@@ -1,13 +1,16 @@
-import mimetypes
-
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import ValidationError
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect
 
 from apps.core.models import LogAuditoria
+from apps.core.validators import validar_arquivo_seguro
 
 from .models import Documento, Versao
+
+TIPOS_INLINE = {".pdf": "application/pdf", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".gif": "image/gif", ".webp": "image/webp", ".txt": "text/plain; charset=utf-8"}
 
 
 @login_required
@@ -21,9 +24,14 @@ def download(request, pk):
     except FileNotFoundError:
         raise Http404("Arquivo não encontrado no armazenamento.")
     LogAuditoria.registrar("acao", versao.documento, descricao=f"Download de {versao}")
-    tipo = mimetypes.guess_type(versao.nome_original)[0] or "application/octet-stream"
-    inline = request.GET.get("ver") == "1"
-    return FileResponse(arquivo, as_attachment=not inline, filename=versao.nome_original or None, content_type=tipo)
+    # Visualização no navegador só para tipos inofensivos; o resto é sempre baixado.
+    inline = request.GET.get("ver") == "1" and versao.extensao in TIPOS_INLINE
+    tipo = TIPOS_INLINE.get(versao.extensao, "application/octet-stream")
+    resp = FileResponse(arquivo, as_attachment=not inline, filename=versao.nome_original or None, content_type=tipo)
+    if versao.extensao != ".pdf":  # o leitor de PDF do Chrome não funciona com sandbox
+        resp["Content-Security-Policy"] = "sandbox; default-src 'none'; img-src 'self'; style-src 'unsafe-inline'"
+    resp["X-Content-Type-Options"] = "nosniff"
+    return resp
 
 
 @login_required
@@ -31,6 +39,11 @@ def download(request, pk):
 def nova_versao(request, pk):
     doc = get_object_or_404(Documento.visiveis_para(request.user), pk=pk)
     if request.method == "POST" and request.FILES.get("arquivo"):
+        try:
+            validar_arquivo_seguro(request.FILES["arquivo"])
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+            return redirect(doc.get_absolute_url())
         v = doc.adicionar_versao(request.FILES["arquivo"], request.POST.get("comentario", ""), request.user)
         messages.success(request, f"Versão {v.numero} enviada.")
     else:

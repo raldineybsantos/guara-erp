@@ -1,8 +1,10 @@
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
+from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.crud import BootstrapMixin
@@ -18,6 +20,18 @@ class ImportarXmlForm(BootstrapMixin, forms.Form):
 
 
 @login_required
+@permission_required("fiscal.view_notafiscal", raise_exception=True)
+def baixar_xml(request, pk):
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    if not nota.xml:
+        raise Http404
+    resp = FileResponse(nota.xml.open("rb"), as_attachment=True, filename=f"{nota.chave_acesso or nota.pk}.xml",
+                        content_type="application/xml")
+    resp["X-Content-Type-Options"] = "nosniff"
+    return resp
+
+
+@login_required
 @permission_required("fiscal.add_notafiscal", raise_exception=True)
 def importar_xml(request):
     form = ImportarXmlForm(request.POST or None, request.FILES or None)
@@ -28,6 +42,8 @@ def importar_xml(request):
                 nota.gerar_titulo()
             messages.success(request, f"NF-e importada: {nota} de {nota.fornecedor}.")
             return redirect(nota.get_absolute_url())
+        except ValidationError as exc:
+            form.add_error(None, exc.messages[0])
         except Exception as exc:
             form.add_error(None, f"Não foi possível importar: {exc}")
     return render(request, "form_simples.html", {"form": form, "titulo": "Importar XML de NF-e (entrada)",

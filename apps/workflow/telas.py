@@ -28,3 +28,8 @@ class InstanciaCrud(Crud):
     menu_label = "Todas as solicitações"
     menu_order = 2
     can_create = can_edit = False
+
+    @classmethod
+    def get_queryset(cls, request):
+        return Instancia.objects.visiveis_para(request.user).select_related(
+            "processo", "etapa_atual", "solicitante")

@@ -1,0 +1,15 @@
+# Proxy HTTPS opcional (perfil "https" do docker compose).
+# Com um domínio público apontando para o servidor, troque ":443" pelo domínio e remova "tls internal"
+# para obter certificado Let's Encrypt automaticamente.
+:443 {
+	tls internal
+	encode gzip
+	reverse_proxy web:8000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+}
+:80 {
+	redir https://{host}{uri} permanent
+}

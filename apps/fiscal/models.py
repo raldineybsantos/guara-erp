@@ -6,6 +6,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.core.models import Cliente, Fornecedor, ModeloBase, PorEmpresaMixin
+from apps.core.validators import validar_xml
 
 D2 = Decimal("0.01")
 
@@ -55,7 +56,7 @@ class NotaFiscal(ModeloBase, PorEmpresaMixin):
     status = models.CharField(max_length=10, choices=STATUS, default="rascunho")
     valor_frete = models.DecimalField("frete", max_digits=14, decimal_places=2, default=0)
     valor_desconto = models.DecimalField("desconto", max_digits=14, decimal_places=2, default=0)
-    xml = models.FileField("XML", upload_to="fiscal/xml/%Y/%m/", blank=True)
+    xml = models.FileField("XML", upload_to="fiscal/xml/%Y/%m/", blank=True, validators=[validar_xml])
     observacoes = models.TextField("informações complementares", blank=True)
     # totais calculados a partir dos itens
     valor_produtos = models.DecimalField("total dos itens", max_digits=14, decimal_places=2, default=0, editable=False)
@@ -71,6 +72,16 @@ class NotaFiscal(ModeloBase, PorEmpresaMixin):
         verbose_name_plural = "notas fiscais"
         ordering = ["-data_emissao", "-numero"]
         permissions = [("emitir_notafiscal", "Pode emitir/cancelar notas fiscais")]
+
+    @property
+    def link_xml(self):
+        from django.urls import reverse
+        from django.utils.html import format_html
+        if not self.xml:
+            return ""
+        return format_html('<a href="{}"><i class="bi bi-filetype-xml"></i> Baixar XML</a>',
+                           reverse("fiscal:baixar_xml", args=[self.pk]))
+    link_xml.fget.short_description = "XML"
 
     def __str__(self):
         num = self.numero or "s/n"

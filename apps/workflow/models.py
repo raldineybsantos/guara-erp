@@ -90,6 +90,14 @@ class Etapa(models.Model):
 
 
 class InstanciaQuerySet(models.QuerySet):
+    def visiveis_para(self, user):
+        """Cada usuário vê o que abriu, o que está com ele e o que já tratou; gestores veem tudo."""
+        if user.is_superuser or user.has_perm("workflow.ver_todas_instancia"):
+            return self.all()
+        return self.filter(
+            Q(solicitante=user) | Q(historico__usuario=user) | Q(pk__in=self.pendentes_para(user).values("pk"))
+        ).distinct()
+
     def pendentes_para(self, user):
         qs = self.filter(status="andamento")
         if user.is_superuser:
@@ -123,6 +131,7 @@ class Instancia(ModeloBase):
         verbose_name = "solicitação (instância)"
         verbose_name_plural = "solicitações"
         ordering = ["-criado_em"]
+        permissions = [("ver_todas_instancia", "Pode ver todas as solicitações de workflow")]
 
     def __str__(self):
         return f"#{self.pk} {self.titulo}"

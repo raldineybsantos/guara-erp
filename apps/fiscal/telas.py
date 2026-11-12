@@ -26,7 +26,7 @@ class NotaFiscalCrud(Crud):
                          "aliquota_icms", "aliquota_ipi", "aliquota_pis", "aliquota_cofins", "aliquota_iss"], 2)
     detail_fields = ["tipo", "modelo", "numero", "serie", "data_emissao", "natureza_operacao", "participante",
                      "chave_acesso", "protocolo", "status", "valor_produtos", "valor_frete", "valor_desconto",
-                     "valor_icms", "valor_ipi", "valor_pis", "valor_cofins", "valor_iss", "valor_total", "xml",
+                     "valor_icms", "valor_ipi", "valor_pis", "valor_cofins", "valor_iss", "valor_total", "link_xml",
                      "observacoes"]
     actions = (
         ("fiscal:emitir_nota", "Emitir", "send-check", "fiscal.emitir_notafiscal"),

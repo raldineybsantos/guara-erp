@@ -1,13 +1,14 @@
 from django import forms
 
 from apps.core.crud import Crud, FormBase
+from apps.core.validators import validar_arquivo_seguro
 
 from .models import Documento, Pasta
 
 
 class DocumentoForm(FormBase):
     precisa_request = True
-    arquivo = forms.FileField(label="Arquivo", required=False,
+    arquivo = forms.FileField(label="Arquivo", required=False, validators=[validar_arquivo_seguro],
                               help_text="Na edição, enviar um arquivo cria uma nova versão.")
     comentario_versao = forms.CharField(label="Comentário da versão", required=False, max_length=300)
 

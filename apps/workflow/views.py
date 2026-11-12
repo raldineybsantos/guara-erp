@@ -48,9 +48,11 @@ def nova_solicitacao(request):
 
 @login_required
 def agir(request, pk):
-    inst = get_object_or_404(Instancia, pk=pk)
+    inst = get_object_or_404(Instancia.objects.visiveis_para(request.user), pk=pk)
     form = AcaoForm(request.POST or None)
-    if request.method == "POST" and form.is_valid():
+    if request.method != "POST":
+        return redirect(inst.get_absolute_url())
+    if form.is_valid():
         try:
             inst.avancar(request.user, form.cleaned_data["acao"], form.cleaned_data["comentario"])
             messages.success(request, "Ação registrada.")
@@ -60,7 +62,7 @@ def agir(request, pk):
 
 
 @login_required
-@permission_required("workflow.add_instancia", raise_exception=True)
+@permission_required(["workflow.add_instancia", "financeiro.view_contapagar"], raise_exception=True)
 def iniciar_aprovacao_pagar(request, pk):
     """Envia uma conta a pagar para o processo 'aprovacao-pagamento'."""
     conta = get_object_or_404(ContaPagar, pk=pk)
