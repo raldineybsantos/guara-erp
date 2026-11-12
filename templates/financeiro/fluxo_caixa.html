@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% for c in contas %}
+  <div class="col-sm-6 col-lg-3"><div class="card kpi"><div class="card-body">
+    <div class="rotulo">{{ c }}</div><div class="valor">{{ c.saldo_atual|moeda }}</div></div></div></div>
+  {% endfor %}
+  <div class="col-sm-6 col-lg-3"><div class="card kpi border-primary"><div class="card-body">
+    <div class="rotulo">Saldo total hoje</div><div class="valor text-primary">{{ saldo_bancos|moeda }}</div></div></div></div>
+</div>
+<div class="card">
+  <div class="table-responsive"><table class="table table-sm mb-0 text-end">
+    <thead class="table-light"><tr><th class="text-start">Mês</th><th>Entradas</th><th>Saídas</th><th>Resultado realizado</th>
+      <th>A receber</th><th>A pagar</th><th>Saldo projetado</th></tr></thead>
+    <tbody>{% for m in meses %}
+      <tr {% if m.inicio == hoje_mes %}class="table-primary"{% endif %}>
+        <td class="text-start">{{ m.label }}</td>
+        <td class="text-success">{{ m.entradas|moeda }}</td><td class="text-danger">{{ m.saidas|moeda }}</td>
+        <td class="{% if m.resultado < 0 %}text-danger{% endif %}"><strong>{{ m.resultado|moeda }}</strong></td>
+        <td>{{ m.a_receber|moeda }}</td><td>{{ m.a_pagar|moeda }}</td>
+        <td class="{% if m.saldo_projetado < 0 %}text-danger{% endif %}">{% if m.saldo_projetado is not None %}<strong>{{ m.saldo_projetado|moeda }}</strong>{% else %}—{% endif %}</td>
+      </tr>{% endfor %}
+    </tbody>
+  </table></div>
+  <div class="card-footer small text-secondary">Títulos vencidos e não pagos entram na previsão do mês atual. Saldo projetado = saldo de hoje + previsões acumuladas.</div>
+</div>
+{% endblock %}

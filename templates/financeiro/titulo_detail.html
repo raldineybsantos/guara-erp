@@ -1,0 +1,8 @@
+{% extends "crud/detail.html" %}{% load erp %}
+{% block antes_detalhe %}
+<div class="row g-3 mb-3">
+  <div class="col-sm-4"><div class="card kpi"><div class="card-body"><div class="rotulo">Valor total</div><div class="valor">{{ object.valor_total|moeda }}</div></div></div></div>
+  <div class="col-sm-4"><div class="card kpi"><div class="card-body"><div class="rotulo">Pago</div><div class="valor text-success">{{ object.valor_pago|moeda }}</div></div></div></div>
+  <div class="col-sm-4"><div class="card kpi"><div class="card-body"><div class="rotulo">Saldo · {{ object.situacao|badge }}</div><div class="valor {% if object.vencido %}text-danger{% endif %}">{{ object.saldo|moeda }}</div></div></div></div>
+</div>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}{% load erp static %}
+{% block content %}
+<div class="row g-3 mb-3">
+  {% if saldo_total is not None %}
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body">
+    <div class="rotulo"><i class="bi bi-bank me-1"></i>Saldo em contas</div>
+    <div class="valor {% if saldo_total < 0 %}text-danger{% endif %}">{{ saldo_total|moeda }}</div>
+    <small class="text-secondary">{{ contas|length }} conta(s) ativa(s)</small>
+  </div></div></div>
+  {% endif %}
+  {% if total_receber is not None %}
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body">
+    <div class="rotulo"><i class="bi bi-box-arrow-in-down-left me-1"></i>A receber</div>
+    <div class="valor text-success">{{ total_receber|moeda }}</div>
+    <a href="{% url 'financeiro:contareceber_list' %}?situacao=vencidos" class="small text-danger">{{ receber_vencidos.count }} vencido(s): {{ total_receber_vencido|moeda }}</a>
+  </div></div></div>
+  {% endif %}
+  {% if total_pagar is not None %}
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body">
+    <div class="rotulo"><i class="bi bi-box-arrow-up-right me-1"></i>A pagar</div>
+    <div class="valor text-danger">{{ total_pagar|moeda }}</div>
+    <small><span class="text-warning-emphasis">{{ pagar_hoje.count }} vence(m) hoje</span> · <a class="text-danger" href="{% url 'financeiro:contapagar_list' %}?situacao=vencidos">{{ pagar_vencidos.count }} vencido(s)</a></small>
+  </div></div></div>
+  {% endif %}
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body">
+    <div class="rotulo"><i class="bi bi-check2-square me-1"></i>Minhas tarefas</div>
+    <div class="valor">{{ tarefas|length }}</div>
+    {% if colaboradores_ativos is not None %}<small class="text-secondary">{{ colaboradores_ativos }} colaborador(es) ativo(s)</small>{% endif %}
+  </div></div></div>
+</div>
+
+{% if fluxo %}
+<div class="card mb-3">
+  <div class="card-header bg-body d-flex"><strong>Fluxo de caixa</strong>
+    <a href="{% url 'financeiro:fluxo_caixa' %}" class="ms-auto small">Detalhar</a></div>
+  <div class="card-body"><canvas id="grafico" height="90"></canvas></div>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  {% if pagar_proximos is not None %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header bg-body"><strong>Próximos pagamentos</strong></div>
+    <table class="table table-sm mb-0"><tbody>
+      {% for t in pagar_proximos %}<tr><td>{{ t.vencimento|date:"d/m" }}</td><td><a href="{{ t.get_absolute_url }}">{{ t }}</a><br><small class="text-secondary">{{ t.fornecedor|default:"" }}</small></td><td class="text-end">{{ t.saldo|moeda }}</td></tr>
+      {% empty %}<tr><td class="text-secondary p-3">Nada a pagar.</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+  {% endif %}
+  {% if receber_proximos is not None %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header bg-body"><strong>Próximos recebimentos</strong></div>
+    <table class="table table-sm mb-0"><tbody>
+      {% for t in receber_proximos %}<tr><td>{{ t.vencimento|date:"d/m" }}</td><td><a href="{{ t.get_absolute_url }}">{{ t }}</a><br><small class="text-secondary">{{ t.cliente|default:"" }}</small></td><td class="text-end">{{ t.saldo|moeda }}</td></tr>
+      {% empty %}<tr><td class="text-secondary p-3">Nada a receber.</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+  {% endif %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header bg-body d-flex"><strong>Tarefas pendentes</strong><a href="{% url 'workflow:minhas_tarefas' %}" class="ms-auto small">Ver todas</a></div>
+    <table class="table table-sm mb-0"><tbody>
+      {% for i in tarefas %}<tr><td><a href="{{ i.get_absolute_url }}">{{ i }}</a><br><small class="text-secondary">{{ i.processo }} · {{ i.etapa_atual.nome }}</small></td>
+        <td class="text-end">{% if i.atrasada %}<span class="badge text-bg-danger">Atrasada</span>{% else %}<small>{{ i.prazo|date:"d/m H:i" }}</small>{% endif %}</td></tr>
+      {% empty %}<tr><td class="text-secondary p-3">Nenhuma tarefa pendente.</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+  {% if contas %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header bg-body"><strong>Saldos por conta</strong></div>
+    <table class="table table-sm mb-0"><tbody>
+      {% for c in contas %}<tr><td><a href="{{ c.get_absolute_url }}">{{ c }}</a></td><td class="text-end">{{ c.saldo_atual|moeda }}</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+{% if fluxo %}
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+{{ fluxo|json_script:"dados-fluxo" }}
+<script>
+const d = JSON.parse(document.getElementById("dados-fluxo").textContent);
+new Chart(document.getElementById("grafico"), {
+  type: "bar",
+  data: { labels: d.map(m => m.label), datasets: [
+    { label: "Entradas", data: d.map(m => +m.entradas), backgroundColor: "#2e9e5b" },
+    { label: "Saídas", data: d.map(m => -m.saidas), backgroundColor: "#d9534f" },
+    { label: "A receber (previsto)", data: d.map(m => +m.a_receber), backgroundColor: "#9fd8b4" },
+    { label: "A pagar (previsto)", data: d.map(m => -m.a_pagar), backgroundColor: "#f0b2b0" },
+  ]},
+  options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true } },
+    plugins: { tooltip: { callbacks: { label: c => c.dataset.label + ": " +
+      Math.abs(c.raw).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }) } } } }
+});
+</script>
+{% endif %}
+{% endblock %}

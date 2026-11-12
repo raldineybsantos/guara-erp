@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+  <a href="{{ url_list }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar</a>
+  {% if pode_editar %}<a href="{{ url_update }}" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i> Editar</a>{% endif %}
+  {% for a in acoes %}<a href="{{ a.url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-{{ a.icone }}"></i> {{ a.rotulo }}</a>{% endfor %}
+  {% block botoes_extra %}{% endblock %}
+  <button onclick="window.print()" class="btn btn-sm btn-outline-secondary ms-auto"><i class="bi bi-printer"></i></button>
+  {% if pode_excluir %}<a href="{{ url_delete }}" class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></a>{% endif %}
+</div>
+{% block antes_detalhe %}{% endblock %}
+<div class="card mb-3">
+  <div class="card-header bg-body"><strong>{{ titulo_singular }}:</strong> {{ object }}</div>
+  <div class="card-body">
+    <dl class="row detalhe mb-0">
+      {% for rot, valor in campos %}
+      <div class="col-sm-6 col-lg-4 col-xl-3"><dt>{{ rot }}</dt><dd>{{ valor|default:"—" }}</dd></div>
+      {% endfor %}
+    </dl>
+  </div>
+</div>
+{% block depois_detalhe %}{% endblock %}
+{% for rel in relacionados %}
+<div class="card mb-3">
+  <div class="card-header bg-body"><strong>{{ rel.titulo }}</strong> <span class="badge text-bg-light">{{ rel.linhas|length }}</span></div>
+  {% if rel.linhas %}
+  <div class="table-responsive"><table class="table table-sm mb-0">
+    <thead class="table-light"><tr>{% for c in rel.colunas %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+    <tbody>{% for obj, valores in rel.linhas %}<tr>
+      {% for v in valores %}<td>{% if forloop.first and obj.get_absolute_url != '#' %}<a href="{{ obj.get_absolute_url }}">{{ v|default:"—" }}</a>{% else %}{{ v }}{% endif %}</td>{% endfor %}
+    </tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<div class="card-body text-secondary small">Nenhum registro.</div>{% endif %}
+</div>
+{% endfor %}
+{% block fim %}{% endblock %}
+{% endblock %}

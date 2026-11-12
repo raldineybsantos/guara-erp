@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="card mb-3" style="max-width:900px"><div class="card-body">
+  <div class="row small">
+    <div class="col-md-6"><span class="text-secondary">Título:</span> <a href="{{ titulo_obj.get_absolute_url }}">{{ titulo_obj }}</a></div>
+    <div class="col-md-3"><span class="text-secondary">Vencimento:</span> {{ titulo_obj.vencimento|date:"d/m/Y" }}</div>
+    <div class="col-md-3"><span class="text-secondary">Saldo:</span> <strong>{{ titulo_obj.saldo|moeda }}</strong></div>
+  </div>
+</div></div>
+<form method="post" novalidate style="max-width:900px">{% csrf_token %}
+  <div class="card mb-3"><div class="card-body">{% include "crud/_campos.html" %}</div></div>
+  <button class="btn btn-success"><i class="bi bi-cash-coin"></i> Confirmar {% if tipo == "pagar" %}pagamento{% else %}recebimento{% endif %}</button>
+  <a href="{{ titulo_obj.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}

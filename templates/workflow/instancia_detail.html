@@ -1,0 +1,65 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="d-flex gap-2 mb-3">
+  <a href="{% url 'workflow:minhas_tarefas' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Minhas tarefas</a>
+  {% if object.objeto %}<a href="{{ object.objeto.get_absolute_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-link-45deg"></i> {{ object.objeto }}</a>{% endif %}
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header bg-body d-flex align-items-center"><strong>{{ object }}</strong><span class="ms-auto">{{ object.get_status_display|badge }}</span></div>
+      <div class="card-body">
+        <dl class="row detalhe">
+          <div class="col-sm-4"><dt>Processo</dt><dd><a href="{{ object.processo.get_absolute_url }}">{{ object.processo }}</a></dd></div>
+          <div class="col-sm-4"><dt>Solicitante</dt><dd>{{ object.solicitante.get_full_name|default:object.solicitante }}</dd></div>
+          <div class="col-sm-4"><dt>Aberto em</dt><dd>{{ object.criado_em|date:"d/m/Y H:i" }}</dd></div>
+        </dl>
+        {% if object.descricao %}<div class="bg-body-tertiary p-3 rounded" style="white-space:pre-line">{{ object.descricao }}</div>{% endif %}
+      </div>
+    </div>
+    <div class="card mb-3"><div class="card-body">
+      <div class="bpm-fluxo">
+        {% for e in object.processo.etapas.all %}
+          {% if not forloop.first %}<span class="bpm-seta"><i class="bi bi-arrow-right"></i></span>{% endif %}
+          <div class="bpm-no {{ e.tipo }} {% if e.pk == object.etapa_atual_id and object.status == 'andamento' %}atual{% endif %}">
+            <div class="small text-secondary">{{ e.ordem }}. {{ e.get_tipo_display }}</div><div class="fw-semibold">{{ e.nome }}</div>
+          </div>
+        {% endfor %}
+      </div>
+    </div></div>
+    <div class="card"><div class="card-header bg-body"><strong>Histórico</strong></div>
+      <ul class="list-group list-group-flush">{% for h in object.historico.all %}
+        <li class="list-group-item"><small class="text-secondary">{{ h.data|date:"d/m/Y H:i" }} · {{ h.etapa.nome|default:"" }}</small><br>
+          <strong>{{ h.usuario.get_full_name|default:h.usuario }}</strong> {{ h.get_acao_display|lower }}
+          {% if h.comentario %}<div class="small mt-1" style="white-space:pre-line">{{ h.comentario }}</div>{% endif %}</li>
+      {% endfor %}</ul>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    {% if object.status == "andamento" %}
+    <div class="card border-primary">
+      <div class="card-header bg-primary-subtle"><strong>Etapa atual: {{ object.etapa_atual.nome }}</strong></div>
+      <div class="card-body">
+        <p class="small mb-1"><span class="text-secondary">Responsável:</span> {{ object.etapa_atual.responsavel_texto }}</p>
+        <p class="small {% if object.atrasada %}text-danger{% endif %}"><span class="text-secondary">Prazo:</span> {{ object.prazo|date:"d/m/Y H:i" }}{% if object.atrasada %} (atrasada){% endif %}</p>
+        {% if object.etapa_atual.instrucoes %}<div class="alert alert-info small">{{ object.etapa_atual.instrucoes|linebreaksbr }}</div>{% endif %}
+        <form method="post" action="{% url 'workflow:agir' object.pk %}">{% csrf_token %}
+          <textarea name="comentario" class="form-control mb-2" rows="3" placeholder="Comentário (obrigatório para rejeitar)"></textarea>
+          {% if object.etapa_atual.tipo == "aprovacao" %}
+            <button name="acao" value="aprovar" class="btn btn-success w-100 mb-2"><i class="bi bi-check-circle"></i> Aprovar</button>
+            <button name="acao" value="rejeitar" class="btn btn-outline-danger w-100 mb-2"><i class="bi bi-x-circle"></i> Rejeitar</button>
+          {% else %}
+            <button name="acao" value="concluir" class="btn btn-primary w-100 mb-2"><i class="bi bi-check2-all"></i> Concluir etapa</button>
+          {% endif %}
+          {% if object.solicitante == user or user.is_superuser %}
+            <button name="acao" value="cancelar" class="btn btn-link btn-sm text-secondary w-100">Cancelar solicitação</button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <div class="alert alert-secondary">Finalizada em {{ object.concluido_em|date:"d/m/Y H:i" }}.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

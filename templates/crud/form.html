@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" enctype="multipart/form-data" novalidate>
+  {% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header bg-body"><strong>{{ subtitulo }}</strong></div>
+    <div class="card-body">
+      {% include "crud/_campos.html" %}
+    </div>
+  </div>
+  {% if formset %}
+  <div class="card mb-3">
+    <div class="card-header bg-body d-flex align-items-center">
+      <strong>{{ formset_titulo|capfirst }}</strong>
+      <button type="button" class="btn btn-sm btn-outline-primary ms-auto" data-add-form="{{ formset.prefix }}"><i class="bi bi-plus"></i> Adicionar linha</button>
+    </div>
+    {{ formset.management_form }}
+    {% if formset.non_form_errors %}<div class="alert alert-danger m-2">{{ formset.non_form_errors }}</div>{% endif %}
+    <div class="table-responsive">
+      <table class="table table-sm mb-0 formset-tabela">
+        <thead class="table-light"><tr>
+          {% for campo in formset.empty_form.visible_fields %}{% if campo.name != "DELETE" %}<th>{{ campo.label }}</th>{% endif %}{% endfor %}
+          <th>Excluir</th>
+        </tr></thead>
+        <tbody id="corpo-{{ formset.prefix }}">
+          {% for f in formset %}
+          <tr>{% for h in f.hidden_fields %}{{ h }}{% endfor %}
+            {% for campo in f.visible_fields %}{% if campo.name != "DELETE" %}
+            <td>{{ campo }}{% for e in campo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</td>{% endif %}{% endfor %}
+            <td class="text-center">{% if f.DELETE %}{{ f.DELETE }}{% endif %}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <template id="modelo-{{ formset.prefix }}"><tr>{% for h in formset.empty_form.hidden_fields %}{{ h }}{% endfor %}
+      {% for campo in formset.empty_form.visible_fields %}{% if campo.name != "DELETE" %}<td>{{ campo }}</td>{% endif %}{% endfor %}
+      <td class="text-center">{{ formset.empty_form.DELETE }}</td></tr></template>
+  </div>
+  {% endif %}
+  <div class="d-flex gap-2">
+    <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+    {% if not object %}<button name="_continuar" class="btn btn-outline-primary">Salvar e incluir outro</button>{% endif %}
+    <a href="{% if object %}{{ object.get_absolute_url }}{% else %}{{ url_list }}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
+  </div>
+</form>
+{% endblock %}

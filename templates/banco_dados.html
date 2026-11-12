@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card kpi"><div class="card-body"><div class="rotulo">Banco</div><div class="valor">{{ nome_banco }}</div><small class="text-secondary">host: {{ host }}</small></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="card-body"><div class="rotulo">Tamanho</div><div class="valor">{{ tamanho }}</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="card-body"><div class="rotulo">Conexões ativas</div><div class="valor">{{ conexoes }}</div></div></div></div>
+  <div class="col-md-3"><div class="card kpi"><div class="card-body"><div class="rotulo">Tabelas</div><div class="valor">{{ tabelas|length }}</div></div></div></div>
+</div>
+<div class="card mb-3"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+  <small class="text-secondary me-auto">{{ versao }}</small>
+  <a href="{{ PGADMIN_URL }}" target="_blank" class="btn btn-sm btn-primary"><i class="bi bi-box-arrow-up-right"></i> Abrir pgAdmin</a>
+  <a href="{% url 'admin:index' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-tools"></i> Editar dados (Admin)</a>
+  {% if pg_dump %}<a href="{% url 'banco_backup' %}" class="btn btn-sm btn-success"><i class="bi bi-download"></i> Baixar backup (.sql)</a>
+  {% else %}<span class="badge text-bg-warning">pg_dump não instalado: backup pela web indisponível</span>{% endif %}
+  <form method="post" action="{% url 'banco_manutencao' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary"><i class="bi bi-wrench"></i> VACUUM ANALYZE</button></form>
+</div></div>
+<div class="row g-3">
+<div class="col-xl-8"><div class="card">
+  <div class="card-header bg-body"><strong>Tabelas</strong></div>
+  <div class="table-responsive"><table class="table table-sm mb-0">
+    <thead class="table-light"><tr><th>Tabela</th><th class="text-end">Linhas</th><th class="text-end">Tamanho</th><th>Último vacuum</th><th>Última análise</th></tr></thead>
+    <tbody>{% for t in tabelas %}<tr><td><code>{{ t.0 }}</code></td><td class="text-end">{{ t.1 }}</td><td class="text-end">{{ t.2 }}</td>
+      <td><small>{{ t.3|default:t.4|date:"d/m/Y H:i"|default:"—" }}</small></td><td><small>{{ t.5|default:t.6|date:"d/m/Y H:i"|default:"—" }}</small></td></tr>{% endfor %}</tbody>
+  </table></div>
+</div></div>
+<div class="col-xl-4"><div class="card">
+  <div class="card-header bg-body d-flex"><strong>Atividade recente</strong><a class="ms-auto small" href="{% url 'core:logauditoria_list' %}">Auditoria</a></div>
+  <ul class="list-group list-group-flush small">{% for l in logs %}
+    <li class="list-group-item"><span class="text-secondary">{{ l.data|date:"d/m H:i" }}</span> <strong>{{ l.usuario|default:"sistema" }}</strong> {{ l.get_acao_display|lower }} {{ l.descricao }}</li>{% endfor %}
+  </ul>
+</div></div>
+</div>
+{% endblock %}

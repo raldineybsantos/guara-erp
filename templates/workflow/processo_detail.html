@@ -1,0 +1,23 @@
+{% extends "crud/detail.html" %}
+{% block botoes_extra %}<a href="{% url 'workflow:nova_solicitacao' %}?processo={{ object.pk }}" class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Iniciar solicitação</a>{% endblock %}
+{% block depois_detalhe %}
+<div class="card mb-3">
+  <div class="card-header bg-body"><strong>Diagrama do processo</strong></div>
+  <div class="card-body">
+    <div class="bpm-fluxo">
+      <div class="bpm-no evento border-success" title="Início"><i class="bi bi-play-fill text-success"></i></div>
+      {% for e in object.etapas.all %}
+        <span class="bpm-seta"><i class="bi bi-arrow-right"></i></span>
+        <div class="bpm-no {{ e.tipo }}">
+          <div class="small text-secondary">{{ e.ordem }} · {% if e.tipo == "aprovacao" %}<i class="bi bi-patch-question"></i> Aprovação{% else %}<i class="bi bi-person-gear"></i> Tarefa{% endif %}</div>
+          <div class="fw-semibold">{{ e.nome }}</div>
+          <div class="small">{{ e.responsavel_texto }} · {{ e.prazo_dias }}d</div>
+        </div>
+      {% endfor %}
+      <span class="bpm-seta"><i class="bi bi-arrow-right"></i></span>
+      <div class="bpm-no evento border-danger" title="Fim"><i class="bi bi-stop-fill text-danger"></i></div>
+    </div>
+    <p class="small text-secondary mt-3 mb-0">Etapas de aprovação podem rejeitar a solicitação (encerra o fluxo). Ao concluir a última etapa, registros vinculados (ex.: conta a pagar) são marcados como aprovados.</p>
+  </div>
+</div>
+{% endblock %}
