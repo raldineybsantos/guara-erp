@@ -255,7 +255,7 @@ O ERP fica em **http://localhost:8000** (e em http://IP-DO-SERVIDOR:8000 na rede
 3. Marque **"Executar estando o usuário conectado ou não"**.
 
 Outra opção é registrar como serviço com o [NSSM](https://nssm.cc/):
-`nssm install ERPEmpresa "C:\caminho\guara-erp\scripts\iniciar_windows.bat"`.
+`nssm install GuaraERP "C:\caminho\guara-erp\scripts\iniciar_windows.bat"`.
 
 **Régua de cobrança diária:** no Agendador de Tarefas, crie uma tarefa diária às 08:00 que execute
 `scripts\regua_windows.bat`.
