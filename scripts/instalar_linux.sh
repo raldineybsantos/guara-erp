@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Instalação do ERP Empresa em Linux (Debian/Ubuntu) sem Docker.
+# Instalação do Guará ERP em Linux (Debian/Ubuntu) sem Docker.
 # Uso: sudo ./scripts/instalar_linux.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -47,7 +47,7 @@ sudo -u "$USUARIO_APP" .venv/bin/python manage.py collectstatic --noinput -v0
 echo "==> Serviços systemd (erp-web e erp-agendador)"
 cat > /etc/systemd/system/erp-web.service <<UNIT
 [Unit]
-Description=ERP Empresa (web)
+Description=Guará ERP (web)
 After=network.target postgresql.service
 
 [Service]
@@ -66,7 +66,7 @@ WantedBy=multi-user.target
 UNIT
 cat > /etc/systemd/system/erp-agendador.service <<UNIT
 [Unit]
-Description=ERP Empresa (agendador da régua de cobrança)
+Description=Guará ERP (agendador da régua de cobrança)
 After=erp-web.service
 
 [Service]

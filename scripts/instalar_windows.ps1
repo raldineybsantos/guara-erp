@@ -1,4 +1,4 @@
-# Instalação do ERP Empresa no Windows (sem Docker)
+﻿# Instalação do Guará ERP no Windows (sem Docker)
 # Pré-requisitos: Python 3.11+ e PostgreSQL 14+ instalados (https://www.postgresql.org/download/windows/)
 # Execute no PowerShell, dentro da pasta do projeto:
 #   Set-ExecutionPolicy -Scope Process Bypass
@@ -62,8 +62,8 @@ Write-Host "==> Restringindo o .env ao usuário atual" -ForegroundColor Cyan
 icacls .env /inheritance:r /grant:r "$($env:USERNAME):(R,W)" | Out-Null
 
 Write-Host "==> Liberando a porta 8000 no Firewall do Windows (somente rede privada/domínio)" -ForegroundColor Cyan
-if (-not (Get-NetFirewallRule -DisplayName "ERP Empresa 8000" -ErrorAction SilentlyContinue)) {
-    try { New-NetFirewallRule -DisplayName "ERP Empresa 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 `
+if (-not (Get-NetFirewallRule -DisplayName "Guara ERP 8000" -ErrorAction SilentlyContinue)) {
+    try { New-NetFirewallRule -DisplayName "Guara ERP 8000" -Direction Inbound -Protocol TCP -LocalPort 8000 `
             -Action Allow -Profile Domain,Private | Out-Null }
     catch { Write-Host "Execute o PowerShell como Administrador para criar a regra de firewall." -ForegroundColor Yellow }
 }

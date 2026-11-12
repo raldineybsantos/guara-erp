@@ -1,4 +1,4 @@
-# Segurança do ERP Empresa
+# Segurança do Guará ERP
 
 Auditoria feita em 12/11/2026 sobre controle de acesso, acesso ao banco, manutenção, execução de
 código malicioso via web e portas. Cada correção tem teste automatizado em `tests/test_seguranca.py`.

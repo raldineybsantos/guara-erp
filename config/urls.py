@@ -1,3 +1,8 @@
+# Guará ERP — gestão empresarial livre
+# Copyright (C) 2026 Raldiney Santos e colaboradores
+# SPDX-License-Identifier: GPL-3.0-or-later
+# Este programa é software livre: redistribua/modifique sob os termos da GNU GPL v3 ou posterior.
+# Distribuído SEM NENHUMA GARANTIA. Veja o arquivo LICENSE.
 from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
@@ -5,8 +10,8 @@ from django.views.generic import RedirectView
 
 from apps.core import views as core_views
 
-admin.site.site_header = "ERP Empresa - Administração"
-admin.site.site_title = "ERP Empresa"
+admin.site.site_header = "Guará ERP - Administração"
+admin.site.site_title = "Guará ERP"
 admin.site.index_title = "Administração do sistema"
 
 urlpatterns = [

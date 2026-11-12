@@ -1,8 +1,34 @@
-# ERP Empresa
+<p align="center"><img src="static/img/guara.svg" alt="Guará ERP" width="110"></p>
 
-Sistema web de gestão empresarial (ERP) em **Python/Django + PostgreSQL**, roda em **Linux e Windows**
-(com ou sem Docker) e é usado pelo navegador. Interface em português, pensada para empresas brasileiras
-(CPF/CNPJ, PIX, NF-e, plano de contas).
+<h1 align="center">Projeto Guará ERP</h1>
+
+<p align="center">
+  <a href="LICENSE"><img alt="Licença GPL-3.0" src="https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue"></a>
+  <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776AB">
+  <img alt="Django 5.1" src="https://img.shields.io/badge/django-5.1-0C4B33">
+  <img alt="PostgreSQL 14+" src="https://img.shields.io/badge/postgresql-14%2B-336791">
+  <img alt="Linux e Windows" src="https://img.shields.io/badge/plataforma-Linux%20%7C%20Windows-lightgrey">
+</p>
+
+Sistema web de gestão empresarial (ERP) livre, em **Python/Django + PostgreSQL**. Roda em **Linux e Windows**
+(com ou sem Docker) e é usado pelo navegador. A interface é em português e pensada para empresas
+brasileiras (CPF/CNPJ, PIX, NF-e, plano de contas).
+
+O nome homenageia o **lobo-guará** (*Chrysocyon brachyurus*), o maior canídeo da América do Sul e
+símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um ERP que integra todas as
+áreas da empresa.
+
+![Painel do Guará ERP](docs/img/painel.jpg)
+
+## Documentação
+
+| Documento | Conteúdo |
+|---|---|
+| [docs/INSTALACAO.md](docs/INSTALACAO.md) | **Requisitos** (hardware, sistemas, software, rede), instalação Docker/Linux/Windows, HTTPS, backup, atualização e solução de problemas |
+| [docs/MANUAL.md](docs/MANUAL.md) | **Manual do usuário**: uso de cada módulo, perfis de acesso e perguntas frequentes |
+| [SEGURANCA.md](SEGURANCA.md) | Auditoria de segurança, permissões, banco de dados e portas |
+| [docs/TERCEIROS.md](docs/TERCEIROS.md) | Componentes de terceiros e suas licenças |
+| [LICENSE](LICENSE) | Texto integral da GNU GPL versão 3 |
 
 ## Módulos
 
@@ -22,11 +48,12 @@ Tema claro/escuro. Bibliotecas de interface ficam no próprio projeto (funciona 
 
 ## Instalação rápida com Docker (Linux ou Windows)
 
-Requer Docker (no Windows: Docker Desktop).
+Requer Docker 24+ com Compose (no Windows: Docker Desktop). Requisitos completos e outras formas de
+instalação estão em [docs/INSTALACAO.md](docs/INSTALACAO.md).
 
 ```bash
-git clone <url-do-repositorio> erp-empresa
-cd erp-empresa
+git clone https://github.com/raldineybsantos/guara-erp.git
+cd guara-erp
 cp .env.example .env        # no Windows: copy .env.example .env
 # edite o .env: senhas (POSTGRES_PASSWORD, POSTGRES_ADMIN_PASSWORD, PGADMIN_PASSWORD...) e a chave secreta:
 #   python -c "import secrets; print(secrets.token_urlsafe(50))"
@@ -159,3 +186,34 @@ formulário, detalhe, exclusão, menu e permissões são gerados automaticamente
   Boleto e PIX com baixa automática exigem integração com o banco ou um gateway (Asaas, Iugu, Gerencianet etc.).
 - **Folha de pagamento** e **estoque** não fazem parte desta versão.
 - Os cálculos de impostos são gerenciais; a apuração oficial deve ser validada pela contabilidade.
+
+## Licença
+
+Copyright © 2026 Raldiney Santos e colaboradores do Projeto Guará ERP.
+
+Este programa é **software livre**: você pode redistribuí-lo e/ou modificá-lo sob os termos da
+**GNU General Public License**, publicada pela Free Software Foundation, na versão 3 da Licença
+ou (a seu critério) qualquer versão posterior (`SPDX-License-Identifier: GPL-3.0-or-later`).
+
+Este programa é distribuído na esperança de que seja útil, mas **SEM NENHUMA GARANTIA**, nem mesmo
+a garantia implícita de COMERCIABILIDADE ou ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO. Veja o arquivo
+[LICENSE](LICENSE) para mais detalhes.
+
+Em resumo:
+
+- Você pode usar o Guará ERP em quantas empresas quiser, inclusive comercialmente.
+- Pode estudar e modificar o código.
+- Se **distribuir** o programa, original ou modificado, deve fazê-lo sob a mesma licença GPL e
+  disponibilizar o código-fonte.
+
+Os componentes de terceiros mantêm suas próprias licenças, todas compatíveis
+(ver [docs/TERCEIROS.md](docs/TERCEIROS.md)).
+
+## Como contribuir
+
+1. Faça um *fork* e crie um *branch* (`git checkout -b minha-melhoria`).
+2. Rode os testes: `python manage.py test tests` (todos devem passar).
+3. Abra um *pull request* descrevendo a mudança. Contribuições são aceitas sob a GPL-3.0-or-later.
+
+Vulnerabilidades de segurança: não abra *issue* pública. Use o recurso
+*Security → Report a vulnerability* do GitHub.

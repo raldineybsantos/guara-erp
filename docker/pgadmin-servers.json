@@ -1,7 +1,7 @@
 {
   "Servers": {
     "1": {
-      "Name": "ERP Empresa",
+      "Name": "Guará ERP",
       "Group": "Servers",
       "Host": "db",
       "Port": 5432,
