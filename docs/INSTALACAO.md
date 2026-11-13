@@ -125,6 +125,16 @@ Edite o `.env` e troque **obrigatoriamente**:
 Opcional: os dados de **e-mail** (`EMAIL_HOST`, `EMAIL_HOST_USER`...) para a régua de cobrança enviar
 mensagens. Sem eles, os e-mails só aparecem no log.
 
+Opcionais dos módulos operacionais (os padrões servem para a maioria):
+
+| Variável | Padrão | Efeito |
+|---|---|---|
+| `ESTOQUE_PERMITE_NEGATIVO` | `0` | `1` deixa o saldo ficar negativo (não recomendado) |
+| `VENDAS_DESCONTO_MAXIMO_PCT` | `10` | Desconto máximo por item no pedido de venda (%) |
+| `MANUTENCAO_ANTECEDENCIA_DIAS` | `7` | Dias de antecedência para abrir a OS preventiva |
+| `PROJETOS_HORAS_MES` / `PROJETOS_ENCARGOS_FATOR` | `220` / `1.0` | Custo-hora = salário × fator ÷ horas do mês (ex.: fator `1.8` para incluir encargos) |
+| `SST_ALERTA_DIAS` | `30` | Antecedência do alerta de ASO e reciclagem de NR |
+
 Opcional: `COMPRAS_TOLERANCIA_PRECO_PCT` (padrão `2`) define a diferença de preço aceita entre o pedido e a
 nota na conferência em três vias, em %. Quem aprova os pedidos de compra (coordenador, gerente e diretor) e
 até quanto é cadastrado pela tela **Compras → Alçadas de aprovação** (veja o Manual, seção 6.3).
@@ -172,9 +182,11 @@ O serviço `agendador` (Docker) ou `erp-agendador` (Linux) executa todo dia às 
 
 - a **régua de cobrança**;
 - os **alertas de contratos a vencer**, que viram cartões no quadro de tarefas;
-- a **renovação automática** de contratos.
+- a **renovação automática** de contratos;
+- a abertura das **OS preventivas** de manutenção que vencem;
+- os **alertas de SST**: ASOs e reciclagens de NR que vencem nos próximos 30 dias.
 
-No Windows, agende `scripts\regua_windows.bat` no Agendador de Tarefas. Esse arquivo roda as duas rotinas.
+No Windows, agende `scripts\regua_windows.bat` no Agendador de Tarefas. Esse arquivo roda todas essas rotinas.
 
 ### 2.8 Assinatura digital: cadeia ICP-Brasil e carimbo do tempo
 
@@ -208,6 +220,7 @@ Use o CPF que está no seu cadastro de colaborador.
 | Criar outro superusuário | `docker compose exec web python manage.py createsuperuser` |
 | Executar a régua agora | `docker compose exec web python manage.py executar_regua` |
 | Gerar alertas de contratos agora | `docker compose exec web python manage.py alertar_contratos` |
+| Rodar agora as rotinas de manutenção e SST | `docker compose exec web python manage.py rotinas_diarias` |
 
 ---
 

@@ -13,15 +13,21 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 4. [Telas de cadastro: uso comum](#4-telas-de-cadastro-uso-comum)
 5. [Cadastros](#5-cadastros)
 6. [Compras](#6-compras)
-7. [Financeiro](#7-financeiro)
-8. [Cobrança](#8-cobrança)
-9. [Fiscal](#9-fiscal)
-10. [Minhas tarefas — quadro Kanban](#10-minhas-tarefas--quadro-kanban)
-11. [Workflow / BPM](#11-workflow--bpm)
-12. [Jurídico — contratos](#12-jurídico--contratos)
-13. [GED — documentos e assinatura digital](#13-ged--documentos-e-assinatura-digital)
-14. [Administração](#14-administração)
-15. [Perguntas frequentes](#15-perguntas-frequentes)
+7. [Vendas e CRM](#7-vendas-e-crm)
+8. [Estoque](#8-estoque)
+9. [Produção e Qualidade](#9-produção-e-qualidade)
+10. [Manutenção](#10-manutenção)
+11. [Projetos](#11-projetos)
+12. [SST / EHS — saúde, segurança e meio ambiente](#12-sst--ehs--saúde-segurança-e-meio-ambiente)
+13. [Financeiro](#13-financeiro)
+14. [Cobrança](#14-cobrança)
+15. [Fiscal](#15-fiscal)
+16. [Minhas tarefas — quadro Kanban](#16-minhas-tarefas--quadro-kanban)
+17. [Workflow / BPM](#17-workflow--bpm)
+18. [Jurídico — contratos](#18-jurídico--contratos)
+19. [GED — documentos e assinatura digital](#19-ged--documentos-e-assinatura-digital)
+20. [Administração](#20-administração)
+21. [Perguntas frequentes](#21-perguntas-frequentes)
 
 ---
 
@@ -92,9 +98,16 @@ Cada usuário pertence a um ou mais **grupos**. O grupo define quais menus e aç
 | **Financeiro** | Contas a pagar e a receber, tesouraria | Financeiro e cobrança completos; consultar e cadastrar clientes e fornecedores; consultar notas |
 | **Fiscal** | Departamento fiscal, faturamento | Notas e produtos completos; consultar o financeiro e lançar títulos; cadastrar clientes e fornecedores |
 | **RH** | Recursos humanos | Colaboradores, departamentos e cargos; criar pastas no GED |
+| **Vendas** | Vendedores | Pedidos de venda (sem liberar crédito), CRM e funil, clientes, consulta de estoque |
+| **Estoque** | Almoxarifado | Saldos, movimentos, inventário, armazéns, recebimento de compras |
+| **Produção** | PCP e fábrica | Estruturas, ordens de produção e apontamento, solicitar compras |
+| **Qualidade** | Inspetores | Inspeções e não conformidades |
+| **Manutenção** | Técnicos | Equipamentos, planos e ordens de serviço |
+| **Projetos** | Gerentes de projeto | Projetos, EAP e horas de todos |
+| **SESMT** | Segurança do trabalho | Todo o módulo SST/EHS |
 | **Compras** | Compradores | Módulo de Compras (cotação, pedido, recebimento, conferência); consulta as alçadas; fornecedores e produtos; notas de entrada |
 | **Jurídico** | Advogados, analistas de contratos | Contratos completos (cadastro, aprovação, renovação, aditivos, encerramento); pasta Jurídico do GED; cadastrar clientes e fornecedores |
-| **Usuários** | Demais colaboradores | Abrir e acompanhar solicitações (workflow e compras); consultar e enviar documentos no GED |
+| **Usuários** | Demais colaboradores | Abrir e acompanhar solicitações (workflow e compras); registrar não conformidade, incidente e pedido de manutenção; apontar horas em projetos; consultar e enviar documentos no GED |
 
 Todos os grupos podem usar o quadro de tarefas, abrir solicitações de workflow, usar o GED (dentro das
 pastas permitidas) e assinar documentos com o próprio certificado digital.
@@ -275,9 +288,113 @@ Depois de resolver a divergência com o fornecedor (nota corrigida, carta de cor
 **Conferir de novo**. Se o pagamento for aceito mesmo com a diferença, o Financeiro pode aprovar a conta
 manualmente, e isso fica registrado na auditoria.
 
-## 7. Financeiro
+## 7. Vendas e CRM
 
-### 7.1 Contas a pagar e a receber
+### 7.1 Funil de oportunidades (CRM)
+
+Em **CRM → Funil de vendas**, cada oportunidade é um cartão numa coluna: *Prospecção → Qualificação →
+Proposta → Negociação*. As setas do cartão movem a oportunidade entre as colunas. O topo da tela mostra o
+total em aberto e o valor **ponderado** (valor × probabilidade do estágio: 10%, 25%, 50% e 75%).
+
+- **Nova oportunidade:** escolha um cliente ou, se ainda não for cliente, preencha a empresa e o CNPJ do
+  *prospect*.
+- **Registrar interação:** ligação, e-mail, reunião ou visita. Se você informar um **próximo passo** com
+  data, ele vira cartão no seu Kanban.
+- **Ganhar:** o prospect vira cliente (se o CNPJ já for de um fornecedor, o cadastro é reaproveitado) e um
+  **pedido de venda em rascunho** é aberto para você incluir os itens.
+- **Perder:** informe o motivo (preço, prazo, concorrente). Esse motivo alimenta a análise de perdas.
+
+### 7.2 Pedido de venda
+
+1. **Vendas → Pedidos de venda → Novo:** cliente, condição de pagamento (`0`, `30` ou `30/60/90`), itens
+   (o preço vem do cadastro do produto; o desconto por item tem limite, padrão 10%).
+2. **Confirmar:** o ERP confere o **estoque disponível** e o **limite de crédito** do cliente (títulos em
+   aberto + pedidos aprovados + este pedido). Dentro do limite, o pedido fica *Aprovado*. Acima, fica
+   *Bloqueado (crédito)*.
+3. **Liberar crédito:** só o **Financeiro** pode liberar, com justificativa registrada. O vendedor não
+   libera o próprio pedido.
+4. **Faturar:** numa operação só, o ERP emite a **nota fiscal de saída** (numerada, com os impostos do
+   cadastro), gera as **contas a receber** (uma por parcela) e **baixa o estoque** pelo custo médio. A
+   transmissão da NF-e à SEFAZ é feita pelo seu emissor.
+
+Pedido faturado não pode ser alterado. Para devolução, emita a nota de devolução.
+
+## 8. Estoque
+
+| Tela | Para que serve |
+|---|---|
+| **Saldos** | Quantidade e **custo médio** de cada produto em cada armazém, com o valor em estoque |
+| **Movimentos (kardex)** | Toda entrada e saída, com origem (compra, venda, produção, inventário...), documento, usuário e saldo após o movimento. Movimentos não se editam nem se apagam: um erro se corrige com outro movimento |
+| **Movimentação manual** | Entrada (ajuste), saída (consumo interno) ou transferência entre armazéns, sempre com motivo |
+| **Inventários** | Contagem física: ao criar, o ERP lista os produtos do armazém com a quantidade do sistema. Preencha o **contado** e clique em **Encerrar e ajustar saldos** |
+| **Reposição** | Produtos abaixo do **estoque mínimo** (campo do cadastro do produto). O botão gera uma solicitação de compra com a sugestão |
+| **Armazéns** | Locais de estoque. Um é o **padrão**. O armazém do tipo *quarentena* guarda o que aguarda inspeção e não conta como disponível |
+
+As entradas acontecem sozinhas no **recebimento de compras** (pelo preço do pedido) e na **produção**. As
+saídas acontecem no **faturamento**, no **consumo da produção**, nas **peças de manutenção** e nas
+**entregas de EPI**. O ERP não deixa o saldo ficar negativo.
+
+## 9. Produção e Qualidade
+
+### 9.1 Estrutura e ordem de produção
+
+1. **Produção → Estruturas:** para cada produto fabricado, cadastre os componentes, a quantidade e a
+   perda (%). Exemplo: uma mesa = 1 tampo + 4 pés com 2,5% de perda.
+2. **Ordens de produção → Novo:** produto e quantidade. A ficha mostra os **componentes necessários,
+   o disponível e o que falta**.
+3. **Comprar o que falta:** abre uma solicitação de compra com as faltas.
+4. **Liberar** e, a cada lote pronto, **Apontar produção**. O ERP baixa os componentes pelo custo médio e
+   dá entrada no produto acabado pelo **custo apurado**. A ordem encerra sozinha ao atingir a quantidade.
+
+### 9.2 Inspeção de recebimento
+
+Marque **inspecionar no recebimento** no cadastro do produto. Ao receber a compra, o material entra no
+armazém de **quarentena** e uma **inspeção** fica pendente. Em **Registrar resultado**, informe a
+quantidade aprovada e o laudo: o aprovado vai para o armazém principal; o reprovado fica na quarentena e
+abre uma **não conformidade** para o fornecedor.
+
+### 9.3 Não conformidades
+
+Qualquer usuário pode registrar uma não conformidade (problema de processo, reclamação de cliente,
+auditoria). O prazo é definido pela gravidade (crítica 2 dias, alta 7, média 15, baixa 30), e a não
+conformidade vira tarefa no Kanban do responsável. Para **encerrar**, é obrigatório preencher a causa
+raiz, a ação corretiva e a verificação de eficácia.
+
+## 10. Manutenção
+
+- **Equipamentos:** cadastro com patrimônio, série, localização e se é **crítico**. A ficha mostra os
+  planos, o histórico de ordens e as horas parado em corretivas.
+- **Planos preventivos:** tarefa, periodicidade em dias, próxima data e roteiro. A rotina diária abre a
+  **OS preventiva** 7 dias antes (configurável). Ao concluir a OS, a próxima data é reprogramada.
+- **Ordens de serviço:** qualquer usuário pode abrir uma **corretiva** ("o ar não gela"). O técnico clica
+  em **Iniciar** e depois em **Concluir**, informando o serviço executado, as horas e o custo de mão de
+  obra. As **peças** listadas na OS são baixadas do estoque na conclusão, e o custo total fica na OS.
+
+## 11. Projetos
+
+- **Projeto:** gerente, cliente, prazo, **orçamento** e, se houver, o **centro de custo**. As contas a
+  pagar lançadas nesse centro de custo contam como despesa do projeto.
+- **EAP:** as tarefas (1, 1.1, 1.2...) com responsável, datas, horas previstas e % concluído. O avanço
+  do projeto é ponderado pelas horas.
+- **Minhas horas:** cada pessoa aponta as próprias horas por projeto e tarefa, e vê e corrige só as suas.
+  O custo da hora (salário × fator de encargos ÷ horas do mês) é registrado no dia do apontamento.
+- A ficha do projeto mostra o **custo realizado** (mão de obra + despesas) contra o orçamento e o saldo.
+
+## 12. SST / EHS — saúde, segurança e meio ambiente
+
+| Tela | Para que serve |
+|---|---|
+| **Incidentes e acidentes** | Qualquer usuário relata (inclusive quase acidente e ocorrência ambiental) e vê os próprios relatos; o **SESMT** vê todos. Acidente de trabalho gera tarefa **urgente** ao SESMT e só pode ser encerrado com causas, ações e **CAT registrada** |
+| **Inventário de riscos (PGR)** | Perigos por atividade, com probabilidade × severidade (1 a 5), nível, classificação (trivial a intolerável) e medidas de controle |
+| **Entregas de EPI** | Ficha de entrega com o **CA**. Se o EPI for um produto do estoque, a entrega baixa o saldo. Entregas não podem ser excluídas |
+| **ASOs** | Exames ocupacionais com **apenas a aptidão** (apto, apto com restrição, inapto), sem diagnóstico (LGPD). Acesso restrito ao SESMT e ao RH |
+| **Treinamentos (NRs)** | NR-10, NR-12, NR-35, brigada etc., com validade da reciclagem |
+
+A rotina diária avisa o SESMT, pelo Kanban, sobre **ASOs e reciclagens que vencem nos próximos 30 dias**.
+
+## 13. Financeiro
+
+### 13.1 Contas a pagar e a receber
 
 A lista abre em **Situação: Em aberto**. Use o filtro para ver **Vencidos**, **Pagos**,
 **Cancelados** ou **Todos**.
@@ -302,10 +419,10 @@ Outras ações no título:
 - **Estornar pagamentos:** desfaz todas as baixas do título e apaga as movimentações. O título volta a *Em aberto*.
 - **Cancelar título:** só é possível sem pagamentos (estorne antes).
 - **Enviar para aprovação** (contas a pagar): abre uma solicitação no processo *Aprovação de pagamento*
-  (seção 10). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
-- **Gerar cobrança** (contas a receber): veja a seção 7.
+  (seção 17). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
+- **Gerar cobrança** (contas a receber): veja a seção 14.
 
-### 7.2 Contas bancárias, extrato e transferências
+### 13.2 Contas bancárias, extrato e transferências
 
 - **Contas bancárias:** a lista mostra o **saldo atual** de cada conta (saldo inicial + entradas − saídas).
 - **Extrato / movimentações:** todas as entradas e saídas. Aqui você também lança movimentações
@@ -313,7 +430,7 @@ Outras ações no título:
   com o extrato do banco.
 - **Transferência:** move valor entre duas contas da empresa, gerando a saída numa e a entrada na outra.
 
-### 7.3 Fluxo de caixa
+### 13.3 Fluxo de caixa
 
 ![Fluxo de caixa](img/fluxo-caixa.jpg)
 
@@ -323,7 +440,7 @@ Mostra, mês a mês:
 - **Previsto:** o que está a receber e a pagar em aberto. Os vencidos entram no mês atual.
 - **Saldo projetado:** saldo de hoje somado às previsões, acumulado mês a mês. Fica vermelho se ficar negativo.
 
-### 7.4 Plano de contas e centros de custo
+### 13.4 Plano de contas e centros de custo
 
 - **Plano de contas:** classifica receitas e despesas em níveis (ex.: `2.02.01 Aluguel`).
   Use códigos com pontos para a hierarquia.
@@ -331,7 +448,7 @@ Mostra, mês a mês:
 
 ---
 
-## 8. Cobrança
+## 14. Cobrança
 
 ![Cobrança com PIX](img/cobranca.jpg)
 
@@ -361,14 +478,14 @@ Mostra, mês a mês:
 
 ---
 
-## 9. Fiscal
+## 15. Fiscal
 
-### 9.1 Produtos e serviços
+### 15.1 Produtos e serviços
 
 Cadastre código, descrição, unidade, **NCM**, **CFOP padrão**, preço e as alíquotas de ICMS, IPI,
 PIS, COFINS e ISS. Esses valores são sugeridos automaticamente nos itens das notas.
 
-### 9.2 Notas fiscais
+### 15.2 Notas fiscais
 
 ![Nova nota fiscal](img/nota-fiscal.jpg)
 
@@ -401,7 +518,7 @@ pela contabilidade.
 
 ---
 
-## 10. Minhas tarefas — quadro Kanban
+## 16. Minhas tarefas — quadro Kanban
 
 ![Quadro Kanban](img/kanban.jpg)
 
@@ -451,17 +568,17 @@ O gestor pode mover, reatribuir e comentar as atividades de quem ele gerencia.
 As atividades concluídas saem do quadro depois de 30 dias e continuam em **Lista de atividades**,
 que tem busca, filtros e exportação.
 
-O botão **Aprovações do workflow** leva às aprovações que aguardam você (seção 10). Os **alertas de
-contratos a vencer** chegam como cartões no quadro do responsável pelo contrato (seção 11).
+O botão **Aprovações do workflow** leva às aprovações que aguardam você (seção 17). Os **alertas de
+contratos a vencer** chegam como cartões no quadro do responsável pelo contrato (seção 18).
 
 ---
 
-## 11. Workflow / BPM
+## 17. Workflow / BPM
 
 O módulo organiza processos que passam por várias pessoas, como aprovações, admissões e solicitações
 internas.
 
-### 11.1 Modelar um processo (administrador)
+### 17.1 Modelar um processo (administrador)
 
 ![Diagrama do processo](img/processo.jpg)
 
@@ -478,10 +595,10 @@ Em **Modelar processos → Novo**, informe o nome e um código. Depois, na grade
 O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com três processos:
 
 - **Aprovação de pagamento:** conferência do Financeiro, depois aprovação da diretoria.
-- **Aprovação de contrato:** análise jurídica, depois aprovação da diretoria (seção 11).
+- **Aprovação de contrato:** análise jurídica, depois aprovação da diretoria (seção 18).
 - **Admissão de colaborador:** documentos (RH), depois acessos de TI, depois integração.
 
-### 11.2 Usar no dia a dia
+### 17.2 Usar no dia a dia
 
 ![Solicitação em andamento](img/solicitacao.jpg)
 
@@ -495,7 +612,7 @@ O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com trê
 
 ---
 
-## 12. Jurídico — contratos
+## 18. Jurídico — contratos
 
 ![Painel jurídico](img/juridico-painel.jpg)
 
@@ -507,7 +624,7 @@ O **Painel jurídico** mostra:
 - os que aguardam aprovação ou assinatura;
 - a atividade recente.
 
-### 12.1 Cadastrar um contrato
+### 18.1 Cadastrar um contrato
 
 Em **Jurídico → Contratos → Novo**, preencha:
 
@@ -525,7 +642,7 @@ Em **Jurídico → Contratos → Novo**, preencha:
 
 O número é gerado sozinho, no formato `CT-2026-0001`.
 
-### 12.2 Ciclo de vida
+### 18.2 Ciclo de vida
 
 ```
 Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente → Encerrado / Rescindido
@@ -533,14 +650,14 @@ Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente →
 ```
 
 1. **Enviar para aprovação:** o contrato entra no processo *Aprovação de contrato*, com a análise
-   jurídica e depois a diretoria (seção 10).
+   jurídica e depois a diretoria (seção 17).
    - Quem aprova ou recusa faz isso na própria solicitação.
    - A **recusa** exige o motivo, que aparece no contrato. Corrija e envie de novo.
 2. **Aprovado:** com o contrato aprovado, os termos (partes, valores, vigência) ficam **travados**. A
    partir daqui, eles só mudam por aditivo.
 3. **Assinatura:**
    - **Digital** (recomendado): no quadro *Documento e assinaturas*, cada signatário clica em
-     **Assinar com certificado digital** (seção 12.2).
+     **Assinar com certificado digital** (seção 19.2).
    - A outra parte pode assinar pelo gov.br ou por outra plataforma. Envie o PDF assinado como nova
      versão (editando o contrato) e clique em **Conferir e ativar**.
    - Quando o PDF tiver o número de assinaturas válidas exigido, o contrato passa a **Vigente**
@@ -555,7 +672,7 @@ Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente →
 
 A **linha do tempo** registra cada mudança de situação, assinatura, alerta e renovação, com data e usuário.
 
-### 12.3 Vencimentos e renovação
+### 18.3 Vencimentos e renovação
 
 Todo dia às 08:00, o sistema verifica os contratos (no Docker, pelo serviço `agendador`):
 
@@ -572,11 +689,11 @@ Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou
 
 ---
 
-## 13. GED — documentos e assinatura digital
+## 19. GED — documentos e assinatura digital
 
 ![Documentos](img/ged.jpg)
 
-### 13.1 Pastas, documentos e versões
+### 19.1 Pastas, documentos e versões
 
 **Pastas:**
 
@@ -613,7 +730,7 @@ Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou
 - **Busca:** a busca procura no título, na descrição, nas palavras-chave e no nome do arquivo.
 
 
-### 13.2 Assinatura digital com certificado ICP-Brasil
+### 19.2 Assinatura digital com certificado ICP-Brasil
 
 ![Assinar digitalmente](img/assinar.jpg)
 
@@ -650,7 +767,7 @@ O tipo de assinatura depende do arquivo:
 
 O sistema reconhece e verifica as assinaturas embutidas.
 
-### 13.3 Verificar assinaturas
+### 19.3 Verificar assinaturas
 
 ![Verificar assinaturas](img/verificar-assinaturas.jpg)
 
@@ -668,7 +785,7 @@ Para a validação oficial de conformidade, use também o verificador do ITI: ht
 
 ---
 
-## 14. Administração
+## 20. Administração
 
 | Tela | Uso |
 |---|---|
@@ -691,7 +808,7 @@ A página **Banco de dados** mostra:
 
 ---
 
-## 15. Perguntas frequentes
+## 21. Perguntas frequentes
 
 **Não vejo um menu que meu colega vê.**
 O menu depende do grupo do usuário. Peça ao administrador para conferir seus grupos.
@@ -717,7 +834,7 @@ Peça ao administrador para definir uma senha temporária em *Usuários e grupos
 
 **Como faço para assinar com meu certificado digital?**
 Você precisa de um certificado ICP-Brasil **A1** (arquivo `.pfx`). Peça ao RH ou à TI para ligar seu
-usuário ao seu cadastro de colaborador, porque o CPF precisa conferir. Veja a seção 12.2.
+usuário ao seu cadastro de colaborador, porque o CPF precisa conferir. Veja a seção 19.2.
 
 **Assinei, mas aparece "Cadeia ICP-Brasil: não verificada".**
 A assinatura é íntegra. Só falta a TI instalar os certificados raiz da ICP-Brasil no servidor (guia de

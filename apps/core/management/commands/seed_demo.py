@@ -136,7 +136,11 @@ class Command(BaseCommand):
                 ("juridico", "Jurídico", "Júlia Jurídico", "15350946056", "ADM"),
                 ("compras", "Compras", "Carlos Compras", "12345678062", "ADM"),
                 ("coordenador", "Usuários", "Cora Coordenadora", "23456789092", "ADM"),
-                ("gerente", "Usuários", "Gustavo Gerente", "23456789173", "ADM")):
+                ("gerente", "Usuários", "Gustavo Gerente", "23456789173", "ADM"),
+                ("vendedor", "Vendas", "Vera Vendas", "34567890094", "ADM"),
+                ("almoxarife", "Estoque", "Alan Almoxarife", "34567890175", "ADM"),
+                ("producao", "Produção", "Paulo Produção", "34567890256", "ADM"),
+                ("sesmt", "SESMT", "Sara Segurança", "34567890337", "RH")):
             u, criado = User.objects.get_or_create(username=username, defaults={
                 "first_name": nome.split()[0], "last_name": nome.split()[1], "email": f"{username}@exemplo.com.br"})
             if criado:
@@ -223,10 +227,11 @@ class Command(BaseCommand):
             proc.iniciar(f"Aprovar pagamento: {cp}", admin, f"Fornecedor: {cp.fornecedor}", objeto=cp)
 
         self._compras(usuarios, forns)
+        self._operacao(usuarios, clis)
 
         self.stdout.write(self.style.SUCCESS(
             "Dados de demonstração criados. Usuários: diretor, gerente, coordenador, financeiro, rh, fiscal, "
-            "juridico, compras "
+            "juridico, compras, vendedor, almoxarife, producao, sesmt "
             f"(senha: {senha})."))
 
     def _compras(self, usuarios, forns):
@@ -294,3 +299,128 @@ class Command(BaseCommand):
         aprovar(p3)
         p3.receber({str(i.pk): i.quantidade for i in p3.itens.all()}, nota(p3, 88231, {toner: 330}),
                    usuario=comprador)
+
+    def _operacao(self, usuarios, clis):
+        """Estoque, vendas, produção, qualidade, manutenção, projetos, CRM e SST com um exemplo de cada."""
+        from apps.core.middleware import _local
+        from apps.core.models import Colaborador, Departamento
+        from apps.crm.models import Interacao, Oportunidade
+        from apps.estoque import models as est
+        from apps.fiscal.models import Produto
+        from apps.manutencao.models import Equipamento, OrdemServico, PlanoManutencao
+        from apps.producao.models import ComponenteEstrutura, EstruturaProduto, OrdemProducao
+        from apps.projetos.models import ApontamentoHoras, Projeto, TarefaProjeto
+        from apps.qualidade.models import NaoConformidade
+        from apps.sst.models import AvaliacaoRisco, EntregaEPI, ExameOcupacional, Incidente, TreinamentoSST
+        from apps.vendas.models import ItemPedidoVenda, PedidoVenda
+
+        hoje = datetime.date.today()
+        almox = est.Armazem.principal()
+
+        def prod(codigo, desc, preco=0, minimo=0, **kw):
+            return Produto.objects.create(codigo=codigo, descricao=desc, preco=Decimal(preco), ncm="94036000",
+                                          estoque_minimo=minimo, aliquota_icms=Decimal("18"), **kw)
+
+        # Estoque inicial e uma mesa fabricada a partir de tampo e pés.
+        mesa = prod("PA001", "Mesa de escritório 1,20 m", 890, 5)
+        tampo = prod("MP001", "Tampo MDF 1,20 m", 0, 10)
+        pe = prod("MP002", "Pé metálico", 0, 40)
+        luva = prod("EPI01", "Luva anticorte", 0, 20)
+        _local.usuario = usuarios["almoxarife"]
+        est.entrada(tampo, 12, "180.00", almox, "ajuste", "SALDO-INI", "Saldo inicial")
+        est.entrada(pe, 30, "22.50", almox, "ajuste", "SALDO-INI", "Saldo inicial")
+        est.entrada(luva, 15, "18.90", almox, "ajuste", "SALDO-INI", "Saldo inicial")
+        e = EstruturaProduto.objects.create(produto=mesa, observacoes="Montar os pés no tampo; conferir esquadro.")
+        ComponenteEstrutura.objects.create(estrutura=e, componente=tampo, quantidade=1)
+        ComponenteEstrutura.objects.create(estrutura=e, componente=pe, quantidade=4, perda_pct=Decimal("2.5"))
+
+        _local.usuario = usuarios["producao"]
+        op1 = OrdemProducao.objects.create(produto=mesa, quantidade=6, data_prevista=hoje + datetime.timedelta(days=5))
+        op1.liberar()
+        op1.apontar(6, usuarios["producao"], "Lote 1")
+        op2 = OrdemProducao.objects.create(produto=mesa, quantidade=10, data_prevista=hoje + datetime.timedelta(days=15))
+        op2.liberar()  # faltam pés e tampos: use "Comprar o que falta"
+
+        # Venda faturada (baixa 2 mesas) e outra aguardando confirmação.
+        _local.usuario = usuarios["vendedor"]
+        pv = PedidoVenda.objects.create(cliente=clis[1], condicao_pagamento="30/60")
+        ItemPedidoVenda.objects.create(pedido=pv, produto=mesa, quantidade=2)
+        pv.recalcular()
+        pv.confirmar()
+        pv.faturar()
+        pv2 = PedidoVenda.objects.create(cliente=clis[3], condicao_pagamento="28")
+        ItemPedidoVenda.objects.create(pedido=pv2, produto=mesa, quantidade=3, desconto_pct=5)
+        pv2.recalcular()
+
+        # Funil de vendas.
+        for titulo, conta, estagio, valor, dias in (
+                ("Mobiliário da nova filial", "Construtora Pilar", "negociacao", 48000, 20),
+                ("Escritório completo", "Coworking Centro", "proposta", 26500, 35),
+                ("Reposição anual", "Escola Saber", "qualificacao", 9000, 60),
+                ("Linha gamer", "Loja Pixel", "prospeccao", 15000, 90)):
+            cli = next((c for c in clis if c.nome == conta), None)
+            op = Oportunidade.objects.create(titulo=titulo, cliente=cli, prospect_empresa="" if cli else conta,
+                                             estagio=estagio, valor=valor, origem="indicacao" if cli else "site",
+                                             previsao_fechamento=hoje + datetime.timedelta(days=dias),
+                                             responsavel=usuarios["vendedor"])
+            if estagio == "negociacao":
+                Interacao.objects.create(oportunidade=op, tipo="reuniao", resumo="Apresentação da proposta.",
+                                         proximo_passo="Enviar proposta com prazo de 45 dias",
+                                         data_proximo_passo=hoje + datetime.timedelta(days=2))
+
+        # Qualidade: reclamação de cliente.
+        NaoConformidade.objects.create(titulo="Mesa entregue com risco no tampo", origem="cliente", cliente=clis[1],
+                                       produto=mesa, gravidade="media", responsavel=usuarios["producao"],
+                                       descricao="Cliente relatou risco de 10 cm no tampo de uma das mesas.",
+                                       acao_imediata="Troca do tampo agendada.")
+
+        # Manutenção.
+        _local.usuario = usuarios["producao"]
+        dep = Departamento.objects.get(codigo="ADM")
+        comp = Equipamento.objects.create(codigo="CMP-01", nome="Compressor de ar 20 pés", tipo="Compressor",
+                                          fabricante="Schulz", departamento=dep, localizacao="Galpão", critico=True)
+        Equipamento.objects.create(codigo="AR-03", nome="Ar-condicionado sala de reuniões", tipo="Climatização",
+                                   departamento=dep, localizacao="Sala 3")
+        PlanoManutencao.objects.create(equipamento=comp, descricao="Troca de óleo e filtro", periodicidade_dias=90,
+                                       proxima=hoje + datetime.timedelta(days=4), checklist="Drenar\nTrocar filtro")
+        from apps.manutencao.models import gerar_preventivas
+        gerar_preventivas()
+        OrdemServico.objects.create(equipamento=comp, tipo="corretiva", prioridade="alta",
+                                    descricao="Vazamento de ar na conexão de saída.")
+
+        # Projeto com EAP e horas.
+        _local.usuario = usuarios["diretor"]
+        prj = Projeto.objects.create(nome="Implantação do Guará ERP", gerente=usuarios["diretor"], orcamento=60000,
+                                     status="andamento", departamento=dep, fim_previsto=hoje + datetime.timedelta(days=90))
+        t = None
+        for eap, nome, horas, pct, resp in (("1", "Levantamento de processos", 40, 100, "financeiro"),
+                                            ("2", "Cadastros e migração", 80, 60, "fiscal"),
+                                            ("3", "Treinamento", 24, 0, "rh")):
+            t = TarefaProjeto.objects.create(projeto=prj, eap=eap, nome=nome, horas_previstas=horas, percentual=pct,
+                                             responsavel=usuarios[resp])
+            if pct:
+                _local.usuario = usuarios[resp]
+                ApontamentoHoras.objects.create(projeto=prj, tarefa=t, horas=Decimal(horas * pct / 100 / 4),
+                                                descricao=nome, data=hoje - datetime.timedelta(days=3))
+        # SST.
+        _local.usuario = usuarios["sesmt"]
+        colab = Colaborador.objects.get(usuario=usuarios["producao"])
+        AvaliacaoRisco.objects.create(departamento=dep, atividade="Montagem de mesas", perigo="Prensamento de mãos",
+                                      tipo="acidente", probabilidade=3, severidade=4,
+                                      medidas_controle="Luva anticorte; procedimento de montagem; treinamento.")
+        AvaliacaoRisco.objects.create(departamento=dep, atividade="Compressor", perigo="Ruído acima de 85 dB",
+                                      tipo="fisico", probabilidade=4, severidade=3, medidas_controle="Protetor auricular")
+        EntregaEPI.objects.create(colaborador=colab, descricao="Luva anticorte", ca="38927", produto=luva, quantidade=2,
+                                  validade=hoje + datetime.timedelta(days=60), recebido_confirmado=True)
+        ExameOcupacional.objects.create(colaborador=colab, tipo="periodico", resultado="apto",
+                                        data=hoje - datetime.timedelta(days=345),
+                                        validade=hoje + datetime.timedelta(days=20), medico="Dra. Lima CRM-SP 12345")
+        TreinamentoSST.objects.create(colaborador=colab, norma="NR-12", descricao="Segurança em máquinas",
+                                      carga_horaria=8, validade=hoje + datetime.timedelta(days=300))
+        _local.usuario = usuarios["producao"]
+        Incidente.objects.create(tipo="quase", gravidade="leve", departamento=dep, local="Galpão, bancada 2",
+                                 descricao="Pé metálico caiu da prateleira; ninguém ferido.")
+        _local.usuario = None
+        from apps.sst.models import alertar_vencimentos
+        alertar_vencimentos()
+
