@@ -162,7 +162,10 @@ class Chamado(NumeradoMixin, ModeloBase):
         if s.aprovacao == "usuario":
             return s.aprovador
         if s.aprovacao == "gestor_solicitante":
-            colab = getattr(self.solicitante, "colaborador", None)
+            from apps.core.models import Colaborador
+
+            colab = (Colaborador.objects.select_related("gestor__usuario", "departamento__responsavel__usuario")
+                     .filter(usuario=self.solicitante).first())
             gestor = colab.gestor if colab and colab.gestor_id else None
             if gestor is None and colab and colab.departamento_id and colab.departamento.responsavel_id:
                 gestor = colab.departamento.responsavel

@@ -38,6 +38,7 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 |---|---|
 | **Cadastros** | Empresas/filiais, departamentos (hierarquia), cargos, colaboradores. **Parceiro de negócios único**: cada CPF/CNPJ é cadastrado uma vez e pode ser cliente, fornecedor ou os dois. Validação de CPF/CNPJ e busca de CEP automática. |
 | **Compras** | Solicitação de compra por qualquer usuário, **cotação** com vários fornecedores e **mapa de cotação**, pedido de compra com **alçada de aprovação** por departamento e valor (coordenador → gerente → diretor, cadastrados na tela de alçadas, sem aprovação automática), PDF do pedido, recebimento parcial e **conferência em três vias** (pedido × recebimento × nota): a conta a pagar só é liberada quando tudo bate; divergências viram tarefa no Kanban. |
+| **Service Desk** | Central de serviços internos para várias áreas (TI, Facilities, RH, Financeiro): catálogo com **SLA** em horário comercial, **aprovação** pelo gestor, **fila de atendimento** com indicadores, **avisos de vencimento**, **chat** entre analista e usuário (com nota interna e "chamar o usuário" que pausa o SLA), **biblioteca de soluções**, **assistente** que sugere a solução antes de abrir o chamado e **gestão de mudanças** (RDM com gestor + CAB). |
 | **Vendas e CRM** | Funil de oportunidades com valor ponderado, interações e próximo passo no Kanban, conversão do prospect em cliente. Pedido de venda com **análise de crédito** (liberação só pelo Financeiro), conferência de estoque, desconto máximo e **faturamento** que emite a NF de saída, gera as contas a receber por parcela e baixa o estoque. |
 | **Estoque** | Armazéns, saldos com **custo médio**, kardex imutável, transferências, **inventário** com ajuste, reposição pelo estoque mínimo, quarentena para inspeção. |
 | **Produção e Qualidade** | Estrutura de produto (lista de materiais com perda), ordem de produção com apontamento que consome componentes e custeia o acabado, MRP simples (falta vira solicitação de compra). Inspeção de recebimento e **não conformidades** com causa raiz, ação corretiva e eficácia. |
@@ -115,7 +116,7 @@ serviços `erp-web` (gunicorn, porta 8000) e `erp-agendador` no systemd.
 4. Ajuste o plano de contas, a régua de cobrança e os processos de workflow conforme sua empresa.
 
 Dados de demonstração (empresa fictícia, colaboradores, títulos, notas, processos e usuários
-`financeiro`, `rh`, `fiscal`, `juridico`, `compras`, `coordenador`, `gerente`, `diretor`, `vendedor`, `almoxarife`, `producao`, `sesmt` com senha `demo1234`). **Só para testes, nunca em produção:**
+`financeiro`, `rh`, `fiscal`, `juridico`, `compras`, `coordenador`, `gerente`, `diretor`, `vendedor`, `almoxarife`, `producao`, `sesmt`, `analista` com senha `demo1234`). **Só para testes, nunca em produção:**
 
 ```bash
 python manage.py seed_demo          # Docker: docker compose exec web python manage.py seed_demo

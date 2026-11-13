@@ -140,7 +140,8 @@ class Command(BaseCommand):
                 ("vendedor", "Vendas", "Vera Vendas", "34567890094", "ADM"),
                 ("almoxarife", "Estoque", "Alan Almoxarife", "34567890175", "ADM"),
                 ("producao", "Produção", "Paulo Produção", "34567890256", "ADM"),
-                ("sesmt", "SESMT", "Sara Segurança", "34567890337", "RH")):
+                ("sesmt", "SESMT", "Sara Segurança", "34567890337", "RH"),
+                ("analista", "Service Desk", "Igor Infra", "45678901087", "ADM")):
             u, criado = User.objects.get_or_create(username=username, defaults={
                 "first_name": nome.split()[0], "last_name": nome.split()[1], "email": f"{username}@exemplo.com.br"})
             if criado:
@@ -228,10 +229,11 @@ class Command(BaseCommand):
 
         self._compras(usuarios, forns)
         self._operacao(usuarios, clis)
+        self._servicedesk(usuarios)
 
         self.stdout.write(self.style.SUCCESS(
             "Dados de demonstração criados. Usuários: diretor, gerente, coordenador, financeiro, rh, fiscal, "
-            "juridico, compras, vendedor, almoxarife, producao, sesmt "
+            "juridico, compras, vendedor, almoxarife, producao, sesmt, analista "
             f"(senha: {senha})."))
 
     def _compras(self, usuarios, forns):
@@ -423,4 +425,110 @@ class Command(BaseCommand):
         _local.usuario = None
         from apps.sst.models import alertar_vencimentos
         alertar_vencimentos()
+
+    def _servicedesk(self, usuarios):
+        """Áreas, catálogo, biblioteca, chamados em vários estágios e duas mudanças."""
+        from apps.core.middleware import _local
+        from apps.servicedesk.models import Area, ArtigoConhecimento, Chamado, Mudanca, Servico
+
+        u = usuarios
+        for nome in ("Usuários",):
+            g = Group.objects.get(name=nome)
+            for k in ("analista", "vendedor", "almoxarife", "producao", "sesmt", "compras"):
+                u[k].groups.add(g)
+        u["producao"].groups.add(Group.objects.get(name="Manutenção"))  # Paulo também cuida da manutenção
+        cab = Group.objects.get(name="CAB")
+        cab.user_set.add(u["diretor"], u["gerente"])
+        ti = Area.objects.create(nome="TI", grupo=Group.objects.get(name="Service Desk"), gestor=u["gerente"],
+                                 icone="laptop")
+        fac = Area.objects.create(nome="Facilities", grupo=Group.objects.get(name="Manutenção"), gestor=u["diretor"],
+                                  icone="building")
+        rh = Area.objects.create(nome="RH", grupo=Group.objects.get(name="RH"), icone="people")
+        fin = Area.objects.create(nome="Financeiro", grupo=Group.objects.get(name="Financeiro"), icone="cash-coin")
+        S = {}
+        for area, nome, chaves, resp, sol, aprov, desc in (
+                (ti, "Senha e acesso", "senha bloqueada login acesso conta", 1, 4, "nenhum",
+                 "Desbloqueio, reset de senha e acesso a sistemas."),
+                (ti, "Problema no computador", "computador notebook lento travando tela impressora", 2, 8, "nenhum",
+                 "Equipamento com defeito, lentidão, impressora."),
+                (ti, "Novo equipamento", "notebook computador monitor mouse teclado novo", 4, 40, "gestor_solicitante",
+                 "Solicitação de notebook, monitor e periféricos. Precisa da aprovação do seu gestor."),
+                (ti, "VPN e acesso remoto", "vpn remoto home office conectar", 1, 8, "nenhum", "Configuração e falhas."),
+                (fac, "Manutenção predial", "ar condicionado lâmpada fechadura vazamento cadeira mesa", 2, 24, "nenhum",
+                 "Ar-condicionado, iluminação, fechaduras, mobiliário."),
+                (fac, "Reserva de sala e eventos", "sala reunião evento coffee", 4, 16, "nenhum", "Salas e apoio a eventos."),
+                (rh, "Dúvida sobre holerite e benefícios", "holerite salário vale benefício férias ponto", 4, 24,
+                 "nenhum", "Holerite, benefícios, férias e ponto."),
+                (fin, "Reembolso de despesas", "reembolso despesa viagem nota", 4, 40, "gestor_solicitante",
+                 "Reembolso de despesas de viagem e compras com aprovação do gestor.")):
+            S[nome] = Servico.objects.create(area=area, nome=nome, palavras_chave=chaves, sla_resposta_horas=resp,
+                                             sla_solucao_horas=sol, aprovacao=aprov, descricao=desc)
+        for titulo, area, servico, sintoma, solucao, chaves, publico in (
+                ("Desbloquear a senha da rede", ti, "Senha e acesso", "Conta bloqueada depois de errar a senha.",
+                 "1. Aguarde 15 minutos: o bloqueio sai sozinho.\n2. Se precisar antes, use o autoatendimento em "
+                 "senha.empresa.local com seu CPF.\n3. Ainda bloqueada? Abra um chamado em Senha e acesso.",
+                 "senha bloqueada bloqueio conta", True),
+                ("VPN não conecta em casa", ti, "VPN e acesso remoto", "A VPN fica em 'conectando' ou dá erro de certificado.",
+                 "1. Confira data e hora do computador.\n2. Reinicie o cliente da VPN.\n3. Teste em outra rede (celular).\n"
+                 "4. Persistindo, abra chamado com o print do erro.", "vpn remoto conectar certificado", True),
+                ("Impressora não imprime", ti, "Problema no computador", "Documento fica na fila e não sai.",
+                 "1. Cancele a fila.\n2. Desligue e ligue a impressora.\n3. Imprima de novo escolhendo 'Impressora-Andar2'.",
+                 "impressora fila imprimir", True),
+                ("Ar-condicionado pingando", fac, "Manutenção predial", "Água pingando do aparelho.",
+                 "Desligue o aparelho e abra chamado em Manutenção predial informando a sala.",
+                 "ar condicionado pingando água", True),
+                ("Reset de MFA no AD (interno)", ti, "Senha e acesso", "Usuário trocou de celular e perdeu o MFA.",
+                 "Validar identidade por vídeo; no console de identidade, remover os métodos MFA e pedir novo cadastro.",
+                 "mfa autenticador celular", False)):
+            ArtigoConhecimento.objects.create(titulo=titulo, area=area, servico=S[servico], sintoma=sintoma,
+                                              solucao=solucao, palavras_chave=chaves, publico=publico)
+
+        def abrir(quem, servico, titulo, descricao, prioridade=""):
+            _local.usuario = u[quem]
+            try:
+                return Chamado.objects.create(servico=S[servico], titulo=titulo, descricao=descricao,
+                                              prioridade=prioridade)
+            finally:
+                _local.usuario = None
+
+        abrir("coordenador", "Problema no computador", "Notebook muito lento",
+              "Desde a atualização de ontem o notebook demora 10 minutos para ligar.", "alta")
+        c = abrir("fiscal", "VPN e acesso remoto", "VPN não conecta em home office", "Erro 809 ao conectar.")
+        c.assumir(u["analista"])
+        c.chamar_usuario(u["analista"], "Pode me mandar um print do erro e dizer qual internet está usando?")
+        c.enviar_mensagem(u["fiscal"], "Estou na internet de casa (fibra). O erro é 809.")
+        c.enviar_mensagem(u["analista"], "Provável bloqueio da porta no roteador. Vou te ligar às 14h.")
+        abrir("rh", "Novo equipamento", "Monitor adicional", "Preciso de um segundo monitor para conferir planilhas.")
+        c = abrir("compras", "Senha e acesso", "Senha do e-mail bloqueada", "Errei a senha.")
+        c.assumir(u["analista"])
+        c.resolver(u["analista"], "Desbloqueada; orientado a usar o autoatendimento.",
+                   ArtigoConhecimento.objects.get(titulo="Desbloquear a senha da rede"))
+        c = abrir("vendedor", "Manutenção predial", "Ar-condicionado pingando na sala 3", "Pingando sobre a mesa.")
+        c.assumir(u["producao"])
+        c.resolver(u["producao"], "Dreno desentupido.")
+        c.fechar(u["vendedor"], 5, "Resolveram no mesmo dia!")
+        c = abrir("almoxarife", "Problema no computador", "Leitor de código de barras não lê",
+                  "O leitor do almoxarifado parou de ler etiquetas.", "critica")
+        Chamado.objects.filter(pk=c.pk).update(prazo_solucao=timezone.now() - datetime.timedelta(hours=1),
+                                               sla_iniciado_em=timezone.now() - datetime.timedelta(hours=5))
+
+        agora = timezone.now()
+        base = dict(area=ti, responsavel=u["analista"], impacto="Internet indisponível por até 15 minutos.",
+                    justificativa="Correção de vulnerabilidade crítica divulgada pelo fabricante.",
+                    plano_implantacao="1. Backup da configuração\n2. Aplicar firmware\n3. Reiniciar",
+                    plano_testes="Navegação, VPN e e-mail a partir de 3 estações.",
+                    plano_retorno="Restaurar o firmware e a configuração do backup.")
+        _local.usuario = u["analista"]
+        m = Mudanca.objects.create(titulo="Atualizar firmware do firewall", tipo="normal", risco="medio",
+                                   descricao="Firmware 7.2.8 → 7.2.10",
+                                   janela_inicio=(agora + datetime.timedelta(days=3)).replace(hour=22, minute=0),
+                                   janela_fim=(agora + datetime.timedelta(days=3)).replace(hour=23, minute=0), **base)
+        m.chamados.add(Chamado.objects.get(titulo="VPN não conecta em home office"))
+        inst = m.enviar_para_aprovacao(u["analista"])
+        inst.avancar(u["gerente"], "aprovar", "Ok, fora do horário comercial.")
+        Mudanca.objects.create(titulo="Trocar switch do 2º andar", tipo="normal", risco="alto",
+                               descricao="Substituir switch com portas queimadas.",
+                               janela_inicio=(agora + datetime.timedelta(days=7)).replace(hour=19, minute=0),
+                               janela_fim=(agora + datetime.timedelta(days=7)).replace(hour=21, minute=0), **base)
+        _local.usuario = None
 

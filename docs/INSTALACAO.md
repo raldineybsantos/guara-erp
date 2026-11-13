@@ -134,6 +134,9 @@ Opcionais dos módulos operacionais (os padrões servem para a maioria):
 | `MANUTENCAO_ANTECEDENCIA_DIAS` | `7` | Dias de antecedência para abrir a OS preventiva |
 | `PROJETOS_HORAS_MES` / `PROJETOS_ENCARGOS_FATOR` | `220` / `1.0` | Custo-hora = salário × fator ÷ horas do mês (ex.: fator `1.8` para incluir encargos) |
 | `SST_ALERTA_DIAS` | `30` | Antecedência do alerta de ASO e reciclagem de NR |
+| `SERVICEDESK_HORARIO` | `08:00-18:00` | Horário em que o SLA corre (segunda a sexta); `24x7` para contar corrido |
+| `SERVICEDESK_DIAS_FECHAMENTO` | `3` | Dias para fechar sozinho o chamado resolvido que o usuário não confirmou |
+| `ERP_URL_BASE` | vazio | Endereço do ERP nos links dos e-mails de aviso (ex.: `https://erp.empresa.com.br`) |
 
 Opcional: `COMPRAS_TOLERANCIA_PRECO_PCT` (padrão `2`) define a diferença de preço aceita entre o pedido e a
 nota na conferência em três vias, em %. Quem aprova os pedidos de compra (coordenador, gerente e diretor) e
@@ -186,7 +189,12 @@ O serviço `agendador` (Docker) ou `erp-agendador` (Linux) executa todo dia às 
 - a abertura das **OS preventivas** de manutenção que vencem;
 - os **alertas de SST**: ASOs e reciclagens de NR que vencem nos próximos 30 dias.
 
-No Windows, agende `scripts\regua_windows.bat` no Agendador de Tarefas. Esse arquivo roda todas essas rotinas.
+Além disso, **a cada 15 minutos** o agendador verifica os prazos (SLA) do Service Desk e avisa os chamados em
+risco ou vencidos.
+
+No Windows, agende `scripts\regua_windows.bat` no Agendador de Tarefas para rodar uma vez por dia. Para os avisos de
+SLA, crie outra tarefa, repetida a cada 15 minutos, com
+`.venv\Scripts\python.exe manage.py verificar_sla` (na pasta do ERP).
 
 ### 2.8 Assinatura digital: cadeia ICP-Brasil e carimbo do tempo
 
@@ -221,6 +229,7 @@ Use o CPF que está no seu cadastro de colaborador.
 | Executar a régua agora | `docker compose exec web python manage.py executar_regua` |
 | Gerar alertas de contratos agora | `docker compose exec web python manage.py alertar_contratos` |
 | Rodar agora as rotinas de manutenção e SST | `docker compose exec web python manage.py rotinas_diarias` |
+| Verificar agora os prazos do Service Desk | `docker compose exec web python manage.py verificar_sla` |
 
 ---
 
