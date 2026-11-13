@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -27,8 +27,9 @@ GRUPOS = {
     "Financeiro": ["financeiro.*", "cobranca.*", *CADASTROS_BASICOS, "core.add_fornecedor",
                    "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "core.change_parceironegocio",
                    "fiscal.view_*", "compras.view_pedidocompra", "compras.view_itempedido",
-                   "compras.view_recebimentocompra"],
-    "Fiscal": ["fiscal.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
+                   "compras.view_recebimentocompra", "vendas.view_pedidovenda", "vendas.view_itempedidovenda",
+                   "vendas.liberar_credito_pedidovenda"],
+    "Fiscal": ["fiscal.*", "vendas.view_pedidovenda", "vendas.view_itempedidovenda", "vendas.change_pedidovenda", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
                "financeiro.add_contareceber"],
     "RH": [*CADASTROS_BASICOS, "core.view_colaborador", "core.add_colaborador", "core.change_colaborador",
@@ -45,6 +46,9 @@ GRUPOS = {
                 "compras.view_pedidocompra", "compras.view_itempedido", "compras.view_recebimentocompra",
                 "compras.add_recebimentocompra", "compras.change_recebimentocompra",
                 "compras.add_solicitacaocompra", "core.view_fornecedor"],
+    "Vendas": ["vendas.*", "core.view_cliente", "core.add_cliente", "core.change_cliente",
+               "core.view_parceironegocio", "core.change_parceironegocio", "fiscal.view_produto", "estoque.view_saldo",
+               "financeiro.view_contareceber", "fiscal.view_notafiscal", "fiscal.view_itemnota"],
     "Usuários": [],
 }
 
@@ -102,10 +106,13 @@ class Command(BaseCommand):
             g, _ = Group.objects.get_or_create(name=nome)
             perms = _permissoes(padroes + BASICO)
             if nome != "Administradores":
-                # Alçadas de aprovação: só a administração altera (quem compra não define quem aprova).
+                # Segregação de funções: quem compra não define quem aprova (alçadas) ...
                 perms = [p for p in perms if not (p.content_type.app_label == "compras"
                                                   and p.codename.endswith("_alcadacompra")
                                                   and not p.codename.startswith("view_"))]
+            if nome == "Vendas":
+                # ... e quem vende não libera o próprio crédito (fica com o Financeiro).
+                perms = [p for p in perms if p.codename != "liberar_credito_pedidovenda"]
             g.permissions.set(perms)
             grupos[nome] = g
             self.stdout.write(f"Grupo {nome}: {g.permissions.count()} permissões")

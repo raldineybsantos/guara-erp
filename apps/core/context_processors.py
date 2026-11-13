@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Cadastros", "Compras", "Estoque", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Cadastros", "Compras", "Vendas", "Estoque", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
