@@ -17,6 +17,7 @@ from django.utils import timezone
 from apps.core.middleware import usuario_atual
 from apps.core.models import ModeloBase
 from apps.core.numeracao import NumeradoMixin
+from apps.core.formatos import qtd as fq
 
 Q4 = Decimal("0.0001")
 
@@ -107,7 +108,7 @@ class Movimento(models.Model):
         indexes = [models.Index(fields=["produto", "armazem", "data"])]
 
     def __str__(self):
-        return f"{self.get_tipo_display()} {self.quantidade:g} {self.produto.codigo} ({self.armazem.codigo})"
+        return f"{self.get_tipo_display()} {fq(self.quantidade)} {self.produto.codigo} ({self.armazem.codigo})"
 
     @property
     def valor(self):
@@ -167,8 +168,8 @@ def saida(produto, quantidade, armazem=None, origem="consumo", documento="", obs
     armazem = armazem or Armazem.principal()
     s = _saldo_travado(produto, armazem)
     if s.quantidade < quantidade and not getattr(settings, "ESTOQUE_PERMITE_NEGATIVO", False):
-        raise ValidationError(f"Saldo insuficiente de {produto} em {armazem.codigo}: há {s.quantidade:g}, "
-                              f"pedido {quantidade:g}.")
+        raise ValidationError(f"Saldo insuficiente de {produto} em {armazem.codigo}: há {fq(s.quantidade)}, "
+                              f"pedido {fq(quantidade)}.")
     s.quantidade -= quantidade
     s.save()
     return _registrar("saida", origem, produto, armazem, quantidade, s.custo_medio, s, documento, observacao,
@@ -238,7 +239,7 @@ class Inventario(NumeradoMixin, ModeloBase):
             if item.quantidade_contada is None:
                 raise ValidationError(f"Falta a contagem de {item.produto}.")
             if ajustar(item.produto, self.armazem, item.quantidade_contada, "inventario", self.numero,
-                       f"Inventário: sistema {item.quantidade_sistema:g}, contado {item.quantidade_contada:g}",
+                       f"Inventário: sistema {fq(item.quantidade_sistema)}, contado {fq(item.quantidade_contada)}",
                        self):
                 ajustes += 1
         self.status = "encerrado"

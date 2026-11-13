@@ -12,6 +12,7 @@ from django.utils import timezone
 from apps.core.middleware import usuario_atual
 from apps.core.models import Cliente, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
+from apps.core.formatos import qtd as fq
 
 D2 = Decimal("0.01")
 
@@ -76,7 +77,7 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
                 continue
             disp = saldo_disponivel(i.produto, self.armazem)
             if disp < i.quantidade:
-                faltas.append(f"{i.produto}: pedido {i.quantidade:g}, disponível {disp:g}")
+                faltas.append(f"{i.produto}: pedido {fq(i.quantidade)}, disponível {fq(disp)}")
         return faltas
 
     def credito_em_uso(self):

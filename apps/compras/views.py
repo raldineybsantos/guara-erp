@@ -11,6 +11,7 @@ from apps.core.pdf_simples import gerar_pdf
 from apps.fiscal.models import NotaFiscal
 
 from .models import Cotacao, PedidoCompra, RecebimentoCompra, SolicitacaoCompra
+from apps.core.formatos import qtd as fq
 
 
 def _executar(request, obj, func, ok, destino=None):
@@ -109,7 +110,7 @@ class ReceberForm(BootstrapMixin, forms.Form):
         for item in pedido.itens.all():
             if item.saldo > 0:
                 self.fields[f"item_{item.pk}"] = forms.DecimalField(
-                    label=f"{item} (pedido {item.quantidade:g}, saldo {item.saldo:g})", min_value=0,
+                    label=f"{item} (pedido {fq(item.quantidade)}, saldo {fq(item.saldo)})", min_value=0,
                     max_value=item.saldo, initial=item.saldo, decimal_places=4,
                     widget=forms.NumberInput(attrs={"class": "form-control", "step": "any"}))
 
@@ -177,7 +178,7 @@ def pdf_pedido(request, pk):
         "Itens:",
     ]
     for i, item in enumerate(p.itens.all(), start=1):
-        linhas.append(f"{i:>2}. {item} - {item.quantidade:g} x R$ {item.valor_unitario:.2f} = R$ {item.total:.2f}")
+        linhas.append(f"{i:>2}. {item} - {fq(item.quantidade)} x R$ {item.valor_unitario:.2f} = R$ {item.total:.2f}")
     linhas += ["", f"Total dos itens: R$ {p.valor_itens:.2f}", f"Frete: R$ {p.valor_frete:.2f}",
                f"VALOR TOTAL: R$ {p.valor_total:.2f}"]
     if p.observacoes:

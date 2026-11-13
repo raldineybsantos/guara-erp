@@ -1,0 +1,11 @@
+{% extends "crud/detail.html" %}
+{% block antes_detalhe %}
+{% with nec=object.necessidades_tela %}{% if nec %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>Componentes para o saldo da ordem ({{ object.saldo|floatformat:"-4" }} {{ object.produto.unidade }})</strong></div>
+<div class="card-body p-0"><table class="table table-sm mb-0">
+  <thead><tr><th>Componente</th><th class="text-end">Necessário</th><th class="text-end">Disponível</th><th class="text-end">Falta</th></tr></thead>
+  <tbody>{% for n in nec %}<tr><td>{{ n.componente }}</td><td class="text-end">{{ n.necessario|floatformat:"-4" }}</td>
+    <td class="text-end">{{ n.disponivel|floatformat:"-4" }}</td><td class="text-end {% if n.falta %}text-danger fw-semibold{% endif %}">{{ n.falta|floatformat:"-4" }}</td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endif %}{% endwith %}
+{% endblock %}

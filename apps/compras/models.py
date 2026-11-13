@@ -16,6 +16,7 @@ from django.utils import timezone
 from apps.core.middleware import usuario_atual
 from apps.core.models import Departamento, Fornecedor, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin, proximo_numero  # noqa: F401
+from apps.core.formatos import qtd as fq
 
 D2 = Decimal("0.01")
 
@@ -312,7 +313,7 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         self.aprovador_gerente = niveis.get("gerente")
         self.aprovador_diretor = niveis.get("diretor")
         self.save(update_fields=["aprovador_coordenador", "aprovador_gerente", "aprovador_diretor"])
-        itens = "\n".join(f"- {i} · {i.quantidade:g} x R$ {i.valor_unitario:.2f} = R$ {i.total:.2f}"
+        itens = "\n".join(f"- {i} · {fq(i.quantidade)} x R$ {i.valor_unitario:.2f} = R$ {i.total:.2f}"
                           for i in self.itens.all())
         inst = processo.iniciar(
             f"Aprovar pedido {self.numero} — {self.fornecedor}"[:200], usuario,
@@ -498,7 +499,7 @@ class RecebimentoCompra(ModeloBase, PorEmpresaMixin):
                 continue  # sem produto em comum: vale a checagem pelo total, abaixo
             q_nota = sum((i.quantidade for i in notas_item), Decimal(0))
             if q_nota != r.quantidade:
-                div.append(f"{ip}: nota fatura {q_nota:g}, foram recebidos {r.quantidade:g}.")
+                div.append(f"{ip}: nota fatura {fq(q_nota)}, foram recebidos {fq(r.quantidade)}.")
             preco_nota = notas_item[0].valor_unitario
             if abs(preco_nota - ip.valor_unitario) > ip.valor_unitario * tolerancia + D2:
                 div.append(f"{ip}: preço na nota R$ {preco_nota:.2f}, no pedido R$ {ip.valor_unitario:.2f}.")

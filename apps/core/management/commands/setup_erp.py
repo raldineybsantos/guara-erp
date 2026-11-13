@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -15,7 +15,9 @@ BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_ins
           # qualquer pessoa pode pedir uma compra (vê só as próprias solicitações)
           "compras.view_solicitacaocompra", "compras.add_solicitacaocompra", "compras.change_solicitacaocompra",
           "compras.view_itemsolicitacao", "compras.add_itemsolicitacao", "compras.change_itemsolicitacao",
-          "compras.delete_itemsolicitacao"]
+          "compras.delete_itemsolicitacao",
+          # qualquer pessoa pode registrar uma não conformidade
+          "qualidade.view_naoconformidade", "qualidade.add_naoconformidade"]
 
 # Cadastros que não contêm dados pessoais sensíveis. Colaboradores (CPF, salário) e a auditoria
 # ficam restritos a RH e Administradores (LGPD / necessidade de saber).
@@ -49,6 +51,11 @@ GRUPOS = {
     "Vendas": ["vendas.*", "core.view_cliente", "core.add_cliente", "core.change_cliente",
                "core.view_parceironegocio", "core.change_parceironegocio", "fiscal.view_produto", "estoque.view_saldo",
                "financeiro.view_contareceber", "fiscal.view_notafiscal", "fiscal.view_itemnota"],
+    "Produção": ["producao.*", "fiscal.view_produto", "estoque.view_saldo", "estoque.view_movimento",
+                 "estoque.view_armazem", "compras.add_solicitacaocompra", "qualidade.change_naoconformidade"],
+    "Qualidade": ["qualidade.*", "fiscal.view_produto", "estoque.view_saldo", "estoque.view_movimento",
+                  "estoque.view_armazem", "core.view_fornecedor", "core.view_cliente",
+                  "compras.view_recebimentocompra", "compras.view_pedidocompra"],
     "Usuários": [],
 }
 
