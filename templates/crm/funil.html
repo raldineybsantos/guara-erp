@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <a href="{% url 'crm:funil' %}" class="btn btn-sm {% if not request.GET.minhas %}btn-primary{% else %}btn-outline-primary{% endif %}">Todas</a>
+  <a href="?minhas=1" class="btn btn-sm {% if request.GET.minhas %}btn-primary{% else %}btn-outline-primary{% endif %}">Minhas</a>
+  {% if perms.crm.add_oportunidade %}<a href="{% url 'crm:oportunidade_create' %}" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Nova oportunidade</a>{% endif %}
+  <span class="ms-auto small text-secondary">Em aberto: <strong>R$ {{ total|floatformat:2 }}</strong> · ponderado pela probabilidade: <strong>R$ {{ ponderado|floatformat:2 }}</strong></span>
+</div>
+<div class="kanban">
+{% for col in colunas %}
+  <section class="kanban-coluna">
+    <header><span class="kanban-ponto"></span>{{ col.nome }} <span class="badge text-bg-light ms-1">{{ col.ops|length }}</span>
+      <small class="ms-auto text-secondary">R$ {{ col.total|floatformat:0 }}</small></header>
+    <div class="kanban-lista">
+    {% for o in col.ops %}
+      <article class="kanban-card">
+        <a href="{{ o.get_absolute_url }}" class="fw-semibold text-decoration-none">{{ o.titulo }}</a>
+        <div class="small text-secondary">{{ o.conta }}</div>
+        <div class="d-flex small mt-1"><span>R$ {{ o.valor|floatformat:2 }}</span><span class="ms-auto">{{ o.probabilidade }}%</span></div>
+        {% if o.previsao_fechamento %}<div class="small text-secondary"><i class="bi bi-calendar-event"></i> {{ o.previsao_fechamento|date:"d/m/Y" }}</div>{% endif %}
+        {% if perms.crm.change_oportunidade %}
+        <form method="post" class="d-flex gap-1 mt-2">{% csrf_token %}<input type="hidden" name="oportunidade" value="{{ o.pk }}">
+          {% if col.anterior %}<button name="estagio" value="{{ col.anterior }}" class="btn btn-sm btn-outline-secondary py-0" title="Voltar"><i class="bi bi-arrow-left"></i></button>{% endif %}
+          {% if col.proximo %}<button name="estagio" value="{{ col.proximo }}" class="btn btn-sm btn-outline-primary py-0 ms-auto" title="Avançar"><i class="bi bi-arrow-right"></i></button>
+          {% else %}<a href="{% url 'crm:ganhar' o.pk %}" class="btn btn-sm btn-success py-0 ms-auto"><i class="bi bi-trophy"></i> Ganhar</a>{% endif %}
+        </form>
+        {% endif %}
+      </article>
+    {% empty %}<p class="small text-secondary text-center my-3">Nenhuma oportunidade.</p>
+    {% endfor %}
+    </div>
+  </section>
+{% endfor %}
+</div>
+{% endblock %}

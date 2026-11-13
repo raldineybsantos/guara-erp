@@ -35,5 +35,10 @@ class Command(BaseCommand):
                     self.stdout.write(f"Contratos: {alertas} alerta(s), {renovados} renovação(ões) automática(s).")
                 except Exception as exc:
                     self.stderr.write(f"Erro nos contratos: {exc}")
+                try:
+                    from django.core.management import call_command
+                    call_command("rotinas_diarias", stdout=self.stdout)
+                except Exception as exc:
+                    self.stderr.write(f"Erro nas rotinas de manutenção/SST: {exc}")
                 ultimo_dia = agora.date()
             time.sleep(30)

@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Cadastros", "Compras", "Vendas", "Estoque", "Produção", "Qualidade", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
@@ -19,6 +19,7 @@ LINKS_EXTRAS = [
     ("Jurídico", "Painel jurídico", "juridico:painel", "speedometer2", "juridico.view_contrato", 0),
     ("Estoque", "Movimentação manual", "estoque:movimentar", "pencil-square", "estoque.add_movimento", 3),
     ("Estoque", "Reposição (abaixo do mínimo)", "estoque:reposicao", "bell", "estoque.view_saldo", 6),
+    ("CRM", "Funil de vendas", "crm:funil", "kanban", "crm.view_oportunidade", 1),
     ("Fiscal", "Importar XML NF-e", "fiscal:importar_xml", "upload", "fiscal.add_notafiscal", 5),
     ("Fiscal", "Apuração de impostos", "fiscal:apuracao", "calculator", "fiscal.view_notafiscal", 6),
     ("Workflow / BPM", "Aprovações pendentes", "workflow:minhas_tarefas", "check2-square", None, 0),

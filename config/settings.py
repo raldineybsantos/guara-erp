@@ -55,6 +55,10 @@ INSTALLED_APPS = [
     "apps.juridico",
     "apps.compras",
     "apps.estoque",
+    "apps.sst",
+    "apps.crm",
+    "apps.projetos",
+    "apps.manutencao",
     "apps.qualidade",
     "apps.producao",
     "apps.vendas",
@@ -170,6 +174,13 @@ COMPRAS_TOLERANCIA_PRECO_PCT = os.getenv("COMPRAS_TOLERANCIA_PRECO_PCT", "2")
 ESTOQUE_PERMITE_NEGATIVO = os.getenv("ESTOQUE_PERMITE_NEGATIVO", "0") == "1"
 # Vendas: desconto máximo por item sem aprovação (%).
 VENDAS_DESCONTO_MAXIMO_PCT = os.getenv("VENDAS_DESCONTO_MAXIMO_PCT", "10")
+# Manutenção: dias de antecedência para abrir a OS preventiva.
+MANUTENCAO_ANTECEDENCIA_DIAS = int(os.getenv("MANUTENCAO_ANTECEDENCIA_DIAS", "7"))
+# Projetos: custo-hora = salário x fator de encargos / horas do mês.
+PROJETOS_HORAS_MES = os.getenv("PROJETOS_HORAS_MES", "220")
+PROJETOS_ENCARGOS_FATOR = os.getenv("PROJETOS_ENCARGOS_FATOR", "1.0")
+# SST: antecedência do alerta de ASO e reciclagem de NR vencendo (dias).
+SST_ALERTA_DIAS = int(os.getenv("SST_ALERTA_DIAS", "30"))
 
 # Tamanho máximo de arquivos enviados (GED, XML)
 ARQUIVO_MAX_MB = int(os.getenv("ARQUIVO_MAX_MB", "50"))

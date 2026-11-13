@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -17,7 +17,13 @@ BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_ins
           "compras.view_itemsolicitacao", "compras.add_itemsolicitacao", "compras.change_itemsolicitacao",
           "compras.delete_itemsolicitacao",
           # qualquer pessoa pode registrar uma não conformidade
-          "qualidade.view_naoconformidade", "qualidade.add_naoconformidade"]
+          "qualidade.view_naoconformidade", "qualidade.add_naoconformidade",
+          # ... pedir manutenção, apontar as próprias horas em projetos e relatar incidentes
+          "manutencao.view_ordemservico", "manutencao.add_ordemservico", "manutencao.view_equipamento",
+          "manutencao.view_pecaos",
+          "projetos.view_projeto", "projetos.view_tarefaprojeto", "projetos.view_apontamentohoras",
+          "projetos.add_apontamentohoras", "projetos.change_apontamentohoras", "projetos.delete_apontamentohoras",
+          "sst.view_incidente", "sst.add_incidente"]
 
 # Cadastros que não contêm dados pessoais sensíveis. Colaboradores (CPF, salário) e a auditoria
 # ficam restritos a RH e Administradores (LGPD / necessidade de saber).
@@ -34,7 +40,9 @@ GRUPOS = {
     "Fiscal": ["fiscal.*", "vendas.view_pedidovenda", "vendas.view_itempedidovenda", "vendas.change_pedidovenda", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
                "financeiro.add_contareceber"],
-    "RH": [*CADASTROS_BASICOS, "core.view_colaborador", "core.add_colaborador", "core.change_colaborador",
+    "RH": [*CADASTROS_BASICOS, "sst.view_exameocupacional", "sst.add_exameocupacional",
+           "sst.change_exameocupacional", "sst.view_treinamentosst", "sst.add_treinamentosst",
+           "sst.change_treinamentosst", "sst.view_entregaepi", "core.view_colaborador", "core.add_colaborador", "core.change_colaborador",
            "core.add_departamento", "core.change_departamento", "core.add_cargo", "core.change_cargo",
            "ged.add_pasta"],
     "Jurídico": ["juridico.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
@@ -48,7 +56,7 @@ GRUPOS = {
                 "compras.view_pedidocompra", "compras.view_itempedido", "compras.view_recebimentocompra",
                 "compras.add_recebimentocompra", "compras.change_recebimentocompra",
                 "compras.add_solicitacaocompra", "core.view_fornecedor"],
-    "Vendas": ["vendas.*", "core.view_cliente", "core.add_cliente", "core.change_cliente",
+    "Vendas": ["vendas.*", "crm.*", "core.view_cliente", "core.add_cliente", "core.change_cliente",
                "core.view_parceironegocio", "core.change_parceironegocio", "fiscal.view_produto", "estoque.view_saldo",
                "financeiro.view_contareceber", "fiscal.view_notafiscal", "fiscal.view_itemnota"],
     "Produção": ["producao.*", "fiscal.view_produto", "estoque.view_saldo", "estoque.view_movimento",
@@ -56,6 +64,10 @@ GRUPOS = {
     "Qualidade": ["qualidade.*", "fiscal.view_produto", "estoque.view_saldo", "estoque.view_movimento",
                   "estoque.view_armazem", "core.view_fornecedor", "core.view_cliente",
                   "compras.view_recebimentocompra", "compras.view_pedidocompra"],
+    "Manutenção": ["manutencao.*", "fiscal.view_produto", "estoque.view_saldo", "estoque.view_movimento",
+                   "compras.add_solicitacaocompra"],
+    "Projetos": ["projetos.*", "core.view_cliente", "financeiro.view_contapagar", "financeiro.view_centrocusto"],
+    "SESMT": ["sst.*", "core.view_colaborador", "fiscal.view_produto", "estoque.view_saldo"],
     "Usuários": [],
 }
 
