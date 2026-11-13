@@ -92,7 +92,7 @@ Cada usuário pertence a um ou mais **grupos**. O grupo define quais menus e aç
 | **Financeiro** | Contas a pagar e a receber, tesouraria | Financeiro e cobrança completos; consultar e cadastrar clientes e fornecedores; consultar notas |
 | **Fiscal** | Departamento fiscal, faturamento | Notas e produtos completos; consultar o financeiro e lançar títulos; cadastrar clientes e fornecedores |
 | **RH** | Recursos humanos | Colaboradores, departamentos e cargos; criar pastas no GED |
-| **Compras** | Compradores | Módulo de Compras completo (cotação, pedido, aprovação até a alçada de compras, recebimento); fornecedores e produtos; notas de entrada |
+| **Compras** | Compradores | Módulo de Compras (cotação, pedido, recebimento, conferência); consulta as alçadas; fornecedores e produtos; notas de entrada |
 | **Jurídico** | Advogados, analistas de contratos | Contratos completos (cadastro, aprovação, renovação, aditivos, encerramento); pasta Jurídico do GED; cadastrar clientes e fornecedores |
 | **Usuários** | Demais colaboradores | Abrir e acompanhar solicitações (workflow e compras); consultar e enviar documentos no GED |
 
@@ -206,23 +206,45 @@ Também é possível criar um pedido direto, sem solicitação nem cotação, em
 
 ### 6.3 Pedido de compra e alçada de aprovação
 
-Revise o pedido (centro de custo, categoria, frete, condição de pagamento) e clique em **Enviar para
-aprovação**. O valor total decide o caminho:
+Revise o pedido (departamento, centro de custo, categoria, frete, condição de pagamento) e clique em
+**Enviar para aprovação**. **Todo pedido é aprovado por pessoas.** Não há aprovação automática. O
+**departamento** do pedido, que vem da solicitação quando existe, indica a alçada usada. O **valor
+total** indica até que nível o pedido sobe:
 
-| Valor total do pedido | Aprovação |
+| Valor total do pedido | Quem aprova, em ordem |
 |---|---|
-| Até a alçada automática (padrão R$ 500) | Aprovado na hora |
-| Até a alçada da diretoria (padrão R$ 10.000) | Gestor de compras, pelo workflow |
-| Acima disso | Gestor de compras e depois a diretoria |
+| Até o limite do coordenador | Coordenador |
+| Acima do coordenador, até o limite do gerente | Coordenador → Gerente |
+| Acima do limite do gerente | Coordenador → Gerente → Diretor |
 
-As aprovações aparecem em **Workflow → Aprovações pendentes**. Se o pedido for recusado, ele volta a ser
-editável e mostra o motivo. Depois de aprovado, o pedido não pode mais ser alterado. Para mudar itens ou
-valores, cancele-o e gere outro.
+Cada aprovador recebe o pedido em **Workflow → Aprovações pendentes**. Só a pessoa designada pode aprovar
+a etapa dela: nem o grupo Compras nem outro gestor podem. A descrição da aprovação traz o fornecedor, o valor
+e os itens. Se alguém recusar, o pedido volta a ser editável e mostra o motivo. Depois de aprovado, o
+pedido não pode mais ser alterado. Para mudar itens ou valores, cancele-o e gere outro.
+
+A ficha do pedido mostra o coordenador, o gerente e o diretor definidos no envio. Se a alçada mudar
+depois, os pedidos que já estão em aprovação seguem com os aprovadores do envio.
 
 **Condição de pagamento:** informe os dias após a nota, separados por barra. Por exemplo, `28` gera uma
 parcela e `30/60/90` gera três. O botão **PDF para o fornecedor** gera o pedido para enviar por e-mail.
 
-Os valores das alçadas são configurados pelo administrador (veja INSTALACAO.md).
+#### Alçadas de aprovação (tela de atualização)
+
+Em **Compras → Alçadas de aprovação**, a administração cadastra quem aprova e até quanto:
+
+| Campo | Para que serve |
+|---|---|
+| **Departamento** | Em branco = **alçada padrão da empresa**, usada pelos departamentos sem alçada própria |
+| **Coordenador** e **coordenador aprova até (R$)** | Primeiro aprovador de todos os pedidos. Acima do limite, o pedido sobe ao gerente |
+| **Gerente** e **gerente aprova até (R$)** | Segundo nível. Acima do limite, sobe ao diretor. Não pode ser menor que o limite do coordenador |
+| **Diretor** | Último nível, sem limite |
+
+- **Os três níveis em todos os pedidos:** coloque `0` nos dois limites.
+- **Mesma pessoa em dois níveis:** se o gerente também for o coordenador, ele aprova uma vez só.
+- **Quem altera as alçadas:** só o grupo *Administradores*. O grupo *Compras* apenas consulta, para quem
+  compra não definir quem aprova. Toda alteração fica na auditoria.
+- **Sem alçada:** se não houver alçada padrão nem alçada do departamento, o ERP não deixa enviar o pedido e
+  avisa onde cadastrar.
 
 ### 6.4 Recebimento
 

@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 
 from apps.core.crud import Crud, FormBase
 
-from .models import (Cotacao, ItemCotacao, ItemPedido, ItemSolicitacao, PedidoCompra,
+from .models import (AlcadaCompra, Cotacao, ItemCotacao, ItemPedido, ItemSolicitacao, PedidoCompra,
                      RecebimentoCompra, SolicitacaoCompra)
 
 
@@ -61,8 +61,9 @@ class CotacaoCrud(Crud):
 class PedidoForm(FormBase):
     class Meta:
         model = PedidoCompra
-        fields = ["empresa", "fornecedor", "solicitacao", "cotacao", "data_pedido", "previsao_entrega",
-                  "condicao_pagamento", "centro_custo", "plano_conta", "valor_frete", "observacoes"]
+        fields = ["empresa", "fornecedor", "departamento", "solicitacao", "cotacao", "data_pedido",
+                  "previsao_entrega", "condicao_pagamento", "centro_custo", "plano_conta", "valor_frete",
+                  "observacoes"]
 
     def clean(self):
         dados = super().clean()
@@ -80,7 +81,8 @@ class PedidoCompraCrud(Crud):
     list_display = ("numero", "fornecedor", "data_pedido", "previsao_entrega", "valor_total", "status")
     search_fields = ("numero", "fornecedor__nome", "fornecedor__nome_fantasia", "itens__descricao")
     filter_fields = ("status", "fornecedor")
-    detail_fields = ["numero", "fornecedor", "status", "motivo_status", "data_pedido", "previsao_entrega",
+    detail_fields = ["numero", "fornecedor", "status", "motivo_status", "departamento", "aprovador_coordenador",
+                     "aprovador_gerente", "aprovador_diretor", "data_pedido", "previsao_entrega",
                      "condicao_pagamento", "valor_itens", "valor_frete", "valor_total", "centro_custo",
                      "plano_conta", "solicitacao", "cotacao", "comprador", "observacoes"]
     related = (("recebimentos", "Recebimentos", ["data", "nota_fiscal", "conferencia", "divergencias"]),)
@@ -133,3 +135,34 @@ class RecebimentoCompraCrud(Crud):
     @classmethod
     def after_save(cls, request, obj, created):
         obj.conferir()
+
+
+class AlcadaForm(FormBase):
+    class Meta:
+        model = AlcadaCompra
+        fields = ["departamento", "coordenador", "limite_coordenador", "gerente", "limite_gerente", "diretor"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        from django.contrib.auth import get_user_model
+
+        ativos = get_user_model().objects.filter(is_active=True).order_by("first_name", "username")
+        for nome in ("coordenador", "gerente", "diretor"):
+            self.fields[nome].queryset = ativos
+            self.fields[nome].label_from_instance = lambda u: u.get_full_name() or u.username
+        self.fields["departamento"].empty_label = "— Padrão da empresa —"
+
+
+class AlcadaCompraCrud(Crud):
+    """Tela de atualização das alçadas: quem aprova e até quanto, por departamento."""
+
+    model = AlcadaCompra
+    form_class = AlcadaForm
+    list_display = ("escopo", "coordenador", "limite_coordenador", "gerente", "limite_gerente", "diretor")
+    search_fields = ("departamento__nome", "coordenador__first_name", "gerente__first_name", "diretor__first_name")
+    detail_fields = ["departamento", "coordenador", "limite_coordenador", "gerente", "limite_gerente", "diretor",
+                     "criado_por", "criado_em", "atualizado_em"]
+    icon = "diagram-2"
+    menu = "Compras"
+    menu_label = "Alçadas de aprovação"
+    menu_order = 9

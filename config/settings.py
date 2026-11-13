@@ -158,9 +158,8 @@ CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 ICP_BRASIL_CAS_DIR = os.getenv("ICP_BRASIL_CAS_DIR", str(BASE_DIR / "certificados" / "icp-brasil"))
 ASSINATURA_TSA_URL = os.getenv("ASSINATURA_TSA_URL", "")
 
-# Compras: alçada de aprovação de pedidos (R$) e tolerância de preço na conferência em três vias (%).
-COMPRAS_ALCADA_AUTOMATICA = os.getenv("COMPRAS_ALCADA_AUTOMATICA", "500")   # até este valor: aprova sozinho
-COMPRAS_ALCADA_DIRETORIA = os.getenv("COMPRAS_ALCADA_DIRETORIA", "10000")   # acima: passa também pela diretoria
+# Compras: tolerância de preço na conferência em três vias (%). As alçadas de aprovação
+# (coordenador, gerente, diretor) ficam na tela Compras → Alçadas de aprovação.
 COMPRAS_TOLERANCIA_PRECO_PCT = os.getenv("COMPRAS_TOLERANCIA_PRECO_PCT", "2")
 
 # Tamanho máximo de arquivos enviados (GED, XML)

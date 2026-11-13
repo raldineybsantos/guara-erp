@@ -37,11 +37,15 @@ class Processo(ModeloBase):
         etapa = self.primeira_etapa()
         if etapa is None:
             raise ValidationError("O processo não possui etapas.")
-        inst = Instancia.objects.create(processo=self, titulo=titulo, descricao=descricao,
-                                        solicitante=solicitante, etapa_atual=etapa)
+        inst = Instancia(processo=self, titulo=titulo, descricao=descricao, solicitante=solicitante)
         if objeto is not None:
             inst.content_type = ContentType.objects.get_for_model(objeto)
             inst.object_id = objeto.pk
+        etapa = inst._etapa_valida(etapa, objeto)
+        if etapa is None:
+            raise ValidationError("Nenhuma etapa do processo se aplica a este registro.")
+        inst.etapa_atual = etapa
+        inst.responsavel_atual = inst._responsavel_dinamico(etapa, objeto)
         inst.prazo = etapa.calcular_prazo()
         inst.save()
         Historico.objects.create(instancia=inst, etapa=etapa, usuario=solicitante, acao="iniciou", comentario=descricao)
@@ -103,9 +107,11 @@ class InstanciaQuerySet(models.QuerySet):
         if user.is_superuser:
             return qs
         return qs.filter(
-            Q(etapa_atual__usuario_responsavel=user)
-            | Q(etapa_atual__grupo_responsavel__in=user.groups.all())
-            | Q(etapa_atual__usuario_responsavel__isnull=True, etapa_atual__grupo_responsavel__isnull=True)
+            Q(responsavel_atual=user)
+            | Q(responsavel_atual__isnull=True) & (
+                Q(etapa_atual__usuario_responsavel=user)
+                | Q(etapa_atual__grupo_responsavel__in=user.groups.all())
+                | Q(etapa_atual__usuario_responsavel__isnull=True, etapa_atual__grupo_responsavel__isnull=True))
         ).distinct()
 
 
@@ -120,6 +126,10 @@ class Instancia(ModeloBase):
                                     on_delete=models.PROTECT, related_name="+")
     status = models.CharField(max_length=10, choices=STATUS, default="andamento", db_index=True)
     prazo = models.DateTimeField("prazo da etapa", null=True, blank=True)
+    # Aprovador designado pelo registro vinculado (ex.: coordenador do departamento do pedido de compra).
+    # Quando preenchido, só ele (ou um superusuário) atua na etapa atual.
+    responsavel_atual = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="responsável designado",
+                                          null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     concluido_em = models.DateTimeField("concluído em", null=True, blank=True)
     content_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, editable=False)
     object_id = models.PositiveBigIntegerField(null=True, blank=True, editable=False)
@@ -135,6 +145,34 @@ class Instancia(ModeloBase):
 
     def __str__(self):
         return f"#{self.pk} {self.titulo}"
+
+    @property
+    def responsavel_texto(self):
+        if self.responsavel_atual_id:
+            u = self.responsavel_atual
+            return u.get_full_name() or u.username
+        return self.etapa_atual.responsavel_texto() if self.etapa_atual_id else ""
+
+    def pode_atuar(self, user):
+        if self.responsavel_atual_id:
+            return user.is_superuser or user.pk == self.responsavel_atual_id
+        return bool(self.etapa_atual_id) and self.etapa_atual.pode_atuar(user)
+
+    # Ganchos do registro vinculado:
+    #   workflow_pular(etapa) -> True para saltar a etapa (ex.: nível acima da alçada necessária)
+    #   workflow_responsavel(etapa) -> usuário que deve atuar na etapa
+    def _etapa_valida(self, etapa, objeto=None):
+        objeto = objeto if objeto is not None else self.objeto
+        while etapa is not None and objeto is not None and hasattr(objeto, "workflow_pular") \
+                and objeto.workflow_pular(etapa):
+            etapa = etapa.proxima()
+        return etapa
+
+    def _responsavel_dinamico(self, etapa, objeto=None):
+        objeto = objeto if objeto is not None else self.objeto
+        if objeto is not None and hasattr(objeto, "workflow_responsavel"):
+            return objeto.workflow_responsavel(etapa)
+        return None
 
     @property
     def atrasada(self):
@@ -155,7 +193,7 @@ class Instancia(ModeloBase):
             Historico.objects.create(instancia=self, etapa=etapa, usuario=usuario, acao="cancelou", comentario=comentario)
             self._avisar_objeto("workflow_cancelado", comentario)
             return
-        if not etapa.pode_atuar(usuario):
+        if not self.pode_atuar(usuario):
             raise ValidationError("Você não é responsável por esta etapa.")
         if acao == "rejeitar":
             if etapa.tipo != "aprovacao":
@@ -170,9 +208,10 @@ class Instancia(ModeloBase):
             return
         Historico.objects.create(instancia=self, etapa=etapa, usuario=usuario,
                                  acao="aprovou" if acao == "aprovar" else "concluiu", comentario=comentario)
-        proxima = etapa.proxima()
+        proxima = self._etapa_valida(etapa.proxima())
         if proxima:
             self.etapa_atual = proxima
+            self.responsavel_atual = self._responsavel_dinamico(proxima)
             self.prazo = proxima.calcular_prazo()
         else:
             self.status = "concluido"

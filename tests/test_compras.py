@@ -9,15 +9,15 @@ from django.core.management import call_command
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from apps.compras.models import ItemSolicitacao, PedidoCompra, SolicitacaoCompra
-from apps.core.models import Fornecedor
+from apps.compras.models import AlcadaCompra, ItemSolicitacao, PedidoCompra, SolicitacaoCompra
+from apps.core.models import Departamento, Fornecedor
+from apps.workflow.models import Instancia
 from apps.financeiro.models import ContaPagar
 from apps.fiscal.models import ItemNota, NotaFiscal, Produto
 from apps.tarefas.models import Atividade
 
 
-@override_settings(COMPRAS_ALCADA_AUTOMATICA="500", COMPRAS_ALCADA_DIRETORIA="10000",
-                   COMPRAS_TOLERANCIA_PRECO_PCT="2")
+@override_settings(COMPRAS_TOLERANCIA_PRECO_PCT="2")
 class ComprasTest(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -27,6 +27,12 @@ class ComprasTest(TestCase):
         cls.comprador.groups.add(Group.objects.get(name="Compras"))
         cls.usuario = User.objects.create_user("usuario", password="x")
         cls.usuario.groups.add(Group.objects.get(name="Usuários"))
+        cls.coord, cls.ger, cls.dir = (User.objects.create_user(n, password="x", first_name=n.capitalize())
+                                       for n in ("coordenadora", "gerente", "diretora"))
+        for u in (cls.coord, cls.ger, cls.dir):
+            u.groups.add(Group.objects.get(name="Usuários"))
+        cls.alcada = AlcadaCompra.objects.create(coordenador=cls.coord, limite_coordenador=1000, gerente=cls.ger,
+                                                 limite_gerente=10000, diretor=cls.dir)
         cls.papel = Produto.objects.create(codigo="PAP-A4", descricao="Papel A4 resma")
         cls.toner = Produto.objects.create(codigo="TON-01", descricao="Toner preto")
         cls.f1 = Fornecedor.objects.create(nome="Papelaria Um", documento="11444777000161", prazo_pagamento_dias=28)
@@ -81,34 +87,100 @@ class ComprasTest(TestCase):
         self.assertEqual(pedido.previsao_entrega - pedido.data_pedido, datetime.timedelta(days=5))
 
     # ---------------------------------------------------------------- alçada
-    def test_alcada_automatica(self):
-        pedido = self._pedido(preco_papel="10", preco_toner="100")  # 300
-        self.assertIsNone(pedido.enviar_para_aprovacao(self.comprador))
-        self.assertEqual(pedido.status, "aprovado")
+    def _aprovar_tudo(self, pedido):
+        inst = Instancia.objects.get(object_id=pedido.pk, status="andamento")
+        quem = []
+        while inst.status == "andamento":
+            quem.append(inst.responsavel_atual.username)
+            inst.avancar(inst.responsavel_atual, "aprovar")
+        pedido.refresh_from_db()
+        return quem
 
-    def test_alcada_compras_e_recusa(self):
-        pedido = self._pedido()  # 850
+    def test_pedido_pequeno_so_coordenador(self):
+        pedido = self._pedido(preco_papel="10", preco_toner="100")  # 300
         inst = pedido.enviar_para_aprovacao(self.comprador)
-        self.assertEqual(inst.processo.codigo, "aprovacao-compra")
         self.assertEqual(pedido.status, "em_aprovacao")
-        inst.avancar(self.comprador, "rejeitar", "Preço do toner alto")
+        self.assertEqual(inst.responsavel_atual, self.coord)
+        # Só a coordenadora designada atua; o comprador (nem o grupo Compras) não.
+        with self.assertRaises(ValidationError):
+            inst.avancar(self.comprador, "aprovar")
+        self.assertIn(inst, Instancia.objects.pendentes_para(self.coord))
+        self.assertNotIn(inst, Instancia.objects.pendentes_para(self.comprador))
+        self.assertNotIn(inst, Instancia.objects.pendentes_para(self.ger))
+        self.assertEqual(self._aprovar_tudo(pedido), ["coordenadora"])
+        self.assertEqual(pedido.status, "aprovado")
+        self.assertIsNone(pedido.aprovador_gerente)
+
+    def test_acima_do_coordenador_sobe_ao_gerente_e_recusa(self):
+        pedido = self._pedido(preco_toner="600")  # 1.450
+        inst = pedido.enviar_para_aprovacao(self.comprador)
+        inst.avancar(self.coord, "aprovar")
+        inst.refresh_from_db()
+        self.assertEqual(inst.responsavel_atual, self.ger)
+        inst.avancar(self.ger, "rejeitar", "Preço do toner alto")
         pedido.refresh_from_db()
         self.assertEqual((pedido.status, pedido.motivo_status), ("recusado", "Preço do toner alto"))
 
-    def test_alcada_diretoria(self):
+    def test_acima_do_gerente_vai_ao_diretor(self):
         pedido = self._pedido(preco_toner="6000")  # 12.250
-        inst = pedido.enviar_para_aprovacao(self.comprador)
-        self.assertEqual(inst.processo.codigo, "aprovacao-compra-diretoria")
-        inst.avancar(self.comprador, "aprovar")
-        pedido.refresh_from_db()
-        self.assertEqual(pedido.status, "em_aprovacao")
-        inst.avancar(self.admin, "aprovar")
-        pedido.refresh_from_db()
+        pedido.enviar_para_aprovacao(self.comprador)
+        self.assertEqual(self._aprovar_tudo(pedido), ["coordenadora", "gerente", "diretora"])
         self.assertEqual(pedido.status, "aprovado")
 
-    def test_pedido_aprovado_nao_pode_ser_editado(self):
-        pedido = self._pedido(preco_papel="10", preco_toner="100")
+    def test_limite_zero_exige_os_tres_niveis(self):
+        AlcadaCompra.objects.filter(pk=self.alcada.pk).update(limite_coordenador=0, limite_gerente=0)
+        pedido = self._pedido(preco_papel="1", preco_toner="1")  # 12
         pedido.enviar_para_aprovacao(self.comprador)
+        self.assertEqual(self._aprovar_tudo(pedido), ["coordenadora", "gerente", "diretora"])
+
+    def test_alcada_do_departamento_prevalece_e_mesma_pessoa_aprova_uma_vez(self):
+        ti = Departamento.objects.create(codigo="TI", nome="TI")
+        AlcadaCompra.objects.create(departamento=ti, coordenador=self.ger, limite_coordenador=0, gerente=self.ger,
+                                    limite_gerente=0, diretor=self.dir)
+        pedido = self._pedido(preco_papel="10", preco_toner="100")
+        PedidoCompra.objects.filter(pk=pedido.pk).update(departamento=ti)
+        pedido.refresh_from_db()
+        pedido.enviar_para_aprovacao(self.comprador)
+        self.assertEqual(self._aprovar_tudo(pedido), ["gerente", "diretora"])
+
+    def test_departamento_vem_da_solicitacao(self):
+        rh = Departamento.objects.create(codigo="RHX", nome="RH")
+        sc = self._sc()
+        SolicitacaoCompra.objects.filter(pk=sc.pk).update(departamento=rh)
+        sc.refresh_from_db()
+        cot = sc.gerar_cotacao([self.f1])
+        cot.itens.update(valor_unitario=5)
+        self.assertEqual(cot.escolher(self.f1).departamento, rh)
+
+    def test_sem_alcada_cadastrada(self):
+        AlcadaCompra.objects.all().delete()
+        pedido = self._pedido()
+        with self.assertRaisesMessage(ValidationError, "Alçadas de aprovação"):
+            pedido.enviar_para_aprovacao(self.comprador)
+        self.assertEqual(pedido.status, "rascunho")
+
+    def test_tela_de_alcadas(self):
+        url = reverse("compras:alcadacompra_update", args=[self.alcada.pk])
+        dados = {"coordenador": self.coord.pk, "limite_coordenador": "2000", "gerente": self.ger.pk,
+                 "limite_gerente": "1500", "diretor": self.dir.pk}
+        # Quem compra não altera quem aprova.
+        self.client.force_login(self.comprador)
+        self.assertEqual(self.client.get(reverse("compras:alcadacompra_list")).status_code, 200)
+        self.assertEqual(self.client.post(url, dados).status_code, 403)
+        self.client.force_login(self.admin)
+        self.assertContains(self.client.post(url, dados), "não pode ser menor")
+        dados["limite_gerente"] = "20000"
+        self.assertEqual(self.client.post(url, dados).status_code, 302)
+        self.alcada.refresh_from_db()
+        self.assertEqual(self.alcada.limite_coordenador, Decimal("2000"))
+        self.assertContains(self.client.get(reverse("compras:alcadacompra_list")), "Padrão da empresa")
+        # Só existe uma alçada padrão.
+        r = self.client.post(reverse("compras:alcadacompra_create"), {**dados})
+        self.assertEqual(AlcadaCompra.objects.count(), 1)
+        self.assertContains(r, "Já existe alçada")
+
+    def test_pedido_aprovado_nao_pode_ser_editado(self):
+        pedido = self._aprovado()
         self.client.force_login(self.admin)
         r = self.client.post(reverse("compras:pedidocompra_update", args=[pedido.pk]), {
             "fornecedor": self.f2.pk, "data_pedido": "2026-11-13", "condicao_pagamento": "30", "valor_frete": "0",
@@ -119,8 +191,9 @@ class ComprasTest(TestCase):
 
     # ---------------------------------------------------------------- recebimento e três vias
     def _aprovado(self):
-        pedido = self._pedido(preco_papel="10", preco_toner="100")  # 300, aprova sozinho
+        pedido = self._pedido(preco_papel="10", preco_toner="100")  # 300: só a coordenadora
         pedido.enviar_para_aprovacao(self.comprador)
+        self._aprovar_tudo(pedido)
         return pedido
 
     def _qtd(self, pedido, papel, toner):
@@ -203,7 +276,14 @@ class ComprasTest(TestCase):
         self.assertRedirects(r, pedido.get_absolute_url())
         self.client.post(reverse("compras:enviar_pedido", args=[pedido.pk]))
         pedido.refresh_from_db()
-        self.assertEqual(pedido.status, "aprovado")  # 120 < alçada automática
+        self.assertEqual(pedido.status, "em_aprovacao")
+        inst = Instancia.objects.get(object_id=pedido.pk)
+        self.client.force_login(self.coord)
+        self.assertContains(self.client.get(inst.get_absolute_url()), "Coordenadora")
+        self.client.post(reverse("workflow:agir", args=[inst.pk]), {"acao": "aprovar"})
+        pedido.refresh_from_db()
+        self.assertEqual(pedido.status, "aprovado")
+        self.client.force_login(self.comprador)
         pdf = self.client.get(reverse("compras:pdf_pedido", args=[pedido.pk]))
         self.assertEqual((pdf.status_code, pdf["Content-Type"]), (200, "application/pdf"))
         self.assertContains(self.client.get(reverse("compras:receber_pedido", args=[pedido.pk])), "saldo 10")

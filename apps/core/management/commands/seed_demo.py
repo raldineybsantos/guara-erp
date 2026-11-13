@@ -134,7 +134,9 @@ class Command(BaseCommand):
                 ("rh", "RH", "Roberto RH", "11144477735", "RH"),
                 ("fiscal", "Fiscal", "Fábio Fiscal", "93541134780", "FIN"),
                 ("juridico", "Jurídico", "Júlia Jurídico", "15350946056", "ADM"),
-                ("compras", "Compras", "Carlos Compras", "12345678062", "ADM")):
+                ("compras", "Compras", "Carlos Compras", "12345678062", "ADM"),
+                ("coordenador", "Usuários", "Cora Coordenadora", "23456789092", "ADM"),
+                ("gerente", "Usuários", "Gustavo Gerente", "23456789173", "ADM")):
             u, criado = User.objects.get_or_create(username=username, defaults={
                 "first_name": nome.split()[0], "last_name": nome.split()[1], "email": f"{username}@exemplo.com.br"})
             if criado:
@@ -223,12 +225,13 @@ class Command(BaseCommand):
         self._compras(usuarios, forns)
 
         self.stdout.write(self.style.SUCCESS(
-            "Dados de demonstração criados. Usuários: diretor, financeiro, rh, fiscal, juridico, compras "
+            "Dados de demonstração criados. Usuários: diretor, gerente, coordenador, financeiro, rh, fiscal, "
+            "juridico, compras "
             f"(senha: {senha})."))
 
     def _compras(self, usuarios, forns):
         """Três pedidos em estágios diferentes: em aprovação, recebido e conferido, e recebido com divergência."""
-        from apps.compras.models import ItemSolicitacao, SolicitacaoCompra
+        from apps.compras.models import AlcadaCompra, ItemSolicitacao, SolicitacaoCompra
         from apps.core.models import Departamento
         from apps.core.middleware import _local
         from apps.fiscal.models import ItemNota, NotaFiscal, Produto
@@ -238,6 +241,14 @@ class Command(BaseCommand):
         toner = Produto.objects.create(codigo="MAT002", descricao="Toner para impressora", ncm="84439933", preco=0)
         papelaria, distribuidora = forns[0], forns[4]
         comprador = usuarios["compras"]
+        AlcadaCompra.objects.create(coordenador=usuarios["coordenador"], limite_coordenador=1000,
+                                    gerente=usuarios["gerente"], limite_gerente=10000, diretor=usuarios["diretor"])
+
+        def aprovar(p):
+            for inst in Instancia.objects.filter(object_id=p.pk, status="andamento"):
+                while inst.status == "andamento":
+                    inst.avancar(inst.responsavel_atual, "aprovar")
+            p.refresh_from_db()
 
         def pedido(solicitante, itens, precos_por_fornecedor, vencedor):
             _local.usuario = solicitante
@@ -264,21 +275,22 @@ class Command(BaseCommand):
             n.recalcular()
             return n
 
-        # 1) Em aprovação: cotado em dois fornecedores, aguardando o gestor de compras.
+        # 1) R$ 1.410: acima do coordenador. A coordenadora já aprovou; aguarda o gerente.
         p1 = pedido(usuarios["fiscal"], [(papel, 20), (toner, 3)],
                     {papelaria: {papel: 24, toner: 310}, distribuidora: {papel: 26, toner: 295}}, papelaria)
-        p1.enviar_para_aprovacao(comprador)
+        inst = p1.enviar_para_aprovacao(comprador)
+        inst.avancar(usuarios["coordenador"], "aprovar", "De acordo; segue para o gerente.")
 
-        # 2) Dentro da alçada automática, recebido com nota conferida: conta a pagar liberada.
+        # 2) Aprovado pela coordenadora, recebido com nota conferida: conta a pagar liberada.
         p2 = pedido(usuarios["rh"], [(papel, 10)], {papelaria: {papel: 25}}, papelaria)
         p2.enviar_para_aprovacao(comprador)
+        aprovar(p2)
         p2.receber({str(i.pk): i.quantidade for i in p2.itens.all()}, nota(p2, 4512, {papel: 25}),
                    usuario=comprador)
 
-        # 3) Aprovado pelo workflow, mas a nota veio com o toner 10% mais caro: conta bloqueada e tarefa aberta.
+        # 3) Aprovado, mas a nota veio com o toner 10% mais caro: conta bloqueada e tarefa aberta.
         p3 = pedido(usuarios["financeiro"], [(toner, 2)], {distribuidora: {toner: 300}}, distribuidora)
-        inst = p3.enviar_para_aprovacao(comprador)
-        Instancia.objects.get(pk=inst.pk).avancar(comprador, "aprovar", "Preço dentro do histórico.")
-        p3.refresh_from_db()
+        p3.enviar_para_aprovacao(comprador)
+        aprovar(p3)
         p3.receber({str(i.pk): i.quantidade for i in p3.itens.all()}, nota(p3, 88231, {toner: 330}),
                    usuario=comprador)

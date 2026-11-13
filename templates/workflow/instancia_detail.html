@@ -40,7 +40,7 @@
     <div class="card border-primary">
       <div class="card-header bg-primary-subtle"><strong>Etapa atual: {{ object.etapa_atual.nome }}</strong></div>
       <div class="card-body">
-        <p class="small mb-1"><span class="text-secondary">Responsável:</span> {{ object.etapa_atual.responsavel_texto }}</p>
+        <p class="small mb-1"><span class="text-secondary">Responsável:</span> {{ object.responsavel_texto }}</p>
         <p class="small {% if object.atrasada %}text-danger{% endif %}"><span class="text-secondary">Prazo:</span> {{ object.prazo|date:"d/m/Y H:i" }}{% if object.atrasada %} (atrasada){% endif %}</p>
         {% if object.etapa_atual.instrucoes %}<div class="alert alert-info small">{{ object.etapa_atual.instrucoes|linebreaksbr }}</div>{% endif %}
         <form method="post" action="{% url 'workflow:agir' object.pk %}">{% csrf_token %}

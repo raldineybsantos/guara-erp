@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -96,7 +96,13 @@ class Command(BaseCommand):
         grupos = {}
         for nome, padroes in GRUPOS.items():
             g, _ = Group.objects.get_or_create(name=nome)
-            g.permissions.set(_permissoes(padroes + BASICO))
+            perms = _permissoes(padroes + BASICO)
+            if nome != "Administradores":
+                # Alçadas de aprovação: só a administração altera (quem compra não define quem aprova).
+                perms = [p for p in perms if not (p.content_type.app_label == "compras"
+                                                  and p.codename.endswith("_alcadacompra")
+                                                  and not p.codename.startswith("view_"))]
+            g.permissions.set(perms)
             grupos[nome] = g
             self.stdout.write(f"Grupo {nome}: {g.permissions.count()} permissões")
 
@@ -125,22 +131,19 @@ class Command(BaseCommand):
                                                ("Integração / boas-vindas", "RH")], start=1):
                 Etapa.objects.create(processo=proc2, ordem=i, nome=nome, tipo="tarefa", grupo_responsavel=grupos[grupo])
 
-        # Alçada de compras: o valor do pedido decide qual processo usa (ver COMPRAS_ALCADA_* no settings).
-        proc4, criado = Processo.objects.get_or_create(codigo="aprovacao-compra", defaults={
+        # Aprovação de pedidos de compra pela alçada (Compras → Alçadas de aprovação): o próprio pedido
+        # designa o aprovador de cada etapa e pula os níveis que o valor não exige.
+        proc4, criado = Processo.objects.get_or_create(codigo="aprovacao-compra-alcada", defaults={
             "nome": "Aprovação de pedido de compra",
-            "descricao": "Pedidos acima da alçada automática e até a alçada da diretoria."})
+            "descricao": "Coordenador, gerente e diretor do departamento, conforme o valor do pedido."})
         if criado:
-            Etapa.objects.create(processo=proc4, ordem=1, nome="Aprovação do gestor de compras", tipo="aprovacao",
-                                 grupo_responsavel=grupos["Compras"], prazo_dias=2,
-                                 instrucoes="Confira fornecedor, preços contra a cotação, quantidades e centro de custo.")
-        proc5, criado = Processo.objects.get_or_create(codigo="aprovacao-compra-diretoria", defaults={
-            "nome": "Aprovação de pedido de compra (diretoria)",
-            "descricao": "Pedidos acima da alçada da diretoria."})
-        if criado:
-            Etapa.objects.create(processo=proc5, ordem=1, nome="Aprovação do gestor de compras", tipo="aprovacao",
-                                 grupo_responsavel=grupos["Compras"], prazo_dias=2)
-            Etapa.objects.create(processo=proc5, ordem=2, nome="Aprovação da diretoria", tipo="aprovacao",
-                                 grupo_responsavel=grupos["Administradores"], prazo_dias=2)
+            for ordem, nivel in enumerate(("Coordenador", "Gerente", "Diretor"), start=1):
+                Etapa.objects.create(processo=proc4, ordem=ordem, nome=f"Aprovação do {nivel.lower()}",
+                                     tipo="aprovacao", prazo_dias=2,
+                                     instrucoes="Confira fornecedor, preços contra a cotação, quantidades e "
+                                                "centro de custo.")
+        # Versão anterior (alçada por variáveis de ambiente): fica inativa; pedidos em curso terminam nela.
+        Processo.objects.filter(codigo__in=["aprovacao-compra", "aprovacao-compra-diretoria"]).update(ativo=False)
 
         proc3, criado = Processo.objects.get_or_create(codigo="aprovacao-contrato", defaults={
             "nome": "Aprovação de contrato",

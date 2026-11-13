@@ -125,13 +125,9 @@ Edite o `.env` e troque **obrigatoriamente**:
 Opcional: os dados de **e-mail** (`EMAIL_HOST`, `EMAIL_HOST_USER`...) para a régua de cobrança enviar
 mensagens. Sem eles, os e-mails só aparecem no log.
 
-Opcional, **alçada de compras**: ajuste os valores à política da empresa.
-
-| Variável | Padrão | Efeito |
-|---|---|---|
-| `COMPRAS_ALCADA_AUTOMATICA` | `500` | Pedidos até este valor (R$) são aprovados sem workflow |
-| `COMPRAS_ALCADA_DIRETORIA` | `10000` | Acima deste valor, o pedido também passa pela diretoria |
-| `COMPRAS_TOLERANCIA_PRECO_PCT` | `2` | Diferença de preço aceita entre pedido e nota na conferência em três vias (%) |
+Opcional: `COMPRAS_TOLERANCIA_PRECO_PCT` (padrão `2`) define a diferença de preço aceita entre o pedido e a
+nota na conferência em três vias, em %. Quem aprova os pedidos de compra (coordenador, gerente e diretor) e
+até quanto é cadastrado pela tela **Compras → Alçadas de aprovação** (veja o Manual, seção 6.3).
 
 > Use senhas diferentes e fortes (12 ou mais caracteres). Não use `CARREGAR_DEMO=1` em produção.
 
@@ -375,8 +371,9 @@ sudo systemctl restart erp-web erp-agendador
 **Nativo (Windows):** pare o `iniciar_windows.bat`, rode `git pull` e execute de novo `instalar_windows.ps1`.
 
 **Ao atualizar para a versão com Compras e parceiro de negócios único:** a migração junta automaticamente
-clientes e fornecedores com o mesmo CPF/CNPJ (veja o Manual, seção 5.1), e o `setup_erp` cria os processos
-de aprovação de compras e as permissões do grupo *Compras*. Faça o backup antes.
+clientes e fornecedores com o mesmo CPF/CNPJ (veja o Manual, seção 5.1), e o `setup_erp` cria o processo de
+aprovação de compras e as permissões do grupo *Compras*. Depois, cadastre ao menos a **alçada padrão** em
+Compras → Alçadas de aprovação. Sem ela, nenhum pedido pode ser enviado para aprovação. Faça o backup antes.
 
 > O `setup_erp` recria as permissões dos grupos padrão. Para personalizar permissões, crie
 > **grupos novos** em vez de alterar os padrão.

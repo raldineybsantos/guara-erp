@@ -188,6 +188,67 @@ class ItemCotacao(models.Model):
         return (self.quantidade * self.valor_unitario).quantize(D2)
 
 
+# --------------------------------------------------------------------------- alçadas
+class AlcadaCompra(ModeloBase):
+    """Quem aprova pedidos de compra e até quanto. Uma linha por departamento; a linha sem
+    departamento é o padrão da empresa.
+
+    Todo pedido passa pelo coordenador. Acima do limite do coordenador sobe ao gerente; acima do
+    limite do gerente sobe ao diretor. Para exigir os três níveis em todos os pedidos, use limite 0.
+    """
+
+    NIVEIS = [("coordenador", "Coordenador"), ("gerente", "Gerente"), ("diretor", "Diretor")]
+    departamento = models.OneToOneField(
+        Departamento, null=True, blank=True, on_delete=models.CASCADE, related_name="alcada_compra",
+        error_messages={"unique": "Já existe alçada para este departamento (ou já há uma alçada padrão)."},
+        help_text="Deixe em branco para a alçada padrão, usada pelos departamentos sem alçada própria.")
+    coordenador = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    limite_coordenador = models.DecimalField(
+        "coordenador aprova até (R$)", max_digits=14, decimal_places=2, default=Decimal("1000"),
+        help_text="Pedidos acima deste valor sobem ao gerente.")
+    gerente = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    limite_gerente = models.DecimalField(
+        "gerente aprova até (R$)", max_digits=14, decimal_places=2, default=Decimal("10000"),
+        help_text="Pedidos acima deste valor sobem ao diretor.")
+    diretor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+",
+                                help_text="Aprova sem limite.")
+
+    class Meta:
+        verbose_name = "alçada de aprovação"
+        verbose_name_plural = "alçadas de aprovação"
+        ordering = ["departamento__nome"]
+        constraints = [models.UniqueConstraint(fields=["departamento"], nulls_distinct=False,
+                                               name="alcada_compra_departamento_unico",
+                                               violation_error_message="Já existe alçada para este departamento.")]
+
+    def __str__(self):
+        return f"Alçada {self.departamento or 'padrão da empresa'}"
+
+    def escopo(self):
+        return str(self.departamento) if self.departamento_id else "Padrão da empresa"
+    escopo.short_description = "departamento"
+
+    def clean(self):
+        super().clean()
+        if self.limite_gerente is not None and self.limite_coordenador is not None \
+                and self.limite_gerente < self.limite_coordenador:
+            raise ValidationError({"limite_gerente": "O limite do gerente não pode ser menor que o do coordenador."})
+
+    @classmethod
+    def para(cls, departamento):
+        alcada = cls.objects.filter(departamento=departamento).first() if departamento else None
+        return alcada or cls.objects.filter(departamento__isnull=True).first()
+
+    def niveis_para(self, valor):
+        """Aprovadores exigidos para o valor, em ordem: [(nivel, usuário)]."""
+        niveis = [("coordenador", self.coordenador)]
+        if valor > self.limite_coordenador:
+            niveis.append(("gerente", self.gerente))
+        if valor > self.limite_gerente:
+            niveis.append(("diretor", self.diretor))
+        return niveis
+
+
 # --------------------------------------------------------------------------- pedido
 class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "PC"
@@ -207,6 +268,8 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     condicao_pagamento = models.CharField(
         "condição de pagamento", max_length=40, default="30",
         help_text="Dias após a nota, separados por barra. Ex.: 30 ou 30/60/90.")
+    departamento = models.ForeignKey(Departamento, null=True, blank=True, on_delete=models.PROTECT, related_name="+",
+                                     help_text="Define a alçada de aprovação. Vem da solicitação, se houver.")
     centro_custo = models.ForeignKey("financeiro.CentroCusto", verbose_name="centro de custo", null=True, blank=True,
                                      on_delete=models.PROTECT, related_name="+")
     plano_conta = models.ForeignKey("financeiro.PlanoConta", verbose_name="categoria (plano de contas)", null=True,
@@ -217,6 +280,13 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     valor_total = models.DecimalField("valor total", max_digits=14, decimal_places=2, default=0, editable=False)
     status = models.CharField(max_length=12, choices=STATUS, default="rascunho", editable=False, db_index=True)
     motivo_status = models.TextField("motivo", blank=True, editable=False)
+    # Aprovadores definidos pela alçada no envio (fotografia: mudar a alçada depois não altera o pedido em curso).
+    aprovador_coordenador = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="coordenador", null=True,
+                                              blank=True, on_delete=models.PROTECT, related_name="+", editable=False)
+    aprovador_gerente = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="gerente", null=True, blank=True,
+                                          on_delete=models.PROTECT, related_name="+", editable=False)
+    aprovador_diretor = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="diretor", null=True, blank=True,
+                                          on_delete=models.PROTECT, related_name="+", editable=False)
 
     class Meta:
         verbose_name = "pedido de compra"
@@ -226,6 +296,8 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     def save(self, *args, **kwargs):
         if not self.pk and not self.comprador_id:
             self.comprador = usuario_atual()
+        if not self.departamento_id and self.solicitacao_id:
+            self.departamento_id = self.solicitacao.departamento_id
         super().save(*args, **kwargs)
 
     def recalcular(self):
@@ -245,8 +317,8 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
 
     # ---------------------------------------------------------------- alçada
     def enviar_para_aprovacao(self, usuario):
-        """Aplica a alçada: até o limite automático aprova direto; acima, vai ao workflow de compras
-        (e, acima do limite da diretoria, também à diretoria)."""
+        """Todo pedido vai ao coordenador; conforme o valor, sobe ao gerente e ao diretor
+        (cadastro em Compras → Alçadas de aprovação)."""
         from apps.workflow.models import Processo
 
         if self.status not in self.EDITAVEIS:
@@ -254,19 +326,48 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         self.recalcular()
         if not self.itens.exists() or self.valor_total <= 0:
             raise ValidationError("O pedido não tem itens com valor.")
-        if self.valor_total <= Decimal(str(settings.COMPRAS_ALCADA_AUTOMATICA)):
-            self._mudar("aprovado", f"Aprovado automaticamente (até R$ {settings.COMPRAS_ALCADA_AUTOMATICA}).")
-            return None
-        codigo = ("aprovacao-compra-diretoria"
-                  if self.valor_total > Decimal(str(settings.COMPRAS_ALCADA_DIRETORIA)) else "aprovacao-compra")
-        processo = Processo.objects.filter(codigo=codigo, ativo=True).first()
+        alcada = AlcadaCompra.para(self.departamento)
+        if alcada is None:
+            raise ValidationError("Não há alçada de aprovação cadastrada. Cadastre em Compras → Alçadas de "
+                                  "aprovação (a linha sem departamento vale para toda a empresa).")
+        processo = Processo.objects.filter(codigo="aprovacao-compra-alcada", ativo=True).first()
         if processo is None:
-            raise ValidationError(f"Processo '{codigo}' não encontrado. Rode `python manage.py setup_erp`.")
-        inst = processo.iniciar(f"Aprovar pedido {self.numero} — {self.fornecedor}"[:200], usuario,
-                                f"Fornecedor: {self.fornecedor}\nValor total: R$ {self.valor_total}\n"
-                                f"Itens: {self.itens.count()}", objeto=self)
+            raise ValidationError("Processo 'aprovacao-compra-alcada' não encontrado. Rode `python manage.py setup_erp`.")
+        niveis = dict(alcada.niveis_para(self.valor_total))
+        self.aprovador_coordenador = niveis.get("coordenador")
+        self.aprovador_gerente = niveis.get("gerente")
+        self.aprovador_diretor = niveis.get("diretor")
+        self.save(update_fields=["aprovador_coordenador", "aprovador_gerente", "aprovador_diretor"])
+        itens = "\n".join(f"- {i} · {i.quantidade:g} x R$ {i.valor_unitario:.2f} = R$ {i.total:.2f}"
+                          for i in self.itens.all())
+        inst = processo.iniciar(
+            f"Aprovar pedido {self.numero} — {self.fornecedor}"[:200], usuario,
+            f"Fornecedor: {self.fornecedor}\nDepartamento: {self.departamento or '—'}\n"
+            f"Valor total: R$ {self.valor_total}\nAprovação: "
+            f"{' → '.join(n.capitalize() for n in niveis)}\n\nItens:\n{itens}", objeto=self)
         self._mudar("em_aprovacao")
         return inst
+
+    def _aprovador_da_etapa(self, etapa):
+        nome = etapa.nome.lower()
+        for nivel in ("coordenador", "gerente", "diretor"):
+            if nivel in nome:
+                return nivel, getattr(self, f"aprovador_{nivel}")
+        return None, None
+
+    def workflow_pular(self, etapa):
+        nivel, aprovador = self._aprovador_da_etapa(etapa)
+        if nivel is None:
+            return False
+        if aprovador is None:
+            return True  # nível não exigido pela alçada para este valor
+        # A mesma pessoa em dois níveis aprova uma vez só.
+        anteriores = [getattr(self, f"aprovador_{n}") for n in ("coordenador", "gerente", "diretor")]
+        anteriores = anteriores[:["coordenador", "gerente", "diretor"].index(nivel)]
+        return aprovador in anteriores
+
+    def workflow_responsavel(self, etapa):
+        return self._aprovador_da_etapa(etapa)[1]
 
     def workflow_aprovado(self, instancia):
         self._mudar("aprovado")
