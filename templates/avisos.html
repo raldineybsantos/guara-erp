@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" class="mb-3">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary"><i class="bi bi-check2-all"></i> Marcar todos como lidos</button></form>
+<div class="list-group" style="max-width:900px">
+{% for a in avisos %}
+  <form method="post" class="list-group-item d-flex align-items-center gap-2 {% if not a.lida %}fw-semibold{% endif %}">{% csrf_token %}
+    <i class="bi bi-{% if a.lida %}bell{% else %}bell-fill text-primary{% endif %}"></i>
+    <button name="abrir" value="{{ a.pk }}" class="btn btn-link p-0 text-start text-decoration-none flex-grow-1 {% if a.lida %}text-body-secondary{% endif %}">{{ a.texto }}</button>
+    <small class="text-secondary text-nowrap">{{ a.criada_em|date:"d/m H:i" }}</small>
+  </form>
+{% empty %}<div class="list-group-item text-secondary">Nenhum aviso.</div>
+{% endfor %}
+</div>
+{% endblock %}

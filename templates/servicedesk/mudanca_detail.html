@@ -1,0 +1,7 @@
+{% extends "crud/detail.html" %}
+{% block antes_detalhe %}
+{% with conf=object.conflitos %}{% if conf and object.status in "rascunho em_aprovacao aprovada" %}
+<div class="alert alert-warning"><i class="bi bi-exclamation-triangle me-1"></i>A janela desta mudança coincide com
+  {% for m in conf %}<a href="{{ m.get_absolute_url }}">{{ m.numero }}</a> ({{ m.titulo }}){% if not forloop.last %}, {% endif %}{% endfor %}.</div>
+{% endif %}{% endwith %}
+{% endblock %}

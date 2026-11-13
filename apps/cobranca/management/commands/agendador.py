@@ -20,6 +20,7 @@ class Command(BaseCommand):
     def handle(self, *args, hora, **options):
         alvo = hora.strip()
         ultimo_dia = None
+        ultimo_sla = None
         self.stdout.write(f"Agendador ativo: régua de cobrança diariamente às {alvo}.")
         while True:
             agora = timezone.localtime()
@@ -41,4 +42,13 @@ class Command(BaseCommand):
                 except Exception as exc:
                     self.stderr.write(f"Erro nas rotinas de manutenção/SST: {exc}")
                 ultimo_dia = agora.date()
+            if ultimo_sla is None or (agora - ultimo_sla).total_seconds() >= 900:
+                try:  # a cada 15 minutos: avisos de SLA do Service Desk
+                    from apps.servicedesk.models import verificar_slas
+                    avisos, fechados = verificar_slas()
+                    if avisos or fechados:
+                        self.stdout.write(f"{agora:%H:%M} Service Desk: {avisos} aviso(s) de SLA, {fechados} fechado(s).")
+                except Exception as exc:
+                    self.stderr.write(f"Erro no SLA do Service Desk: {exc}")
+                ultimo_sla = agora
             time.sleep(30)

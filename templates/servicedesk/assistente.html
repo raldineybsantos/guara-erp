@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:860px">
+  <div class="card-body chat" style="min-height:320px">
+    <div class="chat-msg"><div class="chat-cab">Assistente</div><div class="chat-texto">Olá! Descreva o problema ou o que você precisa (por exemplo: "não consigo acessar a VPN", "preciso de uma cadeira", "meu holerite não apareceu"). Vou procurar uma solução pronta e, se não houver, indico o serviço certo para abrir o chamado.</div></div>
+    {% for m in conversa %}
+      {% if m.de == "usuario" %}
+      <div class="chat-msg minha"><div class="chat-cab">Você</div><div class="chat-texto">{{ m.texto }}</div></div>
+      {% else %}
+      <div class="chat-msg"><div class="chat-cab">Assistente</div><div class="chat-texto">{{ m.texto }}</div>
+        {% if m.artigos %}<div class="list-group mt-2">{% for a in m.artigos %}<a class="list-group-item list-group-item-action small" href="{% url 'servicedesk:artigo_ler' a.id %}"><i class="bi bi-book me-1"></i>{{ a.titulo }}{% if a.area %} <span class="text-secondary">· {{ a.area }}</span>{% endif %}</a>{% endfor %}</div>{% endif %}
+        {% if m.servicos %}<div class="mt-2 d-flex flex-wrap gap-1">{% for s in m.servicos %}<a class="btn btn-sm btn-outline-primary" href="{% url 'servicedesk:chamado_create' %}?servico={{ s.id }}&titulo={{ m.texto_original|truncatechars:100|urlencode }}"><i class="bi bi-plus-circle"></i> Abrir chamado: {{ s.nome }}</a>{% endfor %}</div>{% endif %}
+      </div>
+      {% endif %}
+    {% endfor %}
+  </div>
+  <form method="post" class="card-footer bg-body d-flex gap-2">{% csrf_token %}
+    <input name="texto" class="form-control" placeholder="Descreva o problema..." autofocus autocomplete="off" maxlength="500">
+    <button class="btn btn-primary"><i class="bi bi-send"></i></button>
+    <button name="limpar" value="1" class="btn btn-outline-secondary" title="Nova conversa"><i class="bi bi-arrow-counterclockwise"></i></button>
+  </form>
+</div>
+<p class="small text-secondary mt-2">Prefere escolher direto? <a href="{% url 'servicedesk:catalogo' %}">Ver o catálogo de serviços</a>.</p>
+{% endblock %}

@@ -336,3 +336,42 @@ class LogAuditoria(models.Model):
             objeto_id=str(obj.pk or ""), descricao=(descricao or str(obj))[:300],
             alteracoes=alteracoes or {},
         )
+
+
+# --------------------------------------------------------------------------- avisos
+class Notificacao(models.Model):
+    """Aviso para um usuário (sino da barra superior). Opcionalmente também vai por e-mail."""
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notificacoes")
+    texto = models.CharField(max_length=250)
+    url = models.CharField(max_length=250, blank=True)
+    lida = models.BooleanField(default=False, db_index=True)
+    criada_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "aviso"
+        verbose_name_plural = "avisos"
+        ordering = ["-criada_em"]
+
+    def __str__(self):
+        return self.texto
+
+
+def notificar(usuarios, texto, url="", email=False):
+    """Cria o aviso para cada usuário (ignora vazios e repetidos) e, se pedido, manda e-mail."""
+    from django.core.mail import send_mail
+
+    vistos = set()
+    for u in usuarios:
+        if u is None or u.pk in vistos or not u.is_active:
+            continue
+        vistos.add(u.pk)
+        Notificacao.objects.create(usuario=u, texto=texto[:250], url=url)
+        if email and u.email:
+            try:
+                base = getattr(settings, "ERP_URL_BASE", "")
+                send_mail(f"[Guará ERP] {texto[:120]}", f"{texto}\n\n{base}{url}", None, [u.email],
+                          fail_silently=True)
+            except Exception:  # aviso por e-mail nunca derruba a operação
+                pass
+    return len(vistos)

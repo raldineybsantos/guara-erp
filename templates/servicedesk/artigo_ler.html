@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:860px">
+  <div class="card-body">
+    <div class="small text-secondary mb-2">{{ artigo.area|default:"Geral" }}{% if not artigo.publico %} · <span class="text-warning">procedimento interno</span>{% endif %} · {{ artigo.visualizacoes }} leitura(s)</div>
+    <h2 class="h6">Problema</h2><p style="white-space:pre-wrap">{{ artigo.sintoma }}</p>
+    <h2 class="h6">Solução</h2><div style="white-space:pre-wrap">{{ artigo.solucao }}</div>
+  </div>
+  <form method="post" class="card-footer bg-body d-flex align-items-center gap-2">{% csrf_token %}
+    <span class="small">Isso resolveu?</span>
+    <button name="util" value="sim" class="btn btn-sm btn-success"><i class="bi bi-hand-thumbs-up"></i> Sim, resolveu</button>
+    <button name="util" value="nao" class="btn btn-sm btn-outline-danger"><i class="bi bi-hand-thumbs-down"></i> Não, abrir chamado</button>
+    {% if perms.servicedesk.change_artigoconhecimento %}<a class="ms-auto small" href="{% url 'servicedesk:artigoconhecimento_update' artigo.pk %}">Editar artigo</a>{% endif %}
+  </form>
+</div>
+{% endblock %}

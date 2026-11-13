@@ -1,0 +1,2 @@
+{% extends "crud/detail.html" %}
+{% block botoes_extra %}<a href="{% url 'servicedesk:artigo_ler' object.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i> Ver como o usuário vê</a>{% endblock %}

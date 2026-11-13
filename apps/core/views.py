@@ -153,3 +153,25 @@ class LoginView(auth_views.LoginView):
             form.errors.clear()
             return self.render_to_response(self.get_context_data(form=form, bloqueado=True), status=429)
         return super().post(request, *args, **kwargs)
+
+
+@login_required
+def avisos(request):
+    """Lista de avisos do usuário. Abrir um aviso marca como lido e leva ao registro."""
+    from django.shortcuts import get_object_or_404
+
+    from .models import Notificacao
+
+    qs = Notificacao.objects.filter(usuario=request.user)
+    if request.method == "POST":
+        if request.POST.get("abrir"):
+            n = get_object_or_404(qs, pk=request.POST["abrir"])
+            n.lida = True
+            n.save(update_fields=["lida"])
+            from django.utils.http import url_has_allowed_host_and_scheme
+
+            destino = n.url if url_has_allowed_host_and_scheme(n.url, None) and n.url.startswith("/") else "avisos"
+            return redirect(destino)
+        qs.filter(lida=False).update(lida=True)
+        return redirect("avisos")
+    return render(request, "avisos.html", {"titulo": "Avisos", "icone": "bell", "avisos": qs[:100]})

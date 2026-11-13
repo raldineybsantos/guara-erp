@@ -130,3 +130,15 @@ body { background: var(--bs-tertiary-bg); font-size: .925rem; }
 .nav-pills .nav-link { color: var(--bs-body-color); }
 @media (max-width: 991px) { .kanban { grid-template-columns: repeat(4, 80vw); } }
 .kanban-marcador { border: 2px dashed var(--guara-laranja); border-radius: .55rem; background: rgba(195,95,35,.06); flex-shrink: 0; }
+
+/* Service Desk: chat do chamado e assistente */
+.chat { display: flex; flex-direction: column; gap: .5rem; background: var(--bs-tertiary-bg); }
+.chat-msg { max-width: 80%; align-self: flex-start; background: var(--bs-body-bg); border-radius: .75rem;
+  padding: .45rem .7rem; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.chat-msg.minha { align-self: flex-end; background: var(--bs-primary-bg-subtle); }
+.chat-msg.interna { background: var(--bs-warning-bg-subtle); border: 1px dashed var(--bs-warning-border-subtle); }
+.chat-msg.sistema { align-self: center; background: transparent; box-shadow: none; font-style: italic; }
+.chat-cab { font-size: .75rem; color: var(--bs-secondary-color); margin-bottom: .15rem; }
+.chat-texto { white-space: pre-wrap; word-break: break-word; }
+.catalogo-card { transition: box-shadow .15s; }
+.catalogo-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.12); }

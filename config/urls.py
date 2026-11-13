@@ -16,6 +16,7 @@ admin.site.index_title = "Administração do sistema"
 
 urlpatterns = [
     path("", core_views.dashboard, name="dashboard"),
+    path("avisos/", core_views.avisos, name="avisos"),
     path("login/", core_views.LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("senha/", auth_views.PasswordChangeView.as_view(template_name="form_simples.html",
@@ -34,6 +35,7 @@ urlpatterns = [
     path("juridico/", include("apps.juridico.urls")),
     path("compras/", include("apps.compras.urls")),
     path("estoque/", include("apps.estoque.urls")),
+    path("servicedesk/", include("apps.servicedesk.urls")),
     path("sst/", include("apps.sst.urls")),
     path("crm/", include("apps.crm.urls")),
     path("projetos/", include("apps.projetos.urls")),

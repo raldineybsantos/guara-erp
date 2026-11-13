@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.juridico",
     "apps.compras",
     "apps.estoque",
+    "apps.servicedesk",
     "apps.sst",
     "apps.crm",
     "apps.projetos",
@@ -89,6 +90,7 @@ TEMPLATES = [
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
                 "apps.core.context_processors.menu",
+                "apps.core.context_processors.avisos",
             ],
         },
     },
@@ -181,6 +183,10 @@ PROJETOS_HORAS_MES = os.getenv("PROJETOS_HORAS_MES", "220")
 PROJETOS_ENCARGOS_FATOR = os.getenv("PROJETOS_ENCARGOS_FATOR", "1.0")
 # SST: antecedência do alerta de ASO e reciclagem de NR vencendo (dias).
 SST_ALERTA_DIAS = int(os.getenv("SST_ALERTA_DIAS", "30"))
+# Service Desk: horário em que o SLA corre (seg a sex) ou "24x7"; dias para fechar sozinho o chamado
+# resolvido que o usuário não confirmou.
+SERVICEDESK_HORARIO = os.getenv("SERVICEDESK_HORARIO", "08:00-18:00")
+SERVICEDESK_DIAS_FECHAMENTO = int(os.getenv("SERVICEDESK_DIAS_FECHAMENTO", "3"))
 
 # Tamanho máximo de arquivos enviados (GED, XML)
 ARQUIVO_MAX_MB = int(os.getenv("ARQUIVO_MAX_MB", "50"))
@@ -206,6 +212,8 @@ if os.getenv("EMAIL_HOST"):
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "erp@localhost")
+# Endereço do ERP usado nos links dos e-mails (ex.: https://erp.empresa.com.br)
+ERP_URL_BASE = os.getenv("ERP_URL_BASE", "").rstrip("/")
 
 LOGGING = {
     "version": 1,

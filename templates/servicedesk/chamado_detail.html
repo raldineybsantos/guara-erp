@@ -1,0 +1,110 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+{% with c=object %}
+<div class="d-flex flex-wrap gap-2 mb-3 no-print">
+  <a href="{{ url_list }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Chamados</a>
+  {% if equipe %}<a href="{% url 'servicedesk:fila' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-inboxes"></i> Fila</a>{% endif %}
+  {% if equipe and c.status in "aberto atendimento" %}
+    {% if c.analista_id != user.pk %}<form method="post" action="{% url 'servicedesk:assumir' c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-primary"><i class="bi bi-person-check"></i> Assumir</button></form>{% endif %}
+    <a href="{% url 'servicedesk:chamar_usuario' c.pk %}" class="btn btn-sm btn-outline-warning"><i class="bi bi-megaphone"></i> Chamar o usuário</a>
+  {% endif %}
+  {% if equipe and c.status in "aberto atendimento aguardando_usuario" %}
+    <a href="{% url 'servicedesk:resolver' c.pk %}" class="btn btn-sm btn-success"><i class="bi bi-check2-circle"></i> Resolver</a>
+    <a href="{% url 'servicedesk:transferir' c.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left-right"></i> Transferir</a>
+  {% endif %}
+  {% if c.status == "resolvido" and c.solicitante_id == user.pk %}
+    <a href="{% url 'servicedesk:fechar' c.pk %}" class="btn btn-sm btn-success"><i class="bi bi-star"></i> Confirmar e avaliar</a>
+  {% endif %}
+  {% if c.status == "resolvido" %}<a href="{% url 'servicedesk:reabrir' c.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-arrow-counterclockwise"></i> Não resolveu, reabrir</a>{% endif %}
+  {% if c.status in "aguardando_aprovacao aberto atendimento aguardando_usuario" %}<a href="{% url 'servicedesk:cancelar' c.pk %}" class="btn btn-sm btn-link text-secondary ms-auto">Cancelar chamado</a>{% endif %}
+</div>
+<div class="row g-3">
+  <div class="col-lg-8">
+    <div class="card mb-3">
+      <div class="card-header bg-body d-flex align-items-center gap-2"><strong>{{ c.numero }}</strong> {{ c.titulo }} <span class="ms-auto">{{ c.get_status_display|badge }}</span></div>
+      <div class="card-body">
+        <div class="small text-secondary mb-2">{{ c.servico }} · aberto por {{ c.solicitante.get_full_name|default:c.solicitante.username }} em {{ c.criado_em|date:"d/m/Y H:i" }}</div>
+        <div style="white-space:pre-wrap">{{ c.descricao }}</div>
+        {% if c.solucao %}<div class="alert alert-success mt-3 mb-0"><strong>Solução:</strong> <span style="white-space:pre-wrap">{{ c.solucao }}</span>{% if c.artigo %} · <a href="{% url 'servicedesk:artigo_ler' c.artigo_id %}">{{ c.artigo }}</a>{% endif %}</div>{% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header bg-body d-flex align-items-center"><strong><i class="bi bi-chat-dots me-1"></i>Conversa</strong>
+        <small class="ms-auto text-secondary" id="chat-status">atualiza sozinha</small></div>
+      <div class="card-body chat" id="chat" style="max-height:440px;overflow-y:auto"></div>
+      {% if c.status not in "fechado cancelado recusado" %}
+      <form class="card-footer bg-body d-flex gap-2 align-items-end" id="chat-form">
+        <textarea class="form-control" name="texto" rows="2" placeholder="Escreva uma mensagem (Ctrl+Enter envia)" required></textarea>
+        <div class="d-flex flex-column gap-1">
+          {% if equipe %}<label class="small text-nowrap"><input type="checkbox" name="interna" value="1"> nota interna</label>{% endif %}
+          <button class="btn btn-primary"><i class="bi bi-send"></i></button>
+        </div>
+      </form>{% endif %}
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card mb-3">
+      <div class="card-header bg-body"><strong>SLA</strong> <span class="float-end">{{ c.status_sla|badge }}</span></div>
+      <ul class="list-group list-group-flush small">
+        <li class="list-group-item d-flex"><span>Prioridade</span><span class="ms-auto">{{ c.get_prioridade_display }}</span></li>
+        <li class="list-group-item d-flex"><span>1ª resposta até</span><span class="ms-auto">{{ c.prazo_resposta|date:"d/m H:i"|default:"—" }}</span></li>
+        <li class="list-group-item d-flex"><span>1ª resposta em</span><span class="ms-auto">{{ c.primeira_resposta_em|date:"d/m H:i"|default:"—" }}</span></li>
+        <li class="list-group-item d-flex"><span>Solução até</span><span class="ms-auto">{% if c.status == "aguardando_usuario" %}pausado{% else %}{{ c.prazo_solucao|date:"d/m H:i"|default:"—" }}{% endif %}</span></li>
+        <li class="list-group-item d-flex"><span>Resolvido em</span><span class="ms-auto">{{ c.resolvido_em|date:"d/m H:i"|default:"—" }}</span></li>
+      </ul>
+    </div>
+    <div class="card mb-3"><ul class="list-group list-group-flush small">
+      <li class="list-group-item d-flex"><span>Área</span><span class="ms-auto">{{ c.area }}</span></li>
+      <li class="list-group-item d-flex"><span>Analista</span><span class="ms-auto">{% if c.analista %}{{ c.analista.get_full_name|default:c.analista.username }}{% else %}—{% endif %}</span></li>
+      {% if c.aprovador %}<li class="list-group-item d-flex"><span>Aprovador</span><span class="ms-auto">{{ c.aprovador.get_full_name|default:c.aprovador.username }}</span></li>{% endif %}
+      {% if c.avaliacao %}<li class="list-group-item d-flex"><span>Avaliação</span><span class="ms-auto text-warning">{% for i in "12345" %}{% if forloop.counter <= c.avaliacao %}★{% else %}☆{% endif %}{% endfor %}</span></li>{% endif %}
+      {% for m in c.mudancas.all %}<li class="list-group-item d-flex"><span>Mudança</span><a class="ms-auto" href="{{ m.get_absolute_url }}">{{ m.numero }} ({{ m.get_status_display }})</a></li>{% endfor %}
+    </ul></div>
+    {% if sugestoes %}<div class="card"><div class="card-header bg-body"><strong><i class="bi bi-book me-1"></i>Soluções parecidas</strong></div>
+      <div class="list-group list-group-flush">{% for a in sugestoes %}<a class="list-group-item list-group-item-action small" href="{% url 'servicedesk:artigo_ler' a.pk %}">{{ a.titulo }}</a>{% endfor %}</div></div>{% endif %}
+  </div>
+</div>
+{% endwith %}
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const url = "{% url 'servicedesk:mensagens' object.pk %}";
+  const chat = document.getElementById("chat"), form = document.getElementById("chat-form");
+  const csrf = "{{ csrf_token }}";
+  let ultimo = 0;
+  function bolha(m) {
+    const d = document.createElement("div");
+    d.className = "chat-msg" + (m.minha ? " minha" : "") + (m.interna ? " interna" : "") + (m.sistema ? " sistema" : "");
+    const cab = document.createElement("div"); cab.className = "chat-cab";
+    cab.textContent = m.autor + " · " + m.data + (m.interna ? " · nota interna" : "");
+    const t = document.createElement("div"); t.className = "chat-texto"; t.textContent = m.texto;
+    d.append(cab, t); return d;
+  }
+  async function carregar() {
+    try {
+      const r = await fetch(url + "?depois=" + ultimo, {headers: {"X-Requested-With": "fetch"}});
+      if (!r.ok) return;
+      const j = await r.json();
+      const embaixo = chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 30;
+      for (const m of j.mensagens) { chat.append(bolha(m)); ultimo = m.id; }
+      if (!chat.children.length) chat.innerHTML = '<p class="text-secondary small mb-0" id="vazio">Nenhuma mensagem ainda.</p>';
+      else document.getElementById("vazio")?.remove();
+      if (j.mensagens.length && embaixo) chat.scrollTop = chat.scrollHeight;
+    } catch (e) { document.getElementById("chat-status").textContent = "sem conexão"; }
+  }
+  if (form) {
+    form.addEventListener("submit", async ev => {
+      ev.preventDefault();
+      const dados = new FormData(form);
+      const r = await fetch(url, {method: "POST", body: dados, headers: {"X-CSRFToken": csrf}});
+      if (r.ok) { form.texto.value = ""; await carregar(); chat.scrollTop = chat.scrollHeight; }
+      else { const j = await r.json().catch(() => ({})); document.getElementById("chat-status").textContent = j.erro || "Não foi possível enviar."; }
+    });
+    form.texto.addEventListener("keydown", ev => { if (ev.key === "Enter" && ev.ctrlKey) form.requestSubmit(); });
+  }
+  carregar().then(() => chat.scrollTop = chat.scrollHeight);
+  setInterval(carregar, 5000);
+})();
+</script>
+{% endblock %}

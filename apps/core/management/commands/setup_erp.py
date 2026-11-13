@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -23,7 +23,14 @@ BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_ins
           "manutencao.view_pecaos",
           "projetos.view_projeto", "projetos.view_tarefaprojeto", "projetos.view_apontamentohoras",
           "projetos.add_apontamentohoras", "projetos.change_apontamentohoras", "projetos.delete_apontamentohoras",
-          "sst.view_incidente", "sst.add_incidente"]
+          "sst.view_incidente", "sst.add_incidente",
+          # ... e abrir chamados no Service Desk e consultar a biblioteca de soluções
+          "servicedesk.view_chamado", "servicedesk.add_chamado", "servicedesk.view_servico", "servicedesk.view_area",
+          "servicedesk.view_artigoconhecimento", "servicedesk.view_mudanca"]
+
+# Equipes que atendem chamados das suas áreas (TI fica no grupo "Service Desk").
+ATENDIMENTO = ["servicedesk.change_chamado", "servicedesk.add_artigoconhecimento",
+               "servicedesk.change_artigoconhecimento", "servicedesk.add_mudanca", "servicedesk.change_mudanca"]
 
 # Cadastros que não contêm dados pessoais sensíveis. Colaboradores (CPF, salário) e a auditoria
 # ficam restritos a RH e Administradores (LGPD / necessidade de saber).
@@ -68,6 +75,8 @@ GRUPOS = {
                    "compras.add_solicitacaocompra"],
     "Projetos": ["projetos.*", "core.view_cliente", "financeiro.view_contapagar", "financeiro.view_centrocusto"],
     "SESMT": ["sst.*", "core.view_colaborador", "fiscal.view_produto", "estoque.view_saldo"],
+    "Service Desk": ["servicedesk.*", "core.view_colaborador"],
+    "CAB": ["servicedesk.view_mudanca", "servicedesk.view_chamado"],
     "Usuários": [],
 }
 
@@ -123,12 +132,16 @@ class Command(BaseCommand):
         grupos = {}
         for nome, padroes in GRUPOS.items():
             g, _ = Group.objects.get_or_create(name=nome)
-            perms = _permissoes(padroes + BASICO)
+            extra = ATENDIMENTO if nome in ("Manutenção", "RH", "Financeiro", "Fiscal", "Compras") else []
+            perms = _permissoes(padroes + BASICO + extra)
             if nome != "Administradores":
                 # Segregação de funções: quem compra não define quem aprova (alçadas) ...
                 perms = [p for p in perms if not (p.content_type.app_label == "compras"
                                                   and p.codename.endswith("_alcadacompra")
                                                   and not p.codename.startswith("view_"))]
+            if nome != "Administradores":
+                # Chamados de RH, Financeiro etc. podem ser sensíveis: cada equipe vê só os da sua área.
+                perms = [p for p in perms if p.codename != "ver_todos_chamado"]
             if nome == "Vendas":
                 # ... e quem vende não libera o próprio crédito (fica com o Financeiro).
                 perms = [p for p in perms if p.codename != "liberar_credito_pedidovenda"]
@@ -174,6 +187,23 @@ class Command(BaseCommand):
                                                 "centro de custo.")
         # Versão anterior (alçada por variáveis de ambiente): fica inativa; pedidos em curso terminam nela.
         Processo.objects.filter(codigo__in=["aprovacao-compra", "aprovacao-compra-diretoria"]).update(ativo=False)
+
+        # Service Desk: aprovação do chamado (aprovador definido pelo serviço) e da mudança (gestor + CAB).
+        proc6, criado = Processo.objects.get_or_create(codigo="aprovacao-servico", defaults={
+            "nome": "Aprovação de chamado do Service Desk",
+            "descricao": "Serviços do catálogo que exigem aprovação antes do atendimento."})
+        if criado:
+            Etapa.objects.create(processo=proc6, ordem=1, nome="Aprovação do gestor", tipo="aprovacao", prazo_dias=1,
+                                 instrucoes="Aprove se a solicitação é necessária e está de acordo com a política.")
+        proc7, criado = Processo.objects.get_or_create(codigo="aprovacao-mudanca", defaults={
+            "nome": "Aprovação de mudança (RDM)",
+            "descricao": "Gestor da área e comitê de mudanças (CAB). Emergencial vai direto ao CAB."})
+        if criado:
+            Etapa.objects.create(processo=proc7, ordem=1, nome="Aprovação do gestor da área", tipo="aprovacao",
+                                 prazo_dias=2)
+            Etapa.objects.create(processo=proc7, ordem=2, nome="Aprovação do CAB", tipo="aprovacao",
+                                 grupo_responsavel=grupos["CAB"], prazo_dias=2,
+                                 instrucoes="Avalie risco, impacto, janela, plano de testes e plano de retorno.")
 
         proc3, criado = Processo.objects.get_or_create(codigo="aprovacao-contrato", defaults={
             "nome": "Aprovação de contrato",

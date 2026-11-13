@@ -268,6 +268,11 @@ class Crud:
     def after_save(cls, request, obj, created):
         pass
 
+    @classmethod
+    def extra_detalhe(cls, request, obj):
+        """Contexto adicional para templates de detalhe próprios."""
+        return {}
+
 
 def crud_urls(*cruds):
     padroes = []
@@ -434,6 +439,7 @@ class DetalheView(CrudMixin, generic.DetailView):
             {"url": reverse(nome, args=[obj.pk]), "rotulo": rot, "icone": ico}
             for nome, rot, ico, perm in c.actions if not perm or u.has_perm(perm)
         ]
+        ctx.update(c.extra_detalhe(self.request, obj))
         ctx["url_update"] = reverse(c.url_name("update"), args=[obj.pk])
         ctx["url_delete"] = reverse(c.url_name("delete"), args=[obj.pk])
         return ctx

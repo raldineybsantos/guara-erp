@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
@@ -19,6 +19,10 @@ LINKS_EXTRAS = [
     ("Jurídico", "Painel jurídico", "juridico:painel", "speedometer2", "juridico.view_contrato", 0),
     ("Estoque", "Movimentação manual", "estoque:movimentar", "pencil-square", "estoque.add_movimento", 3),
     ("Estoque", "Reposição (abaixo do mínimo)", "estoque:reposicao", "bell", "estoque.view_saldo", 6),
+    ("Service Desk", "Abrir chamado", "servicedesk:catalogo", "plus-circle", "servicedesk.add_chamado", 1),
+    ("Service Desk", "Assistente", "servicedesk:assistente", "robot", "servicedesk.add_chamado", 2),
+    ("Service Desk", "Fila de atendimento", "servicedesk:fila", "inboxes", "servicedesk.change_chamado", 0),
+    ("Administração", "Avisos", "avisos", "bell", None, 0),
     ("CRM", "Funil de vendas", "crm:funil", "kanban", "crm.view_oportunidade", 1),
     ("Fiscal", "Importar XML NF-e", "fiscal:importar_xml", "upload", "fiscal.add_notafiscal", 5),
     ("Fiscal", "Apuração de impostos", "fiscal:apuracao", "calculator", "fiscal.view_notafiscal", 6),
@@ -63,3 +67,12 @@ def menu(request):
                 ativo = ativo or link["ativo"]
             itens.append({"nome": g, "icone": ICONES_GRUPOS.get(g, "folder"), "links": links, "aberto": ativo})
     return {"menu_erp": itens, "PGADMIN_URL": settings.PGADMIN_URL}
+
+
+def avisos(request):
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        return {}
+    from .models import Notificacao
+
+    return {"avisos_nao_lidos": Notificacao.objects.filter(usuario=user, lida=False).count()}

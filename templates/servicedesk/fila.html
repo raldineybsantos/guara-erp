@@ -1,0 +1,32 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Em andamento</div><div class="valor">{{ ind.andamento }}</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">SLA vencido</div><div class="valor {% if ind.vencidos %}text-danger{% endif %}">{{ ind.vencidos }}</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Resolvidos no prazo (mês)</div><div class="valor">{% if ind.sla_mes is not None %}{{ ind.sla_mes }}%{% else %}—{% endif %}</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Satisfação média</div><div class="valor">{% if ind.satisfacao %}{{ ind.satisfacao|floatformat:1 }} ★{% else %}—{% endif %}</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Aguardando aprovação</div><div class="valor">{{ ind.aprovacao }}</div></div></div></div>
+</div>
+<ul class="nav nav-tabs mb-0">
+  {% for a in abas %}<li class="nav-item"><a class="nav-link {% if a.id == atual %}active{% endif %}" href="?v={{ a.id }}">{{ a.nome }} <span class="badge {% if a.id == 'vencidos' and a.n %}text-bg-danger{% else %}text-bg-light{% endif %}">{{ a.n }}</span></a></li>{% endfor %}
+  <li class="nav-item ms-auto small text-secondary align-self-center">Equipes: {{ areas|join:", " }}</li>
+</ul>
+<div class="card border-top-0 rounded-top-0"><div class="table-responsive"><table class="table table-sm table-hover mb-0 align-middle">
+  <thead class="table-light"><tr><th>Chamado</th><th>Solicitante</th><th>Área / serviço</th><th>Prioridade</th><th>Analista</th><th>Prazo</th><th>SLA</th><th></th></tr></thead>
+  <tbody>
+  {% for c in chamados %}
+    <tr>
+      <td><a href="{{ c.get_absolute_url }}"><strong>{{ c.numero }}</strong></a> {{ c.titulo|truncatechars:60 }}</td>
+      <td class="small">{{ c.solicitante.get_full_name|default:c.solicitante.username }}</td>
+      <td class="small">{{ c.area }}<br><span class="text-secondary">{{ c.servico.nome }}</span></td>
+      <td>{{ c.get_prioridade_display }}</td>
+      <td class="small">{% if c.analista %}{{ c.analista.get_full_name|default:c.analista.username }}{% else %}—{% endif %}</td>
+      <td class="small text-nowrap">{% if c.status == "aguardando_usuario" %}pausado{% else %}{{ c.prazo_solucao|date:"d/m H:i" }}{% endif %}</td>
+      <td>{{ c.status_sla|badge }}</td>
+      <td class="text-end">{% if not c.analista_id %}<form method="post" action="{% url 'servicedesk:assumir' c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary py-0">Assumir</button></form>{% endif %}</td>
+    </tr>
+  {% empty %}<tr><td colspan="8" class="text-center text-secondary py-4">Nada por aqui.</td></tr>
+  {% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}
