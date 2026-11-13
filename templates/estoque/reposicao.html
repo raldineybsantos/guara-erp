@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+{% if abaixo %}
+<div class="card mb-3"><div class="card-body p-0">
+<table class="table table-sm mb-0">
+  <thead><tr><th>Produto</th><th class="text-end">Saldo disponível</th><th class="text-end">Mínimo</th><th class="text-end">Sugestão de compra</th></tr></thead>
+  <tbody>{% for a in abaixo %}
+    <tr><td>{{ a.produto }}</td><td class="text-end text-danger">{{ a.saldo|floatformat:"-4" }}</td><td class="text-end">{{ a.minimo|floatformat:"-4" }}</td><td class="text-end">{{ a.comprar|floatformat:"-4" }} {{ a.produto.unidade }}</td></tr>
+  {% endfor %}</tbody>
+</table></div></div>
+<p class="small text-secondary">A sugestão leva o saldo ao dobro do mínimo. Ajuste na solicitação antes de cotar.</p>
+{% if perms.compras.add_solicitacaocompra %}
+<form method="post">{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-cart-plus"></i> Gerar solicitação de compra</button></form>
+{% endif %}
+{% else %}
+<div class="alert alert-success">Nenhum produto abaixo do estoque mínimo.</div>
+{% endif %}
+{% endblock %}

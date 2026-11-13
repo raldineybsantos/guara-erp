@@ -33,6 +33,7 @@ urlpatterns = [
     path("tarefas/", include("apps.tarefas.urls")),
     path("juridico/", include("apps.juridico.urls")),
     path("compras/", include("apps.compras.urls")),
+    path("estoque/", include("apps.estoque.urls")),
     # O login do Admin passa pela mesma tela (com bloqueio por tentativas e auditoria)
     path("admin/login/", RedirectView.as_view(url="/login/", query_string=True)),
     path("admin/", admin.site.urls),

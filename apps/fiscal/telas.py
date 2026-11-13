@@ -6,7 +6,8 @@ from .models import ItemNota, NotaFiscal, Produto
 class ProdutoCrud(Crud):
     model = Produto
     fields = ["codigo", "descricao", "tipo", "unidade", "ncm", "cest", "codigo_servico", "cfop_padrao", "preco",
-              "aliquota_icms", "aliquota_ipi", "aliquota_pis", "aliquota_cofins", "aliquota_iss", "ativo"]
+              "aliquota_icms", "aliquota_ipi", "aliquota_pis", "aliquota_cofins", "aliquota_iss", "estoque_minimo",
+              "inspecionar_recebimento", "ativo"]
     list_display = ("codigo", "descricao", "tipo", "unidade", "ncm", "preco", "ativo")
     search_fields = ("codigo", "descricao", "ncm")
     filter_fields = ("tipo", "ativo")

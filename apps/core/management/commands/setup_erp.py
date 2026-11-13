@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -37,10 +37,14 @@ GRUPOS = {
     "Jurídico": ["juridico.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                  "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "ged.add_pasta", "financeiro.view_contapagar",
                  "financeiro.view_contareceber"],
-    "Compras": ["compras.*", "fiscal.view_produto", "fiscal.add_produto",
+    "Compras": ["compras.*", "estoque.view_saldo", "estoque.view_movimento", "estoque.view_armazem", "fiscal.view_produto", "fiscal.add_produto",
                 "core.view_fornecedor", "core.add_fornecedor", "core.change_fornecedor", "core.view_parceironegocio",
                 "core.change_parceironegocio",
                 "financeiro.view_contapagar", "financeiro.add_contapagar", "fiscal.view_*", "fiscal.add_notafiscal"],
+    "Estoque": ["estoque.*", "fiscal.view_produto", "fiscal.add_produto", "fiscal.change_produto",
+                "compras.view_pedidocompra", "compras.view_itempedido", "compras.view_recebimentocompra",
+                "compras.add_recebimentocompra", "compras.change_recebimentocompra",
+                "compras.add_solicitacaocompra", "core.view_fornecedor"],
     "Usuários": [],
 }
 

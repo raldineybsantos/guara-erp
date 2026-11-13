@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.tarefas",
     "apps.juridico",
     "apps.compras",
+    "apps.estoque",
 ]
 
 MIDDLEWARE = [
@@ -161,6 +162,9 @@ ASSINATURA_TSA_URL = os.getenv("ASSINATURA_TSA_URL", "")
 # Compras: tolerância de preço na conferência em três vias (%). As alçadas de aprovação
 # (coordenador, gerente, diretor) ficam na tela Compras → Alçadas de aprovação.
 COMPRAS_TOLERANCIA_PRECO_PCT = os.getenv("COMPRAS_TOLERANCIA_PRECO_PCT", "2")
+
+# Estoque: 1 permite saldo negativo (não recomendado; o padrão bloqueia a saída sem saldo).
+ESTOQUE_PERMITE_NEGATIVO = os.getenv("ESTOQUE_PERMITE_NEGATIVO", "0") == "1"
 
 # Tamanho máximo de arquivos enviados (GED, XML)
 ARQUIVO_MAX_MB = int(os.getenv("ARQUIVO_MAX_MB", "50"))

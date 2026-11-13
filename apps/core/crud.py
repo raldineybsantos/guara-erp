@@ -181,6 +181,7 @@ class Crud:
     detail_fields = None           # None = todos
     related = ()                   # [(related_name, titulo, [campos])]
     inline = None                  # (ModelFilho, [campos], extra)
+    inline_no_detalhe = True       # False quando `related` já mostra os filhos com mais colunas
     actions = ()                   # [(url_name, rótulo, ícone, permissão)] mostrados no detalhe
     list_template = "crud/list.html"
     detail_template = "crud/detail.html"
@@ -418,7 +419,7 @@ class DetalheView(CrudMixin, generic.DetailView):
                 "colunas": [rotulo(rel_model, n) for n in campos],
                 "linhas": [(i, [valor_exibicao(i, n) for n in campos]) for i in itens],
             })
-        if c.inline:
+        if c.inline and c.inline_no_detalhe:
             filho, campos, _extra = c.inline
             fk = next(f for f in filho._meta.fields if f.is_relation and f.related_model is c.model)
             itens = filho._default_manager.filter(**{fk.name: obj})

@@ -27,6 +27,11 @@ class Produto(ModeloBase):
     aliquota_pis = models.DecimalField("alíquota PIS %", max_digits=5, decimal_places=2, default=0)
     aliquota_cofins = models.DecimalField("alíquota COFINS %", max_digits=5, decimal_places=2, default=0)
     aliquota_iss = models.DecimalField("alíquota ISS %", max_digits=5, decimal_places=2, default=0)
+    estoque_minimo = models.DecimalField("estoque mínimo", max_digits=14, decimal_places=4, default=0,
+                                         help_text="Abaixo disso o produto aparece no alerta de reposição.")
+    inspecionar_recebimento = models.BooleanField(
+        "inspecionar no recebimento", default=False,
+        help_text="Entradas de compra vão para o armazém de quarentena até a Qualidade aprovar.")
     ativo = models.BooleanField(default=True)
 
     class Meta:

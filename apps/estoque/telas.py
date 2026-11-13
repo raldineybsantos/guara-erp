@@ -1,0 +1,73 @@
+from django.core.exceptions import ValidationError
+
+from apps.core.crud import Crud, FormBase
+
+from .models import Armazem, Inventario, ItemInventario, Movimento, Saldo
+
+
+class ArmazemCrud(Crud):
+    model = Armazem
+    fields = ["codigo", "nome", "tipo", "padrao", "ativo"]
+    list_display = ("codigo", "nome", "tipo", "padrao", "ativo")
+    search_fields = ("codigo", "nome")
+    icon = "building"
+    menu = "Estoque"
+    menu_order = 5
+
+
+class SaldoCrud(Crud):
+    model = Saldo
+    list_display = ("produto", "armazem", "quantidade", "custo_medio", "valor", "atualizado_em")
+    search_fields = ("produto__codigo", "produto__descricao")
+    filter_fields = ("armazem",)
+    detail_fields = ["produto", "armazem", "quantidade", "custo_medio", "valor", "atualizado_em"]
+    can_create = can_edit = can_delete = False
+    icon = "boxes"
+    menu = "Estoque"
+    menu_label = "Saldos"
+    menu_order = 1
+
+
+class MovimentoCrud(Crud):
+    model = Movimento
+    list_display = ("data", "tipo", "origem", "produto", "armazem", "quantidade", "custo_unitario", "saldo_apos",
+                    "documento", "usuario")
+    search_fields = ("produto__codigo", "produto__descricao", "documento", "observacao")
+    filter_fields = ("tipo", "origem", "armazem", "produto")
+    can_create = can_edit = can_delete = False   # movimento não se altera: corrige-se com outro
+    icon = "arrow-down-up"
+    menu = "Estoque"
+    menu_label = "Movimentos (kardex)"
+    menu_order = 2
+
+
+class InventarioForm(FormBase):
+    class Meta:
+        model = Inventario
+        fields = ["armazem", "data", "observacoes"]
+
+    def clean(self):
+        dados = super().clean()
+        if self.instance.pk and self.instance.status != "aberto":
+            raise ValidationError("Inventário encerrado não pode ser alterado.")
+        return dados
+
+
+class InventarioCrud(Crud):
+    model = Inventario
+    form_class = InventarioForm
+    inline = (ItemInventario, ["produto", "quantidade_contada"], 0)
+    inline_no_detalhe = False
+    list_display = ("numero", "armazem", "data", "status")
+    filter_fields = ("status", "armazem")
+    related = (("itens", "Contagem", ["produto", "quantidade_sistema", "quantidade_contada", "diferenca"]),)
+    actions = (("estoque:encerrar_inventario", "Encerrar e ajustar saldos", "check2-square",
+                "estoque.change_inventario"),)
+    icon = "clipboard-check"
+    menu = "Estoque"
+    menu_order = 4
+
+    @classmethod
+    def after_save(cls, request, obj, created):
+        if created:
+            obj.carregar_itens()

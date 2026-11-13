@@ -10,40 +10,14 @@ from decimal import Decimal
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
-from django.db.models import Max, Sum
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
 from apps.core.models import Departamento, Fornecedor, ModeloBase, PorEmpresaMixin
+from apps.core.numeracao import NumeradoMixin, proximo_numero  # noqa: F401
 
 D2 = Decimal("0.01")
-
-
-def proximo_numero(modelo, prefixo):
-    ano = timezone.localdate().year
-    inicio = f"{prefixo}-{ano}-"
-    ultimo = (modelo.objects.select_for_update().filter(numero__startswith=inicio)
-              .aggregate(m=Max("numero"))["m"])
-    seq = int(ultimo.rsplit("-", 1)[1]) + 1 if ultimo else 1
-    return f"{inicio}{seq:04d}"
-
-
-class NumeradoMixin(models.Model):
-    PREFIXO = ""
-    numero = models.CharField("número", max_length=20, unique=True, editable=False)
-
-    class Meta:
-        abstract = True
-
-    def save(self, *args, **kwargs):
-        if self.numero:
-            return super().save(*args, **kwargs)
-        with transaction.atomic():
-            self.numero = proximo_numero(type(self), self.PREFIXO)
-            return super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.numero
 
 
 # --------------------------------------------------------------------------- solicitação
@@ -414,9 +388,27 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
             ItemRecebimento.objects.create(recebimento=rec, item_pedido=item, quantidade=q)
             item.quantidade_recebida += q
             item.save(update_fields=["quantidade_recebida"])
+            self._dar_entrada(rec, item, q)
         self.atualizar_status_recebimento()
         rec.conferir()
         return rec
+
+
+    def _dar_entrada(self, rec, item, quantidade):
+        """Entrada no estoque pelo preço do pedido; produto com inspeção vai para a quarentena."""
+        from apps.estoque import models as est
+
+        produto = item.produto
+        if produto is None or produto.tipo != "produto":
+            return
+        destino = est.Armazem.quarentena() if produto.inspecionar_recebimento else est.Armazem.principal()
+        est.entrada(produto, quantidade, item.valor_unitario, destino, "compra", self.numero,
+                    f"Recebimento {rec.pk}", referencia=rec)
+        if produto.inspecionar_recebimento:
+            from apps.qualidade.models import Inspecao
+
+            Inspecao.objects.create(produto=produto, quantidade=quantidade, armazem=destino, recebimento=rec,
+                                    fornecedor=self.fornecedor, origem="recebimento")
 
 
 class ItemPedido(models.Model):
