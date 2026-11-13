@@ -7,7 +7,10 @@
   <link href="{% static 'vendor/bootstrap/bootstrap.min.css' %}" rel="stylesheet">
   <link href="{% static 'vendor/bootstrap-icons/bootstrap-icons.min.css' %}" rel="stylesheet">
   <link href="{% static 'css/erp.css' %}" rel="stylesheet">
-  <link rel="icon" type="image/svg+xml" href="{% static 'img/guara.svg' %}">
+  <link rel="icon" href="{% static 'img/favicon.ico' %}" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="{% static 'img/favicon-32.png' %}">
+  <link rel="apple-touch-icon" href="{% static 'img/apple-touch-icon.png' %}">
+  <meta name="theme-color" content="#1f2620">
   {% block head %}{% endblock %}
 </head>
 <body>
@@ -15,7 +18,8 @@
 <div class="d-flex">
   <nav id="sidebar" class="sidebar d-flex flex-column flex-shrink-0">
     <a href="{% url 'dashboard' %}" class="sidebar-brand d-flex align-items-center text-decoration-none">
-      <img src="{% static 'img/guara.svg' %}" alt="" width="30" height="30" class="me-2"><span>Guará ERP</span>
+      <img src="{% static 'img/guara-selo.png' %}" alt="" width="42" height="42" class="me-2">
+      <span><span class="nome d-block">Guará ERP</span><span class="sub">Gestão livre</span></span>
     </a>
     <div class="sidebar-scroll flex-grow-1">
       {% for grupo in menu_erp %}

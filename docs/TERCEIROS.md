@@ -38,5 +38,6 @@ arquivos ou nos pacotes instalados.
 
 ## Identidade visual
 
-O logotipo do lobo-guará (`static/img/guara.svg`) é um desenho original do projeto, distribuído
-sob a mesma licença do Guará ERP.
+O logotipo, o selo e a ilustração do Cerrado (`static/img/` e `docs/identidade/`) foram fornecidos pelo
+autor do projeto, que os criou com a ferramenta de geração de imagens Google Gemini. Eles são
+distribuídos com o Guará ERP sob a mesma licença. Veja [identidade/IDENTIDADE.md](identidade/IDENTIDADE.md).

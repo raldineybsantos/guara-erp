@@ -1,6 +1,7 @@
-<p align="center"><img src="static/img/guara.svg" alt="Guará ERP" width="110"></p>
+<p align="center"><img src="docs/identidade/guara-selo.png" alt="Guará ERP" width="150"></p>
 
 <h1 align="center">Projeto Guará ERP</h1>
+<p align="center"><em>Gestão integrada, colaborativa e livre.</em></p>
 
 <p align="center">
   <a href="LICENSE"><img alt="Licença GPL-3.0" src="https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue"></a>
@@ -27,6 +28,7 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 | [docs/INSTALACAO.md](docs/INSTALACAO.md) | **Requisitos** (hardware, sistemas, software, rede), instalação Docker/Linux/Windows, HTTPS, backup, atualização e solução de problemas |
 | [docs/MANUAL.md](docs/MANUAL.md) | **Manual do usuário**: uso de cada módulo, perfis de acesso e perguntas frequentes |
 | [SEGURANCA.md](SEGURANCA.md) | Auditoria de segurança, permissões, banco de dados e portas |
+| [docs/identidade/IDENTIDADE.md](docs/identidade/IDENTIDADE.md) | Identidade visual: logotipo, selo, paleta de cores e regras de uso |
 | [docs/TERCEIROS.md](docs/TERCEIROS.md) | Componentes de terceiros e suas licenças |
 | [LICENSE](LICENSE) | Texto integral da GNU GPL versão 3 |
 
