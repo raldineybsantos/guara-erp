@@ -1,6 +1,6 @@
 """Telas de cadastro: empresa, departamentos, cargos, colaboradores, fornecedores e clientes."""
 from .crud import Crud
-from .models import Cargo, Cliente, Colaborador, Departamento, Empresa, Fornecedor, LogAuditoria
+from .models import Cargo, Cliente, Colaborador, Departamento, Empresa, Fornecedor, LogAuditoria, ParceiroNegocio
 
 ENDERECO = ["cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"]
 
@@ -69,6 +69,7 @@ class FornecedorCrud(Crud):
     icon = "truck"
     menu = "Cadastros"
     menu_order = 5
+    actions = (("core:tornar_cliente", "Tornar cliente", "person-plus", "core.add_cliente"),)
     related = (("contas_pagar", "Contas a pagar", ["descricao", "vencimento", "valor", "status"]),)
 
 
@@ -82,7 +83,25 @@ class ClienteCrud(Crud):
     icon = "person-vcard"
     menu = "Cadastros"
     menu_order = 6
+    actions = (("core:tornar_fornecedor", "Tornar fornecedor", "truck", "core.add_fornecedor"),)
     related = (("contas_receber", "Contas a receber", ["descricao", "vencimento", "valor", "status"]),)
+
+
+class ParceiroNegocioCrud(Crud):
+    """Visão única de clientes e fornecedores: cada CPF/CNPJ aparece uma vez, com seus papéis."""
+
+    model = ParceiroNegocio
+    fields = ["tipo_pessoa", "nome", "nome_fantasia", "documento", "inscricao_estadual", "email", "telefone",
+              "contato", *ENDERECO, "ativo", "observacoes"]
+    list_display = ("nome", "nome_fantasia", "documento_formatado", "papeis_texto", "cidade", "ativo")
+    search_fields = ("nome", "nome_fantasia", "documento", "email")
+    filter_fields = ("ativo", "tipo_pessoa", "uf")
+    icon = "people-fill"
+    menu = "Cadastros"
+    menu_label = "Parceiros de negócios"
+    menu_order = 7
+    can_create = False   # nasce como cliente ou fornecedor
+    can_delete = False   # exclui-se o papel, não o cadastro-mãe
 
 
 class LogAuditoriaCrud(Crud):

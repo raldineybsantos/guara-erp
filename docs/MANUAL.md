@@ -150,6 +150,26 @@ e a lixeira 🗑 exclui o registro. A exclusão é recusada se houver registros 
 | **Colaboradores** | Ficha do funcionário | CPF validado; tipo de contrato (CLT, PJ, estágio...); situação (ativo, férias, afastado, desligado); dados bancários e PIX; gestor direto |
 | **Fornecedores** | Quem vende para a empresa | CPF ou CNPJ validado; prazo de pagamento padrão (usado ao importar XML); dados bancários e PIX |
 | **Clientes** | Quem compra da empresa | E-mail de cobrança separado (opcional); limite de crédito |
+| **Parceiros de negócios** | Visão única de clientes e fornecedores | Cada CPF/CNPJ aparece uma vez, com a coluna *Papéis* (Cliente, Fornecedor ou os dois) |
+
+### 5.1 Parceiro de negócios único
+
+Nome, CPF/CNPJ, endereço e contato ficam em **um só cadastro**, o *parceiro de negócios*. Ser cliente ou
+fornecedor são **papéis** desse cadastro, cada um com seus dados próprios: prazo de pagamento e conta
+bancária no fornecedor; limite de crédito e e-mail de cobrança no cliente.
+
+- **Mesma empresa nos dois lados:** abra a ficha do fornecedor e clique em **Tornar cliente** (ou, na ficha do
+  cliente, **Tornar fornecedor**). O ERP cria o papel novo usando o mesmo cadastro. Não é preciso redigitar nada.
+- **CPF/CNPJ repetido:** se você tentar cadastrar um CNPJ que já existe, o ERP recusa e indica o botão acima.
+  O documento é comparado só pelos dígitos, com ou sem pontuação.
+- **Endereço e contato valem para os dois papéis:** alterar a cidade na ficha do fornecedor também atualiza a
+  ficha do cliente.
+- **Excluir:** remove só o papel. O cadastro-mãe continua enquanto o outro papel existir.
+- **Importar XML de NF-e:** se o emitente já é cliente, ele ganha o papel de fornecedor automaticamente.
+
+Na atualização para esta versão, clientes e fornecedores com o mesmo CNPJ são unificados automaticamente.
+Se houver dois fornecedores com o mesmo CNPJ, o segundo fica sem documento e recebe uma observação pedindo
+revisão. Para encontrá-los, filtre a lista de fornecedores pela palavra *duplicado*.
 
 ---
 

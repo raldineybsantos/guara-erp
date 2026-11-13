@@ -5,7 +5,7 @@ from decimal import Decimal
 import defusedxml.ElementTree as ET  # protege contra XXE e "bomba de entidades"
 from django.db import transaction
 
-from apps.core.models import Fornecedor
+from apps.core.models import Fornecedor, ParceiroNegocio
 from apps.core.validators import somente_digitos
 
 from .models import ItemNota, NotaFiscal
@@ -39,8 +39,12 @@ def importar_nfe(arquivo, empresa=None):
 
     ide, emit, total = inf.find("n:ide", NS), inf.find("n:emit", NS), inf.find("n:total/n:ICMSTot", NS)
     cnpj = somente_digitos(_t(emit, "n:CNPJ") or _t(emit, "n:CPF"))
-    fornecedor = Fornecedor.objects.filter(documento__in=[cnpj]).first()
-    if not fornecedor:
+    fornecedor = Fornecedor.objects.filter(documento=cnpj).first() if cnpj else None
+    parceiro = None if fornecedor or not cnpj else ParceiroNegocio.objects.filter(documento=cnpj).first()
+    if parceiro:
+        # Já é cliente: só ganha o papel de fornecedor, sem duplicar o CNPJ.
+        fornecedor = parceiro.adicionar_papel("fornecedor")
+    elif not fornecedor:
         end = emit.find("n:enderEmit", NS)
         fornecedor = Fornecedor.objects.create(
             tipo_pessoa="PJ" if len(cnpj) == 14 else "PF", documento=cnpj,

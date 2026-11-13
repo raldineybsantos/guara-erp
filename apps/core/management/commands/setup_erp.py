@@ -16,22 +16,24 @@ BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_ins
 # Cadastros que não contêm dados pessoais sensíveis. Colaboradores (CPF, salário) e a auditoria
 # ficam restritos a RH e Administradores (LGPD / necessidade de saber).
 CADASTROS_BASICOS = ["core.view_empresa", "core.view_departamento", "core.view_cargo",
-                     "core.view_fornecedor", "core.view_cliente"]
+                     "core.view_fornecedor", "core.view_cliente", "core.view_parceironegocio"]
 
 GRUPOS = {
     "Administradores": ["*"] + ["auth.view_user", "auth.add_user", "auth.change_user", "auth.view_group"],
     "Financeiro": ["financeiro.*", "cobranca.*", *CADASTROS_BASICOS, "core.add_fornecedor",
-                   "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "fiscal.view_*"],
+                   "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "core.change_parceironegocio",
+                   "fiscal.view_*"],
     "Fiscal": ["fiscal.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
-               "core.add_cliente", "core.change_cliente", "financeiro.view_*", "financeiro.add_contapagar",
+               "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
                "financeiro.add_contareceber"],
     "RH": [*CADASTROS_BASICOS, "core.view_colaborador", "core.add_colaborador", "core.change_colaborador",
            "core.add_departamento", "core.change_departamento", "core.add_cargo", "core.change_cargo",
            "ged.add_pasta"],
     "Jurídico": ["juridico.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
-                 "core.add_cliente", "core.change_cliente", "ged.add_pasta", "financeiro.view_contapagar",
+                 "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "ged.add_pasta", "financeiro.view_contapagar",
                  "financeiro.view_contareceber"],
-    "Compras": ["core.view_fornecedor", "core.add_fornecedor", "core.change_fornecedor",
+    "Compras": ["core.view_fornecedor", "core.add_fornecedor", "core.change_fornecedor", "core.view_parceironegocio",
+                "core.change_parceironegocio",
                 "financeiro.view_contapagar", "financeiro.add_contapagar", "fiscal.view_*", "fiscal.add_notafiscal"],
     "Usuários": [],
 }

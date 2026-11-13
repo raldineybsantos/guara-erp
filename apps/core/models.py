@@ -4,7 +4,7 @@ from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 
 from .middleware import usuario_atual
-from .validators import formatar_documento, validar_cnpj, validar_cpf, validar_cpf_cnpj
+from .validators import formatar_documento, somente_digitos, validar_cnpj, validar_cpf, validar_cpf_cnpj
 
 UF_CHOICES = [(uf, uf) for uf in (
     "AC AL AM AP BA CE DF ES GO MA MG MS MT PA PB PE PI PR RJ RN RO RR RS SC SE SP TO".split()
@@ -181,7 +181,13 @@ class Colaborador(ModeloBase, PorEmpresaMixin, EnderecoMixin):
 
 
 # --------------------------------------------------------------------------- parceiros
-class Parceiro(ModeloBase, EnderecoMixin):
+class ParceiroNegocio(ModeloBase, EnderecoMixin):
+    """Cadastro único de pessoas e empresas com quem a empresa negocia (como o Business Partner do SAP).
+
+    Um mesmo CPF/CNPJ existe uma vez só; ser cliente ou fornecedor são papéis desse cadastro
+    (tabelas filhas ``Cliente`` e ``Fornecedor``), que podem coexistir.
+    """
+
     TIPOS = [("PJ", "Pessoa Jurídica"), ("PF", "Pessoa Física")]
     tipo_pessoa = models.CharField("tipo de pessoa", max_length=2, choices=TIPOS, default="PJ")
     nome = models.CharField("nome / razão social", max_length=200)
@@ -195,18 +201,85 @@ class Parceiro(ModeloBase, EnderecoMixin):
     observacoes = models.TextField("observações", blank=True)
 
     class Meta:
-        abstract = True
+        verbose_name = "parceiro de negócios"
+        verbose_name_plural = "parceiros de negócios"
         ordering = ["nome"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["documento"], condition=~models.Q(documento=""), name="parceiro_documento_unico",
+                violation_error_message=(
+                    "Este CPF/CNPJ já está cadastrado como parceiro de negócios. Abra o cadastro existente "
+                    "e use “Tornar cliente” ou “Tornar fornecedor” para adicionar o papel."
+                ),
+            ),
+        ]
 
     def __str__(self):
         return self.nome_fantasia or self.nome
+
+    def clean(self):
+        super().clean()
+        # Só dígitos, para a checagem de duplicidade valer com ou sem pontuação.
+        self.documento = somente_digitos(self.documento)
+
+    def save(self, *args, **kwargs):
+        self.documento = somente_digitos(self.documento)
+        super().save(*args, **kwargs)
 
     @property
     def documento_formatado(self):
         return formatar_documento(self.documento)
 
+    @property
+    def parceiro(self):
+        """O cadastro-mãe (útil em Cliente/Fornecedor, onde ``self`` é o papel)."""
+        return ParceiroNegocio.objects.get(pk=self.parceironegocio_id) if hasattr(self, "parceironegocio_id") \
+            else self
 
-class Fornecedor(Parceiro):
+    def papeis(self):
+        pn = self.parceiro
+        return [rotulo for rotulo, modelo in (("Cliente", Cliente), ("Fornecedor", Fornecedor))
+                if modelo.objects.filter(parceironegocio_id=pn.pk).exists()]
+
+    def papeis_texto(self):
+        return ", ".join(self.papeis()) or "—"
+    papeis_texto.short_description = "papéis"
+
+    def adicionar_papel(self, papel, **campos):
+        """Torna o parceiro cliente ou fornecedor, sem duplicar o cadastro. Devolve o papel."""
+        modelo = {"cliente": Cliente, "fornecedor": Fornecedor}[papel]
+        pn = self.parceiro
+        existente = modelo.objects.filter(parceironegocio_id=pn.pk).first()
+        if existente:
+            return existente
+        obj = modelo(parceironegocio=pn, **campos)
+        for f in ParceiroNegocio._meta.concrete_fields:
+            setattr(obj, f.attname, getattr(pn, f.attname))
+        obj.save()
+        return obj
+
+
+class PapelParceiro(models.Model):
+    """Comportamento comum dos papéis Cliente e Fornecedor."""
+
+    class Meta:
+        abstract = True
+
+    def delete(self, *args, **kwargs):
+        # Excluir só o papel: o cadastro-mãe fica se ainda for usado pelo outro papel.
+        outro = Fornecedor if isinstance(self, Cliente) else Cliente
+        if outro.objects.filter(parceironegocio_id=self.parceironegocio_id).exists():
+            kwargs["keep_parents"] = True
+        return super().delete(*args, **kwargs)
+
+
+class Fornecedor(PapelParceiro, ParceiroNegocio):
+    # O código do papel mantém a coluna "id" histórica; o cadastro-mãe fica em parceironegocio.
+    codigo = models.BigAutoField("código", primary_key=True, db_column="id")
+    parceironegocio = models.OneToOneField(
+        ParceiroNegocio, on_delete=models.CASCADE, parent_link=True, related_name="fornecedor",
+        verbose_name="parceiro de negócios",
+    )
     categoria = models.CharField(max_length=80, blank=True, help_text="Ex.: matéria-prima, serviços, TI")
     prazo_pagamento_dias = models.PositiveIntegerField("prazo de pagamento (dias)", default=30)
     banco = models.CharField(max_length=60, blank=True)
@@ -214,18 +287,25 @@ class Fornecedor(Parceiro):
     conta = models.CharField(max_length=20, blank=True)
     chave_pix = models.CharField("chave PIX", max_length=100, blank=True)
 
-    class Meta(Parceiro.Meta):
+    class Meta:
         verbose_name = "fornecedor"
         verbose_name_plural = "fornecedores"
+        ordering = ["nome"]
 
 
-class Cliente(Parceiro):
+class Cliente(PapelParceiro, ParceiroNegocio):
+    codigo = models.BigAutoField("código", primary_key=True, db_column="id")
+    parceironegocio = models.OneToOneField(
+        ParceiroNegocio, on_delete=models.CASCADE, parent_link=True, related_name="cliente",
+        verbose_name="parceiro de negócios",
+    )
     limite_credito = models.DecimalField("limite de crédito", max_digits=14, decimal_places=2, default=0)
     email_cobranca = models.EmailField("e-mail de cobrança", blank=True)
 
-    class Meta(Parceiro.Meta):
+    class Meta:
         verbose_name = "cliente"
         verbose_name_plural = "clientes"
+        ordering = ["nome"]
 
 
 # --------------------------------------------------------------------------- auditoria

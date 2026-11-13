@@ -76,6 +76,8 @@ class Command(BaseCommand):
         clis = [Cliente.objects.create(nome=n, documento=gerar_cnpj(rnd), email=f"financeiro{i}@cliente.com")
                 for i, n in enumerate(["Mercado Bom Preço", "Construtora Pilar", "Clínica Vida", "Escola Saber",
                                        "Restaurante Sabor", "Transportes Rápido"])]
+        # Parceiro com dois papéis: a transportadora compra de nós e também presta frete.
+        clis[-1].adicionar_papel("fornecedor", categoria="Frete")
 
         banco = ContaBancaria.objects.create(nome="Banco do Brasil CC", banco="Banco do Brasil", codigo_banco="001",
                                              agencia="1234", conta="56789-0", saldo_inicial=Decimal("85000"),
