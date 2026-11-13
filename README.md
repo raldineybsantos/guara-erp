@@ -36,7 +36,8 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 
 | Módulo | O que faz |
 |---|---|
-| **Cadastros** | Empresas/filiais, departamentos (hierarquia), cargos, colaboradores, fornecedores, clientes. Validação de CPF/CNPJ e busca de CEP automática. |
+| **Cadastros** | Empresas/filiais, departamentos (hierarquia), cargos, colaboradores. **Parceiro de negócios único**: cada CPF/CNPJ é cadastrado uma vez e pode ser cliente, fornecedor ou os dois. Validação de CPF/CNPJ e busca de CEP automática. |
+| **Compras** | Solicitação de compra por qualquer usuário, **cotação** com vários fornecedores e **mapa de cotação**, pedido de compra com **alçada de aprovação** por valor (automática, gestor de compras, diretoria), PDF do pedido, recebimento parcial e **conferência em três vias** (pedido × recebimento × nota): a conta a pagar só é liberada quando tudo bate; divergências viram tarefa no Kanban. |
 | **Financeiro** | Contas a pagar e a receber com parcelamento, juros/desconto, baixa total ou parcial, estorno e cancelamento. Contas bancárias com saldo, extrato, transferências, plano de contas e centros de custo. Fluxo de caixa realizado × previsto com saldo projetado. |
 | **Cobrança** | Cobranças por PIX (gera o **PIX copia-e-cola + QR Code** a partir da chave da empresa), boleto ou link. **Régua de cobrança** automática por e-mail (ex.: 3 dias antes, no dia, 3 e 10 dias após), com histórico de envios. Status sincronizado com o título. |
 | **Fiscal** | Produtos/serviços com NCM, CFOP e alíquotas. Notas fiscais (NF-e, NFC-e, NFS-e) com itens e cálculo de ICMS/IPI/PIS/COFINS/ISS. **Importação de XML de NF-e** de fornecedores (cadastra o fornecedor e gera a conta a pagar). Geração de títulos a partir da nota e resumo para apuração. |
@@ -108,7 +109,7 @@ serviços `erp-web` (gunicorn, porta 8000) e `erp-agendador` no systemd.
 4. Ajuste o plano de contas, a régua de cobrança e os processos de workflow conforme sua empresa.
 
 Dados de demonstração (empresa fictícia, colaboradores, títulos, notas, processos e usuários
-`financeiro`, `rh`, `fiscal`, `diretor` com senha `demo1234`). **Só para testes, nunca em produção:**
+`financeiro`, `rh`, `fiscal`, `juridico`, `compras`, `diretor` com senha `demo1234`). **Só para testes, nunca em produção:**
 
 ```bash
 python manage.py seed_demo          # Docker: docker compose exec web python manage.py seed_demo

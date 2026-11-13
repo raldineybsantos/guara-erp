@@ -1,0 +1,42 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="d-flex mb-3 gap-2 align-items-center">
+  <a href="{{ cotacao.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar à cotação</a>
+  {% if cotacao.status == "aberta" %}<a href="{% url 'compras:cotacao_update' cotacao.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pencil"></i> Editar preços</a>{% endif %}
+  <span class="ms-auto text-secondary small">{{ cotacao.descricao }}{% if cotacao.solicitacao %} · {{ cotacao.solicitacao }}{% endif %}</span>
+</div>
+{% if not mapa %}
+<div class="alert alert-info">Nenhum fornecedor nesta cotação ainda. Edite a cotação e adicione os preços.</div>
+{% endif %}
+<div class="row g-3">
+{% for m in mapa %}
+  <div class="col-lg-6 col-xxl-4">
+    <div class="card h-100 {% if m.melhor %}border-success{% endif %}">
+      <div class="card-header bg-body d-flex align-items-center">
+        <strong>{{ m.fornecedor }}</strong>
+        {% if m.melhor %}<span class="badge text-bg-success ms-2">Menor preço</span>{% elif not m.completo %}<span class="badge text-bg-warning ms-2">{{ m.cotados }} de {{ m.itens|length }} itens cotados</span>{% endif %}
+        <span class="ms-auto fw-semibold">R$ {{ m.total|floatformat:2 }}</span>
+      </div>
+      <div class="card-body p-0">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Item</th><th class="text-end">Qtd</th><th class="text-end">Unitário</th><th class="text-end">Total</th></tr></thead>
+          <tbody>
+          {% for i in m.itens %}
+            <tr{% if not i.valor_unitario %} class="text-secondary"{% endif %}><td>{{ i.descricao|default:i.produto }}</td><td class="text-end">{{ i.quantidade|floatformat:"-4" }}</td>
+              <td class="text-end">{% if i.valor_unitario %}{{ i.valor_unitario|floatformat:2 }}{% else %}—{% endif %}</td><td class="text-end">{% if i.valor_unitario %}{{ i.total|floatformat:2 }}{% endif %}</td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <div class="card-footer bg-body d-flex align-items-center">
+        <small class="text-secondary">Entrega em até {{ m.prazo }} dia{{ m.prazo|pluralize }} · pagamento {{ m.fornecedor.prazo_pagamento_dias }} dias</small>
+        {% if cotacao.status == "aberta" and m.cotados %}
+        <form method="post" class="ms-auto">{% csrf_token %}<input type="hidden" name="fornecedor" value="{{ m.fornecedor.pk }}">
+          <button class="btn btn-sm {% if m.melhor %}btn-success{% else %}btn-outline-success{% endif %}"><i class="bi bi-trophy"></i> Escolher e gerar pedido</button></form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+</div>
+{% endblock %}

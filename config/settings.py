@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "apps.ged",
     "apps.tarefas",
     "apps.juridico",
+    "apps.compras",
 ]
 
 MIDDLEWARE = [
@@ -156,6 +157,11 @@ CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 # para validar a cadeia (baixe em https://www.gov.br/iti/pt-br/assuntos/repositorio) e carimbo do tempo opcional.
 ICP_BRASIL_CAS_DIR = os.getenv("ICP_BRASIL_CAS_DIR", str(BASE_DIR / "certificados" / "icp-brasil"))
 ASSINATURA_TSA_URL = os.getenv("ASSINATURA_TSA_URL", "")
+
+# Compras: alçada de aprovação de pedidos (R$) e tolerância de preço na conferência em três vias (%).
+COMPRAS_ALCADA_AUTOMATICA = os.getenv("COMPRAS_ALCADA_AUTOMATICA", "500")   # até este valor: aprova sozinho
+COMPRAS_ALCADA_DIRETORIA = os.getenv("COMPRAS_ALCADA_DIRETORIA", "10000")   # acima: passa também pela diretoria
+COMPRAS_TOLERANCIA_PRECO_PCT = os.getenv("COMPRAS_TOLERANCIA_PRECO_PCT", "2")
 
 # Tamanho máximo de arquivos enviados (GED, XML)
 ARQUIVO_MAX_MB = int(os.getenv("ARQUIVO_MAX_MB", "50"))

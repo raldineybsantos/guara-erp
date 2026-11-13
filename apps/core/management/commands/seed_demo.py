@@ -133,7 +133,8 @@ class Command(BaseCommand):
                 ("financeiro", "Financeiro", "Fernanda Financeiro", "52998224725", "FIN"),
                 ("rh", "RH", "Roberto RH", "11144477735", "RH"),
                 ("fiscal", "Fiscal", "Fábio Fiscal", "93541134780", "FIN"),
-                ("juridico", "Jurídico", "Júlia Jurídico", "15350946056", "ADM")):
+                ("juridico", "Jurídico", "Júlia Jurídico", "15350946056", "ADM"),
+                ("compras", "Compras", "Carlos Compras", "12345678062", "ADM")):
             u, criado = User.objects.get_or_create(username=username, defaults={
                 "first_name": nome.split()[0], "last_name": nome.split()[1], "email": f"{username}@exemplo.com.br"})
             if criado:
@@ -147,7 +148,8 @@ class Command(BaseCommand):
         # estrutura de gestão: a diretora responde pelo Administrativo e é gestora direta dos demais
         diana = Colaborador.objects.get(usuario=usuarios["diretor"])
         Departamento.objects.filter(codigo="ADM").update(responsavel=diana)
-        Colaborador.objects.filter(usuario__in=[usuarios[k] for k in ("financeiro", "rh", "fiscal", "juridico")]).update(gestor=diana)
+        Colaborador.objects.filter(usuario__in=[usuarios[k] for k in ("financeiro", "rh", "fiscal", "juridico", "compras")]
+                                   ).update(gestor=diana)
         usuarios["juridico"].user_permissions.add(*Permission.objects.filter(codename="assinar_ecnpj"))
 
         # quadro de tarefas
@@ -218,5 +220,65 @@ class Command(BaseCommand):
         for cp in ContaPagar.objects.em_aberto().filter(vencimento__gte=hoje)[:3]:
             proc.iniciar(f"Aprovar pagamento: {cp}", admin, f"Fornecedor: {cp.fornecedor}", objeto=cp)
 
+        self._compras(usuarios, forns)
+
         self.stdout.write(self.style.SUCCESS(
-            f"Dados de demonstração criados. Usuários: diretor, financeiro, rh, fiscal, juridico (senha: {senha})."))
+            "Dados de demonstração criados. Usuários: diretor, financeiro, rh, fiscal, juridico, compras "
+            f"(senha: {senha})."))
+
+    def _compras(self, usuarios, forns):
+        """Três pedidos em estágios diferentes: em aprovação, recebido e conferido, e recebido com divergência."""
+        from apps.compras.models import ItemSolicitacao, SolicitacaoCompra
+        from apps.core.models import Departamento
+        from apps.core.middleware import _local
+        from apps.fiscal.models import ItemNota, NotaFiscal, Produto
+        from apps.workflow.models import Instancia
+
+        papel = Produto.objects.create(codigo="MAT001", descricao="Papel A4 (resma)", ncm="48025610", preco=0)
+        toner = Produto.objects.create(codigo="MAT002", descricao="Toner para impressora", ncm="84439933", preco=0)
+        papelaria, distribuidora = forns[0], forns[4]
+        comprador = usuarios["compras"]
+
+        def pedido(solicitante, itens, precos_por_fornecedor, vencedor):
+            _local.usuario = solicitante
+            sc = SolicitacaoCompra.objects.create(justificativa="Reposição do almoxarifado",
+                                                  departamento=Departamento.objects.get(codigo="ADM"))
+            for prod, qtd in itens:
+                ItemSolicitacao.objects.create(solicitacao=sc, produto=prod, quantidade=qtd)
+            _local.usuario = comprador
+            cot = sc.gerar_cotacao(list(precos_por_fornecedor))
+            for item in cot.itens.all():
+                item.valor_unitario = precos_por_fornecedor[item.fornecedor][item.produto]
+                item.prazo_entrega_dias = 5
+                item.save()
+            p = cot.escolher(vencedor, comprador)
+            _local.usuario = None
+            return p
+
+        def nota(p, numero, precos):
+            n = NotaFiscal.objects.create(tipo="entrada", modelo="55", fornecedor=p.fornecedor, numero=numero,
+                                          status="emitida", natureza_operacao="Compra para uso e consumo")
+            for item in p.itens.all():
+                ItemNota.objects.create(nota=n, produto=item.produto, descricao=item.descricao,
+                                        quantidade=item.quantidade, valor_unitario=precos[item.produto])
+            n.recalcular()
+            return n
+
+        # 1) Em aprovação: cotado em dois fornecedores, aguardando o gestor de compras.
+        p1 = pedido(usuarios["fiscal"], [(papel, 20), (toner, 3)],
+                    {papelaria: {papel: 24, toner: 310}, distribuidora: {papel: 26, toner: 295}}, papelaria)
+        p1.enviar_para_aprovacao(comprador)
+
+        # 2) Dentro da alçada automática, recebido com nota conferida: conta a pagar liberada.
+        p2 = pedido(usuarios["rh"], [(papel, 10)], {papelaria: {papel: 25}}, papelaria)
+        p2.enviar_para_aprovacao(comprador)
+        p2.receber({str(i.pk): i.quantidade for i in p2.itens.all()}, nota(p2, 4512, {papel: 25}),
+                   usuario=comprador)
+
+        # 3) Aprovado pelo workflow, mas a nota veio com o toner 10% mais caro: conta bloqueada e tarefa aberta.
+        p3 = pedido(usuarios["financeiro"], [(toner, 2)], {distribuidora: {toner: 300}}, distribuidora)
+        inst = p3.enviar_para_aprovacao(comprador)
+        Instancia.objects.get(pk=inst.pk).avancar(comprador, "aprovar", "Preço dentro do histórico.")
+        p3.refresh_from_db()
+        p3.receber({str(i.pk): i.quantidade for i in p3.itens.all()}, nota(p3, 88231, {toner: 330}),
+                   usuario=comprador)

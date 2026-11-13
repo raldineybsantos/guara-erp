@@ -11,7 +11,11 @@ APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tare
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
           "ged.assinar_documento",
-          "tarefas.view_atividade", "tarefas.add_atividade", "tarefas.change_atividade", "tarefas.view_comentario"]
+          "tarefas.view_atividade", "tarefas.add_atividade", "tarefas.change_atividade", "tarefas.view_comentario",
+          # qualquer pessoa pode pedir uma compra (vê só as próprias solicitações)
+          "compras.view_solicitacaocompra", "compras.add_solicitacaocompra", "compras.change_solicitacaocompra",
+          "compras.view_itemsolicitacao", "compras.add_itemsolicitacao", "compras.change_itemsolicitacao",
+          "compras.delete_itemsolicitacao"]
 
 # Cadastros que não contêm dados pessoais sensíveis. Colaboradores (CPF, salário) e a auditoria
 # ficam restritos a RH e Administradores (LGPD / necessidade de saber).
@@ -22,7 +26,8 @@ GRUPOS = {
     "Administradores": ["*"] + ["auth.view_user", "auth.add_user", "auth.change_user", "auth.view_group"],
     "Financeiro": ["financeiro.*", "cobranca.*", *CADASTROS_BASICOS, "core.add_fornecedor",
                    "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "core.change_parceironegocio",
-                   "fiscal.view_*"],
+                   "fiscal.view_*", "compras.view_pedidocompra", "compras.view_itempedido",
+                   "compras.view_recebimentocompra"],
     "Fiscal": ["fiscal.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
                "financeiro.add_contareceber"],
@@ -32,7 +37,8 @@ GRUPOS = {
     "Jurídico": ["juridico.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                  "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "ged.add_pasta", "financeiro.view_contapagar",
                  "financeiro.view_contareceber"],
-    "Compras": ["core.view_fornecedor", "core.add_fornecedor", "core.change_fornecedor", "core.view_parceironegocio",
+    "Compras": ["compras.*", "fiscal.view_produto", "fiscal.add_produto",
+                "core.view_fornecedor", "core.add_fornecedor", "core.change_fornecedor", "core.view_parceironegocio",
                 "core.change_parceironegocio",
                 "financeiro.view_contapagar", "financeiro.add_contapagar", "fiscal.view_*", "fiscal.add_notafiscal"],
     "Usuários": [],
@@ -118,6 +124,23 @@ class Command(BaseCommand):
             for i, (nome, grupo) in enumerate([("Coletar documentos", "RH"), ("Criar acessos de TI", "Administradores"),
                                                ("Integração / boas-vindas", "RH")], start=1):
                 Etapa.objects.create(processo=proc2, ordem=i, nome=nome, tipo="tarefa", grupo_responsavel=grupos[grupo])
+
+        # Alçada de compras: o valor do pedido decide qual processo usa (ver COMPRAS_ALCADA_* no settings).
+        proc4, criado = Processo.objects.get_or_create(codigo="aprovacao-compra", defaults={
+            "nome": "Aprovação de pedido de compra",
+            "descricao": "Pedidos acima da alçada automática e até a alçada da diretoria."})
+        if criado:
+            Etapa.objects.create(processo=proc4, ordem=1, nome="Aprovação do gestor de compras", tipo="aprovacao",
+                                 grupo_responsavel=grupos["Compras"], prazo_dias=2,
+                                 instrucoes="Confira fornecedor, preços contra a cotação, quantidades e centro de custo.")
+        proc5, criado = Processo.objects.get_or_create(codigo="aprovacao-compra-diretoria", defaults={
+            "nome": "Aprovação de pedido de compra (diretoria)",
+            "descricao": "Pedidos acima da alçada da diretoria."})
+        if criado:
+            Etapa.objects.create(processo=proc5, ordem=1, nome="Aprovação do gestor de compras", tipo="aprovacao",
+                                 grupo_responsavel=grupos["Compras"], prazo_dias=2)
+            Etapa.objects.create(processo=proc5, ordem=2, nome="Aprovação da diretoria", tipo="aprovacao",
+                                 grupo_responsavel=grupos["Administradores"], prazo_dias=2)
 
         proc3, criado = Processo.objects.get_or_create(codigo="aprovacao-contrato", defaults={
             "nome": "Aprovação de contrato",

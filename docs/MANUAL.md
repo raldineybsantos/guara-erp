@@ -12,15 +12,16 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 3. [Perfis de acesso](#3-perfis-de-acesso)
 4. [Telas de cadastro: uso comum](#4-telas-de-cadastro-uso-comum)
 5. [Cadastros](#5-cadastros)
-6. [Financeiro](#6-financeiro)
-7. [Cobrança](#7-cobrança)
-8. [Fiscal](#8-fiscal)
-9. [Minhas tarefas — quadro Kanban](#9-minhas-tarefas--quadro-kanban)
-10. [Workflow / BPM](#10-workflow--bpm)
-11. [Jurídico — contratos](#11-jurídico--contratos)
-12. [GED — documentos e assinatura digital](#12-ged--documentos-e-assinatura-digital)
-13. [Administração](#13-administração)
-14. [Perguntas frequentes](#14-perguntas-frequentes)
+6. [Compras](#6-compras)
+7. [Financeiro](#7-financeiro)
+8. [Cobrança](#8-cobrança)
+9. [Fiscal](#9-fiscal)
+10. [Minhas tarefas — quadro Kanban](#10-minhas-tarefas--quadro-kanban)
+11. [Workflow / BPM](#11-workflow--bpm)
+12. [Jurídico — contratos](#12-jurídico--contratos)
+13. [GED — documentos e assinatura digital](#13-ged--documentos-e-assinatura-digital)
+14. [Administração](#14-administração)
+15. [Perguntas frequentes](#15-perguntas-frequentes)
 
 ---
 
@@ -91,9 +92,9 @@ Cada usuário pertence a um ou mais **grupos**. O grupo define quais menus e aç
 | **Financeiro** | Contas a pagar e a receber, tesouraria | Financeiro e cobrança completos; consultar e cadastrar clientes e fornecedores; consultar notas |
 | **Fiscal** | Departamento fiscal, faturamento | Notas e produtos completos; consultar o financeiro e lançar títulos; cadastrar clientes e fornecedores |
 | **RH** | Recursos humanos | Colaboradores, departamentos e cargos; criar pastas no GED |
-| **Compras** | Compradores | Fornecedores, lançar contas a pagar e notas de entrada |
+| **Compras** | Compradores | Módulo de Compras completo (cotação, pedido, aprovação até a alçada de compras, recebimento); fornecedores e produtos; notas de entrada |
 | **Jurídico** | Advogados, analistas de contratos | Contratos completos (cadastro, aprovação, renovação, aditivos, encerramento); pasta Jurídico do GED; cadastrar clientes e fornecedores |
-| **Usuários** | Demais colaboradores | Abrir e acompanhar solicitações; consultar e enviar documentos no GED |
+| **Usuários** | Demais colaboradores | Abrir e acompanhar solicitações (workflow e compras); consultar e enviar documentos no GED |
 
 Todos os grupos podem usar o quadro de tarefas, abrir solicitações de workflow, usar o GED (dentro das
 pastas permitidas) e assinar documentos com o próprio certificado digital.
@@ -173,9 +174,88 @@ revisão. Para encontrá-los, filtre a lista de fornecedores pela palavra *dupli
 
 ---
 
-## 6. Financeiro
+## 6. Compras
 
-### 6.1 Contas a pagar e a receber
+O ciclo de compras segue cinco passos. Cada passo pode ser feito por uma pessoa diferente:
+
+```
+Solicitação  →  Cotação  →  Pedido (alçada)  →  Recebimento  →  Conferência em três vias  →  Pagamento
+```
+
+### 6.1 Solicitação de compra
+
+Qualquer usuário pode pedir uma compra em **Compras → Solicitações de compra → Novo**. Informe a
+justificativa, a data em que precisa do material e os itens (produto do cadastro ou descrição livre, com
+quantidade e unidade). Cada solicitação recebe um número `SC-ano-sequência`.
+
+Quem não é do setor de Compras vê só as próprias solicitações. A solicitação pode ser alterada enquanto
+estiver *Aberta*.
+
+### 6.2 Cotação e mapa
+
+1. Na solicitação, o comprador clica em **Gerar cotação** e escolhe os fornecedores. O ERP cria uma linha por
+   item para cada fornecedor.
+2. Na cotação, preencha **valor unitário** e **prazo de entrega** de cada fornecedor. Itens sem preço contam
+   como não cotados.
+3. Clique em **Mapa de cotação**. O ERP mostra um cartão por fornecedor, com o total, o prazo e a condição de
+   pagamento. O fornecedor que cotou todos os itens pelo menor total recebe a etiqueta **Menor preço**.
+4. Clique em **Escolher e gerar pedido** no fornecedor vencedor. A cotação é concluída e a solicitação fica
+   *Atendida*.
+
+Também é possível criar um pedido direto, sem solicitação nem cotação, em **Pedidos de compra → Novo**.
+
+### 6.3 Pedido de compra e alçada de aprovação
+
+Revise o pedido (centro de custo, categoria, frete, condição de pagamento) e clique em **Enviar para
+aprovação**. O valor total decide o caminho:
+
+| Valor total do pedido | Aprovação |
+|---|---|
+| Até a alçada automática (padrão R$ 500) | Aprovado na hora |
+| Até a alçada da diretoria (padrão R$ 10.000) | Gestor de compras, pelo workflow |
+| Acima disso | Gestor de compras e depois a diretoria |
+
+As aprovações aparecem em **Workflow → Aprovações pendentes**. Se o pedido for recusado, ele volta a ser
+editável e mostra o motivo. Depois de aprovado, o pedido não pode mais ser alterado. Para mudar itens ou
+valores, cancele-o e gere outro.
+
+**Condição de pagamento:** informe os dias após a nota, separados por barra. Por exemplo, `28` gera uma
+parcela e `30/60/90` gera três. O botão **PDF para o fornecedor** gera o pedido para enviar por e-mail.
+
+Os valores das alçadas são configurados pelo administrador (veja INSTALACAO.md).
+
+### 6.4 Recebimento
+
+Quando a mercadoria chega, clique em **Registrar recebimento** no pedido. Informe a data, as quantidades
+efetivamente recebidas (o ERP sugere o saldo de cada item) e, se já houver, a nota fiscal de entrada.
+Importe antes o XML em **Fiscal → Importar XML NF-e**. Se a importação já gerou a conta a pagar, o ERP usa
+essa conta, e quem decide se ela fica aprovada para pagamento é a conferência.
+
+Recebimentos parciais são aceitos. O pedido fica *Recebido parcialmente* até todo o saldo chegar. Não é
+possível receber mais do que o saldo.
+
+### 6.5 Conferência em três vias
+
+Ao registrar o recebimento com nota, ou ao vincular a nota depois (botão **Editar** do recebimento), o ERP
+compara:
+
+- **Pedido × nota:** o fornecedor e o preço unitário de cada produto. A tolerância padrão é de 2%.
+- **Recebimento × nota:** a quantidade faturada de cada produto contra a recebida.
+- **Total:** o valor dos produtos na nota contra o esperado pelo pedido e pelo recebimento.
+
+| Resultado | O que acontece |
+|---|---|
+| **Conferido** | A conta a pagar é criada (uma por parcela) e já fica **aprovada para pagamento** |
+| **Divergente** | A conta a pagar fica **bloqueada** (não aprovada), as divergências aparecem no recebimento e uma tarefa de prioridade alta é aberta no Kanban do grupo Compras |
+| **Aguardando nota** | Nada vai para o financeiro até a nota ser vinculada |
+
+Depois de resolver a divergência com o fornecedor (nota corrigida, carta de correção ou acordo), clique em
+**Conferir de novo**. Se o pagamento for aceito mesmo com a diferença, o Financeiro pode aprovar a conta
+manualmente, e isso fica registrado na auditoria.
+
+## 7. Financeiro
+
+### 7.1 Contas a pagar e a receber
 
 A lista abre em **Situação: Em aberto**. Use o filtro para ver **Vencidos**, **Pagos**,
 **Cancelados** ou **Todos**.
@@ -203,7 +283,7 @@ Outras ações no título:
   (seção 10). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
 - **Gerar cobrança** (contas a receber): veja a seção 7.
 
-### 6.2 Contas bancárias, extrato e transferências
+### 7.2 Contas bancárias, extrato e transferências
 
 - **Contas bancárias:** a lista mostra o **saldo atual** de cada conta (saldo inicial + entradas − saídas).
 - **Extrato / movimentações:** todas as entradas e saídas. Aqui você também lança movimentações
@@ -211,7 +291,7 @@ Outras ações no título:
   com o extrato do banco.
 - **Transferência:** move valor entre duas contas da empresa, gerando a saída numa e a entrada na outra.
 
-### 6.3 Fluxo de caixa
+### 7.3 Fluxo de caixa
 
 ![Fluxo de caixa](img/fluxo-caixa.jpg)
 
@@ -221,7 +301,7 @@ Mostra, mês a mês:
 - **Previsto:** o que está a receber e a pagar em aberto. Os vencidos entram no mês atual.
 - **Saldo projetado:** saldo de hoje somado às previsões, acumulado mês a mês. Fica vermelho se ficar negativo.
 
-### 6.4 Plano de contas e centros de custo
+### 7.4 Plano de contas e centros de custo
 
 - **Plano de contas:** classifica receitas e despesas em níveis (ex.: `2.02.01 Aluguel`).
   Use códigos com pontos para a hierarquia.
@@ -229,7 +309,7 @@ Mostra, mês a mês:
 
 ---
 
-## 7. Cobrança
+## 8. Cobrança
 
 ![Cobrança com PIX](img/cobranca.jpg)
 
@@ -259,14 +339,14 @@ Mostra, mês a mês:
 
 ---
 
-## 8. Fiscal
+## 9. Fiscal
 
-### 8.1 Produtos e serviços
+### 9.1 Produtos e serviços
 
 Cadastre código, descrição, unidade, **NCM**, **CFOP padrão**, preço e as alíquotas de ICMS, IPI,
 PIS, COFINS e ISS. Esses valores são sugeridos automaticamente nos itens das notas.
 
-### 8.2 Notas fiscais
+### 9.2 Notas fiscais
 
 ![Nova nota fiscal](img/nota-fiscal.jpg)
 
@@ -299,7 +379,7 @@ pela contabilidade.
 
 ---
 
-## 9. Minhas tarefas — quadro Kanban
+## 10. Minhas tarefas — quadro Kanban
 
 ![Quadro Kanban](img/kanban.jpg)
 
@@ -354,12 +434,12 @@ contratos a vencer** chegam como cartões no quadro do responsável pelo contrat
 
 ---
 
-## 10. Workflow / BPM
+## 11. Workflow / BPM
 
 O módulo organiza processos que passam por várias pessoas, como aprovações, admissões e solicitações
 internas.
 
-### 10.1 Modelar um processo (administrador)
+### 11.1 Modelar um processo (administrador)
 
 ![Diagrama do processo](img/processo.jpg)
 
@@ -379,7 +459,7 @@ O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com trê
 - **Aprovação de contrato:** análise jurídica, depois aprovação da diretoria (seção 11).
 - **Admissão de colaborador:** documentos (RH), depois acessos de TI, depois integração.
 
-### 10.2 Usar no dia a dia
+### 11.2 Usar no dia a dia
 
 ![Solicitação em andamento](img/solicitacao.jpg)
 
@@ -393,7 +473,7 @@ O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com trê
 
 ---
 
-## 11. Jurídico — contratos
+## 12. Jurídico — contratos
 
 ![Painel jurídico](img/juridico-painel.jpg)
 
@@ -405,7 +485,7 @@ O **Painel jurídico** mostra:
 - os que aguardam aprovação ou assinatura;
 - a atividade recente.
 
-### 11.1 Cadastrar um contrato
+### 12.1 Cadastrar um contrato
 
 Em **Jurídico → Contratos → Novo**, preencha:
 
@@ -423,7 +503,7 @@ Em **Jurídico → Contratos → Novo**, preencha:
 
 O número é gerado sozinho, no formato `CT-2026-0001`.
 
-### 11.2 Ciclo de vida
+### 12.2 Ciclo de vida
 
 ```
 Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente → Encerrado / Rescindido
@@ -453,7 +533,7 @@ Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente →
 
 A **linha do tempo** registra cada mudança de situação, assinatura, alerta e renovação, com data e usuário.
 
-### 11.3 Vencimentos e renovação
+### 12.3 Vencimentos e renovação
 
 Todo dia às 08:00, o sistema verifica os contratos (no Docker, pelo serviço `agendador`):
 
@@ -470,11 +550,11 @@ Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou
 
 ---
 
-## 12. GED — documentos e assinatura digital
+## 13. GED — documentos e assinatura digital
 
 ![Documentos](img/ged.jpg)
 
-### 12.1 Pastas, documentos e versões
+### 13.1 Pastas, documentos e versões
 
 **Pastas:**
 
@@ -511,7 +591,7 @@ Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou
 - **Busca:** a busca procura no título, na descrição, nas palavras-chave e no nome do arquivo.
 
 
-### 12.2 Assinatura digital com certificado ICP-Brasil
+### 13.2 Assinatura digital com certificado ICP-Brasil
 
 ![Assinar digitalmente](img/assinar.jpg)
 
@@ -548,7 +628,7 @@ O tipo de assinatura depende do arquivo:
 
 O sistema reconhece e verifica as assinaturas embutidas.
 
-### 12.3 Verificar assinaturas
+### 13.3 Verificar assinaturas
 
 ![Verificar assinaturas](img/verificar-assinaturas.jpg)
 
@@ -566,7 +646,7 @@ Para a validação oficial de conformidade, use também o verificador do ITI: ht
 
 ---
 
-## 13. Administração
+## 14. Administração
 
 | Tela | Uso |
 |---|---|
@@ -589,7 +669,7 @@ A página **Banco de dados** mostra:
 
 ---
 
-## 14. Perguntas frequentes
+## 15. Perguntas frequentes
 
 **Não vejo um menu que meu colega vê.**
 O menu depende do grupo do usuário. Peça ao administrador para conferir seus grupos.
