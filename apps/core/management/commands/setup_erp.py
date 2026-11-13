@@ -6,10 +6,12 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
-          "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento"]
+          "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
+          "ged.assinar_documento",
+          "tarefas.view_atividade", "tarefas.add_atividade", "tarefas.change_atividade", "tarefas.view_comentario"]
 
 # Cadastros que não contêm dados pessoais sensíveis. Colaboradores (CPF, salário) e a auditoria
 # ficam restritos a RH e Administradores (LGPD / necessidade de saber).
@@ -26,6 +28,9 @@ GRUPOS = {
     "RH": [*CADASTROS_BASICOS, "core.view_colaborador", "core.add_colaborador", "core.change_colaborador",
            "core.add_departamento", "core.change_departamento", "core.add_cargo", "core.change_cargo",
            "ged.add_pasta"],
+    "Jurídico": ["juridico.*", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
+                 "core.add_cliente", "core.change_cliente", "ged.add_pasta", "financeiro.view_contapagar",
+                 "financeiro.view_contareceber"],
     "Compras": ["core.view_fornecedor", "core.add_fornecedor", "core.change_fornecedor",
                 "financeiro.view_contapagar", "financeiro.add_contapagar", "fiscal.view_*", "fiscal.add_notafiscal"],
     "Usuários": [],
@@ -112,10 +117,22 @@ class Command(BaseCommand):
                                                ("Integração / boas-vindas", "RH")], start=1):
                 Etapa.objects.create(processo=proc2, ordem=i, nome=nome, tipo="tarefa", grupo_responsavel=grupos[grupo])
 
-        for nome, grupo in (("Contratos", "Administradores"), ("Recursos Humanos", "RH"), ("Fiscal", None),
+        proc3, criado = Processo.objects.get_or_create(codigo="aprovacao-contrato", defaults={
+            "nome": "Aprovação de contrato",
+            "descricao": "Contratos passam pela análise jurídica e pela diretoria antes da assinatura."})
+        if criado:
+            Etapa.objects.create(processo=proc3, ordem=1, nome="Análise jurídica", tipo="aprovacao",
+                                 grupo_responsavel=grupos["Jurídico"], prazo_dias=3,
+                                 instrucoes="Confira partes, objeto, vigência, valores, multa e cláusulas de rescisão.")
+            Etapa.objects.create(processo=proc3, ordem=2, nome="Aprovação da diretoria", tipo="aprovacao",
+                                 grupo_responsavel=grupos["Administradores"], prazo_dias=2)
+
+        for nome, grupo in (("Jurídico", "Jurídico"), ("Contratos", "Administradores"), ("Recursos Humanos", "RH"), ("Fiscal", None),
                             ("Políticas e procedimentos", None)):
             pasta, criada = Pasta.objects.get_or_create(nome=nome, superior=None)
             if criada and grupo:
                 pasta.grupos_acesso.add(grupos[grupo])
+                if nome == "Jurídico":
+                    pasta.grupos_acesso.add(grupos["Administradores"])
 
         self.stdout.write(self.style.SUCCESS("Configuração inicial concluída."))

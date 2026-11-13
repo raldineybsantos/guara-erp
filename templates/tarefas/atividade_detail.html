@@ -1,0 +1,20 @@
+{% extends "crud/detail.html" %}
+{% block botoes_extra %}<a href="{% url 'tarefas:quadro' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-kanban"></i> Quadro</a>
+{% if object.vinculo %}<a href="{{ object.vinculo.get_absolute_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-link-45deg"></i> {{ object.vinculo }}</a>{% endif %}{% endblock %}
+{% block depois_detalhe %}
+<div class="card mb-3">
+  <div class="card-header bg-body"><strong>Comentários e histórico</strong></div>
+  <ul class="list-group list-group-flush">
+    {% for c in object.comentarios.all %}
+    <li class="list-group-item"><small class="text-secondary">{{ c.data|date:"d/m/Y H:i" }} · <strong>{{ c.usuario.get_full_name|default:c.usuario }}</strong></small>
+      <div style="white-space:pre-line">{{ c.texto }}</div></li>
+    {% empty %}<li class="list-group-item text-secondary small">Nenhum comentário.</li>{% endfor %}
+  </ul>
+  <div class="card-footer">
+    <form method="post" action="{% url 'tarefas:comentar' object.pk %}" class="d-flex gap-2">{% csrf_token %}
+      <textarea name="texto" rows="2" class="form-control" placeholder="Escreva um comentário..." required></textarea>
+      <button class="btn btn-primary align-self-end"><i class="bi bi-send"></i></button>
+    </form>
+  </div>
+</div>
+{% endblock %}

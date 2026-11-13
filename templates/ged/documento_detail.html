@@ -8,18 +8,36 @@
   <div class="ms-auto d-flex gap-2">
     {% if v.extensao in ".pdf .png .jpg .jpeg .gif .txt" %}<a href="{% url 'ged:download' v.pk %}?ver=1" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-eye"></i> Visualizar</a>{% endif %}
     <a href="{% url 'ged:download' v.pk %}" class="btn btn-sm btn-primary"><i class="bi bi-download"></i> Baixar</a>
+    {% if perms.ged.assinar_documento %}<a href="{% url 'ged:assinar' v.pk %}" class="btn btn-sm btn-success"><i class="bi bi-pen"></i> Assinar digitalmente</a>{% endif %}
+    <a href="{% url 'ged:verificar' v.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-patch-check"></i> Verificar assinaturas</a>
   </div>
 </div></div>
 {% endif %}{% endwith %}
 {% endblock %}
 {% block depois_detalhe %}
+{% with assinaturas=object.assinaturas.all %}{% if assinaturas %}
+<div class="card mb-3 border-success">
+  <div class="card-header bg-body"><strong><i class="bi bi-pen text-success me-1"></i>Assinaturas digitais</strong> <span class="badge text-bg-light">{{ assinaturas|length }}</span></div>
+  <div class="table-responsive"><table class="table table-sm mb-0">
+    <thead class="table-light"><tr><th>Titular</th><th>CPF/CNPJ</th><th>Tipo</th><th>Motivo</th><th>Versão</th><th>Data</th><th></th></tr></thead>
+    <tbody>{% for a in assinaturas %}<tr>
+      <td>{{ a.titular }} {% if a.icp_brasil %}<span class="badge text-bg-success">ICP-Brasil</span>{% endif %}</td>
+      <td>{{ a.documento_titular|default:"—" }}</td><td>{{ a.get_tipo_display }}</td><td>{{ a.motivo }}</td>
+      <td>v{{ a.versao_origem.numero }}{% if a.versao_resultante %} → v{{ a.versao_resultante.numero }}{% endif %}</td>
+      <td>{{ a.data|date:"d/m/Y H:i" }}</td>
+      <td>{% if a.tipo == "cades" %}<a href="{% url 'ged:baixar_p7s' a.pk %}" title="Baixar .p7s"><i class="bi bi-download"></i> .p7s</a>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}{% endwith %}
 <div class="card mb-3">
   <div class="card-header bg-body"><strong>Versões</strong></div>
   <table class="table table-sm mb-0">
-    <thead class="table-light"><tr><th>Versão</th><th>Arquivo</th><th>Tamanho</th><th>Comentário</th><th>Enviado por</th><th>Data</th><th>SHA-256</th></tr></thead>
+    <thead class="table-light"><tr><th>Versão</th><th>Arquivo</th><th>Tamanho</th><th>Comentário</th><th>Enviado por</th><th>Data</th><th>SHA-256</th><th></th></tr></thead>
     <tbody>{% for v in object.versoes.all %}<tr>
       <td>v{{ v.numero }}</td><td><a href="{% url 'ged:download' v.pk %}">{{ v.nome_original }}</a></td><td>{{ v.tamanho|tamanho_arquivo }}</td>
       <td>{{ v.comentario }}</td><td>{{ v.enviado_por|default:"—" }}</td><td>{{ v.data|date:"d/m/Y H:i" }}</td><td><code class="small" title="{{ v.hash_sha256 }}">{{ v.hash_sha256|slice:":12" }}…</code></td>
+      <td class="text-nowrap"><a href="{% url 'ged:verificar' v.pk %}" title="Verificar assinaturas"><i class="bi bi-patch-check"></i></a></td>
     </tr>{% endfor %}</tbody>
   </table>
   {% if pode_editar %}

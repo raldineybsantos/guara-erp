@@ -153,6 +153,7 @@ class Instancia(ModeloBase):
             self.concluido_em = timezone.now()
             self.save()
             Historico.objects.create(instancia=self, etapa=etapa, usuario=usuario, acao="cancelou", comentario=comentario)
+            self._avisar_objeto("workflow_cancelado", comentario)
             return
         if not etapa.pode_atuar(usuario):
             raise ValidationError("Você não é responsável por esta etapa.")
@@ -165,6 +166,7 @@ class Instancia(ModeloBase):
             self.concluido_em = timezone.now()
             self.save()
             Historico.objects.create(instancia=self, etapa=etapa, usuario=usuario, acao="rejeitou", comentario=comentario)
+            self._avisar_objeto("workflow_recusado", comentario)
             return
         Historico.objects.create(instancia=self, etapa=etapa, usuario=usuario,
                                  acao="aprovou" if acao == "aprovar" else "concluiu", comentario=comentario)
@@ -179,11 +181,21 @@ class Instancia(ModeloBase):
         self.save()
 
     def _ao_concluir(self):
-        """Integração: ao concluir um fluxo de aprovação ligado a um registro com campo `aprovado`."""
+        """Integração: o registro vinculado pode reagir com `workflow_aprovado(instancia)`;
+        senão, se tiver o campo `aprovado` (ex.: conta a pagar), ele é marcado."""
         obj = self.objeto
-        if obj is not None and hasattr(obj, "aprovado"):
+        if obj is None:
+            return
+        if hasattr(obj, "workflow_aprovado"):
+            obj.workflow_aprovado(self)
+        elif hasattr(obj, "aprovado"):
             obj.aprovado = True
             obj.save()
+
+    def _avisar_objeto(self, metodo, comentario=""):
+        obj = self.objeto
+        if obj is not None and hasattr(obj, metodo):
+            getattr(obj, metodo)(self, comentario)
 
 
 class Historico(models.Model):

@@ -2,7 +2,7 @@
 from django.apps import apps
 from django.contrib import admin
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico"]
 
 
 def admin_generico(model):
@@ -16,7 +16,8 @@ def admin_generico(model):
     })
 
 
-SOMENTE_LEITURA = {"core.logauditoria", "workflow.historico", "cobranca.historicocobranca"}
+SOMENTE_LEITURA = {"core.logauditoria", "workflow.historico", "cobranca.historicocobranca", "ged.assinatura",
+                   "juridico.evento"}
 
 
 class SomenteLeituraAdmin(admin.ModelAdmin):

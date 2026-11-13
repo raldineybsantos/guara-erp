@@ -38,10 +38,10 @@ def moeda(valor):
     return "R$ " + number_format(Decimal(valor), 2, force_grouping=True)
 
 
-CORES_STATUS = (
-    ("danger", ("vencido", "rejeit", "cancel", "deslig", "afastado")),
-    ("success", ("pago", "paga", "conclu", "emitida", "ativo", "aprov")),
-    ("warning", ("parcial", "andamento", "enviada", "férias")),
+CORES_STATUS = (  # avaliadas nesta ordem
+    ("danger", ("vencido", "rejeit", "recusad", "cancel", "deslig", "afastado", "rescindido", "atrasad")),
+    ("warning", ("parcial", "andamento", "enviada", "férias", "em aprova", "aguardando", "vence em", "futura", "revis")),
+    ("success", ("pago", "paga", "conclu", "emitida", "ativo", "aprov", "vigente")),
 )
 
 
@@ -95,6 +95,8 @@ def valor_exibicao(obj, nome, html=True):
         if not valor:
             return ""
         return format_html('<a href="{}">{}</a>', valor.url, valor.name.split("/")[-1]) if html else valor.name
+    if isinstance(valor, models.Model) and hasattr(valor, "get_full_name"):  # usuário
+        return valor.get_full_name() or valor.get_username()
     if html and isinstance(valor, models.Model) and hasattr(valor, "get_absolute_url"):
         url = valor.get_absolute_url()
         if url and url != "#":

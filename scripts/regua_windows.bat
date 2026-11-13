@@ -1,4 +1,6 @@
 @echo off
-REM Executa a regua de cobranca. Agende no "Agendador de Tarefas" do Windows para rodar diariamente.
+REM Rotinas diarias: regua de cobranca e alertas/renovacao de contratos.
+REM Agende no "Agendador de Tarefas" do Windows para rodar todo dia as 08:00.
 cd /d "%~dp0\.."
-.venv\Scripts\python.exe manage.py executar_regua >> regua.log 2>&1
+.venv\Scripts\python.exe manage.py executar_regua >> rotinas.log 2>&1
+.venv\Scripts\python.exe manage.py alertar_contratos >> rotinas.log 2>&1

@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="d-flex mb-3 gap-2">
+  <a href="{% url 'juridico:contrato_list' %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-list"></i> Todos os contratos</a>
+  {% if perms.juridico.add_contrato %}<a href="{% url 'juridico:contrato_create' %}" class="btn btn-sm btn-success ms-auto"><i class="bi bi-plus-lg"></i> Novo contrato</a>{% endif %}
+</div>
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'juridico:contrato_list' %}?status=vigente"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Vigentes</div><div class="valor">{{ vigentes }}</div></div></div></a></div>
+  <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'juridico:contrato_list' %}?vencimento=60"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">A vencer (janela de alerta)</div><div class="valor text-warning-emphasis">{{ a_vencer|length }}</div></div></div></a></div>
+  <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'juridico:contrato_list' %}?vencimento=vencidos"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Vencidos e ainda vigentes</div><div class="valor text-danger">{{ vencidos.count }}</div></div></div></a></div>
+  <div class="col-sm-6 col-xl-3"><a class="text-decoration-none" href="{% url 'juridico:contrato_list' %}?status=aprovado"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Aguardando assinatura</div><div class="valor">{{ aguardando.count }}</div></div></div></a></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-7"><div class="card h-100"><div class="card-header bg-body"><strong>Próximos vencimentos</strong></div>
+    <table class="table table-sm mb-0"><tbody>{% for c in a_vencer %}
+      <tr><td><a href="{{ c.get_absolute_url }}">{{ c.numero }}</a><br><small class="text-secondary">{{ c.titulo }} · {{ c.parte }}</small></td>
+        <td class="text-end">{{ c.fim_vigencia|date:"d/m/Y" }}<br><small class="{% if c.dias_para_vencer <= 15 %}text-danger{% else %}text-secondary{% endif %}">{{ c.dias_para_vencer }} dia(s){% if c.renovacao_automatica %} · renova sozinho{% endif %}</small></td></tr>
+    {% empty %}<tr><td class="text-secondary p-3">Nenhum contrato na janela de alerta.</td></tr>{% endfor %}</tbody></table>
+  </div></div>
+  <div class="col-lg-5"><div class="card h-100"><div class="card-header bg-body"><strong>Em aprovação</strong></div>
+    <ul class="list-group list-group-flush small">{% for c in em_aprovacao %}<li class="list-group-item"><a href="{{ c.get_absolute_url }}">{{ c }}</a></li>
+    {% empty %}<li class="list-group-item text-secondary">Nada em aprovação.</li>{% endfor %}</ul>
+    <div class="card-header bg-body border-top"><strong>Atividade recente</strong></div>
+    <ul class="list-group list-group-flush small">{% for e in eventos %}<li class="list-group-item"><span class="text-secondary">{{ e.data|date:"d/m H:i" }}</span> <a href="{{ e.contrato.get_absolute_url }}">{{ e.contrato.numero }}</a>: {{ e.descricao }}</li>{% endfor %}</ul>
+  </div></div>
+</div>
+{% endblock %}

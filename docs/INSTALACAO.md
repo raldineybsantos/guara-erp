@@ -50,7 +50,15 @@ O Docker baixa e configura sozinho o restante: Python 3.12, PostgreSQL 16, pgAdm
 | Git | 2.30 ou mais recente |
 
 As bibliotecas Python ficam em `requirements.txt`: Django 5.1, psycopg 3, django-filter, whitenoise,
-gunicorn (Linux), waitress (Windows), python-dotenv, tzdata e defusedxml.
+gunicorn (Linux), waitress (Windows), python-dotenv, tzdata, defusedxml, cryptography e **pyHanko**
+(assinatura digital PAdES/CAdES).
+
+**Assinatura digital (opcional):**
+
+- Os usuários precisam de certificado **ICP-Brasil A1** (`.pfx`) para assinar pelo sistema. Quem usa
+  certificado **A3** (token ou cartão) assina no próprio computador e envia o PDF assinado.
+- Para a tela de verificação marcar a cadeia como confiável, o servidor precisa dos certificados raiz da
+  ICP-Brasil (seção 2.8).
 
 ### 1.4 Estações dos usuários
 
@@ -154,7 +162,38 @@ Sem HTTPS, as senhas trafegam sem criptografia na rede. Para ativar:
    `DJANGO_CSRF_TRUSTED_ORIGINS=https://erp.suaempresa.com.br`.
 3. Suba com o perfil: `docker compose --profile https up -d`.
 
-### 2.7 Comandos do dia a dia
+### 2.7 Rotinas diárias
+
+O serviço `agendador` (Docker) ou `erp-agendador` (Linux) executa todo dia às 08:00:
+
+- a **régua de cobrança**;
+- os **alertas de contratos a vencer**, que viram cartões no quadro de tarefas;
+- a **renovação automática** de contratos.
+
+No Windows, agende `scripts\regua_windows.bat` no Agendador de Tarefas. Esse arquivo roda as duas rotinas.
+
+### 2.8 Assinatura digital: cadeia ICP-Brasil e carimbo do tempo
+
+1. Baixe os certificados das **ACs Raiz da ICP-Brasil** (v5, v10, v11...) no repositório do ITI:
+   https://www.gov.br/iti/pt-br/assuntos/repositorio
+2. Copie os arquivos `.crt`, `.cer` ou `.pem` para a pasta `certificados/icp-brasil/` do projeto (ou
+   defina outra pasta em `ICP_BRASIL_CAS_DIR` no `.env`).
+3. Reinicie o ERP. Na tela **Verificar assinaturas**, a coluna *Cadeia ICP-Brasil* passa a mostrar *Confiável*.
+
+Opcional, carimbo do tempo: informe em `ASSINATURA_TSA_URL` o endereço de uma Autoridade de Carimbo do
+Tempo (RFC 3161). As assinaturas PAdES passam a levar a data e hora certificadas por terceiros.
+
+**Para testar sem certificado real**, gere um certificado de teste. Ele é marcado como "NÃO É
+ICP-Brasil" e não tem validade jurídica:
+
+```bash
+docker compose exec web python manage.py gerar_certificado_teste --nome "Seu Nome" --cpf 00000000000 --senha teste123 --saida /tmp/teste.pfx
+docker compose cp web:/tmp/teste.pfx .
+```
+
+Use o CPF que está no seu cadastro de colaborador.
+
+### 2.9 Comandos do dia a dia
 
 | Ação | Comando |
 |---|---|
@@ -164,6 +203,7 @@ Sem HTTPS, as senhas trafegam sem criptografia na rede. Para ativar:
 | Comando de administração | `docker compose exec web python manage.py <comando>` |
 | Criar outro superusuário | `docker compose exec web python manage.py createsuperuser` |
 | Executar a régua agora | `docker compose exec web python manage.py executar_regua` |
+| Gerar alertas de contratos agora | `docker compose exec web python manage.py alertar_contratos` |
 
 ---
 
@@ -181,7 +221,8 @@ O script:
 - cria o `.env` com chave secreta e senha do banco aleatórias, já com o IP do servidor;
 - cria o usuário `erp` do banco **sem privilégios** e o banco `erp`;
 - aplica as migrações e a configuração inicial (`setup_erp`);
-- registra os serviços systemd `erp-web` (gunicorn, porta 8000) e `erp-agendador` (régua diária às 08:00);
+- registra os serviços systemd `erp-web` (gunicorn, porta 8000) e `erp-agendador` (régua de cobrança e
+  contratos, todo dia às 08:00);
 - libera a porta 8000 no `ufw`, se ele estiver ativo.
 
 Ao final, crie o administrador:
@@ -257,8 +298,8 @@ O ERP fica em **http://localhost:8000** (e em http://IP-DO-SERVIDOR:8000 na rede
 Outra opção é registrar como serviço com o [NSSM](https://nssm.cc/):
 `nssm install GuaraERP "C:\caminho\guara-erp\scripts\iniciar_windows.bat"`.
 
-**Régua de cobrança diária:** no Agendador de Tarefas, crie uma tarefa diária às 08:00 que execute
-`scripts\regua_windows.bat`.
+**Rotinas diárias:** no Agendador de Tarefas, crie uma tarefa diária às 08:00 que execute
+`scripts\regua_windows.bat`. Esse arquivo roda a régua de cobrança e os alertas e renovações de contratos.
 
 ---
 
@@ -344,6 +385,9 @@ sudo systemctl restart erp-web erp-agendador
 | Senha nova não vale no Docker depois de mudar o `.env` | O usuário do banco só é criado na 1ª subida | Altere a senha pelo pgAdmin (`ALTER ROLE erp PASSWORD`) |
 | Botão "Baixar backup" indisponível | `pg_dump` fora do PATH | Instale o cliente PostgreSQL / adicione `...\PostgreSQL\16\bin` ao PATH |
 | E-mails da régua não chegam | SMTP não configurado | Preencha `EMAIL_*` no `.env`. Veja o motivo da falha em Cobrança → Histórico de envios |
+| "O CPF do certificado não é o mesmo do seu cadastro" | Usuário ligado a outro colaborador, ou certificado de outra pessoa | Confira o campo *Usuário do sistema* no cadastro do colaborador |
+| Assinatura "Cadeia ICP-Brasil: Não verificada" | Raízes ICP-Brasil não instaladas | Seção 2.8 |
+| "Não vejo a aba Minha equipe" | Usuário sem vínculo de gestor | Preencha *Gestor* nos colaboradores ou *Responsável* no departamento |
 | Página Banco de dados mostra "superusuário" em vermelho | O ERP está conectando como superusuário | Crie um usuário sem privilégios, conforme [SEGURANCA.md](../SEGURANCA.md) |
 
 Logs: `docker compose logs web` (Docker), `journalctl -u erp-web` (Linux) ou a própria janela do

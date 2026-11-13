@@ -1,0 +1,61 @@
+{% extends "crud/detail.html" %}{% load erp %}
+{% block botoes_extra %}
+  {% if perms.juridico.aprovar_contrato and object.status in "rascunho recusado" %}<a href="{% url 'juridico:enviar_aprovacao' object.pk %}" class="btn btn-sm btn-success"><i class="bi bi-send-check"></i> Enviar para aprovação</a>{% endif %}
+  {% if perms.juridico.aprovar_contrato and object.status == "aprovado" %}<a href="{% url 'juridico:assinatura_manual' object.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pen"></i> Registrar assinatura em papel/externa</a>{% endif %}
+  {% if perms.juridico.change_contrato and object.status == "vigente" %}
+    {% if object.fim_vigencia %}<a href="{% url 'juridico:renovar' object.pk %}" class="btn btn-sm btn-success"><i class="bi bi-arrow-repeat"></i> Renovar</a>{% endif %}
+    <a href="{% url 'juridico:aditivo_create' %}?contrato={{ object.pk }}&next={{ object.get_absolute_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-plus"></i> Aditivo</a>
+  {% endif %}
+  {% if perms.juridico.change_contrato and object.status in "vigente aprovado" %}<a href="{% url 'juridico:encerrar' object.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-octagon"></i> Encerrar / rescindir</a>{% endif %}
+{% endblock %}
+{% block antes_detalhe %}
+<div class="row g-3 mb-3">
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Situação</div><div class="mt-1 fs-5">{{ object.situacao|badge }}</div>
+    {% if object.status == "recusado" and object.motivo_status %}<small class="text-danger">{{ object.motivo_status }}</small>{% endif %}</div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Vigência</div>
+    <div class="valor fs-5">{{ object.inicio_vigencia|date:"d/m/Y" }} → {{ object.fim_vigencia|date:"d/m/Y"|default:"indeterminado" }}</div>
+    {% if object.renovacao_automatica %}<small class="text-success"><i class="bi bi-arrow-repeat"></i> renovação automática ({{ object.prazo_renovacao_meses }} meses)</small>{% endif %}</div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Valor mensal / total</div>
+    <div class="valor fs-5">{{ object.valor_mensal|moeda }}</div><small class="text-secondary">total {{ object.valor_total|moeda }}</small></div></div></div>
+  <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Aviso de não renovação até</div>
+    <div class="valor fs-5 {% if object.aviso_expirado %}text-danger{% endif %}">{{ object.data_limite_aviso|date:"d/m/Y"|default:"—" }}</div>
+    <small class="text-secondary">{{ object.aviso_previo_dias }} dias de aviso prévio</small></div></div></div>
+</div>
+
+<div class="card mb-3 {% if object.status == 'aprovado' %}border-primary{% endif %}">
+  <div class="card-header bg-body d-flex align-items-center"><strong><i class="bi bi-file-earmark-pdf me-1"></i>Documento e assinaturas</strong>
+    <span class="ms-auto small text-secondary">{{ object.assinaturas_necessarias }} assinatura(s) digital(is) necessária(s)</span></div>
+  <div class="card-body">
+    {% with doc=object.documento %}{% if doc and doc.versao_atual %}{% with v=doc.versao_atual %}
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span><a href="{{ doc.get_absolute_url }}">{{ v.nome_original }}</a> · versão {{ v.numero }} · {{ v.data|date:"d/m/Y H:i" }}</span>
+        <span class="ms-auto d-flex flex-wrap gap-2">
+          <a href="{% url 'ged:download' v.pk %}{% if v.extensao == '.pdf' %}?ver=1{% endif %}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="bi bi-eye"></i> Abrir</a>
+          {% if perms.ged.assinar_documento and object.status in "aprovado vigente" %}<a href="{% url 'ged:assinar' v.pk %}?next={{ object.get_absolute_url }}" class="btn btn-sm btn-primary"><i class="bi bi-pen"></i> Assinar com certificado digital</a>{% endif %}
+          <a href="{% url 'ged:verificar' v.pk %}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-patch-check"></i> Verificar assinaturas</a>
+          {% if perms.juridico.aprovar_contrato and object.status == "aprovado" %}<form method="post" action="{% url 'juridico:conferir_assinaturas' object.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-success"><i class="bi bi-check2-all"></i> Conferir e ativar</button></form>{% endif %}
+        </span>
+      </div>
+      {% with ass=doc.assinaturas.all %}{% if ass %}
+      <ul class="list-unstyled small mt-3 mb-0">{% for a in ass %}<li><i class="bi bi-patch-check-fill text-success"></i> {{ a.titular }} {% if a.documento_titular %}({{ a.documento_titular }}){% endif %} · {{ a.motivo }} · {{ a.data|date:"d/m/Y H:i" }}</li>{% endfor %}</ul>
+      {% endif %}{% endwith %}
+      {% if object.status == "aprovado" %}<p class="small text-secondary mt-2 mb-0">A outra parte pode assinar pelo gov.br ou por outra plataforma. Envie o PDF assinado como nova versão (editando o contrato) e clique em <strong>Conferir e ativar</strong>.</p>{% endif %}
+    {% endwith %}{% else %}
+      <span class="text-secondary small">Nenhum arquivo anexado.</span>
+      {% if perms.juridico.change_contrato %}<a href="{{ url_update }}" class="btn btn-sm btn-outline-primary ms-2"><i class="bi bi-upload"></i> Anexar arquivo</a>{% endif %}
+    {% endif %}{% endwith %}
+  </div>
+</div>
+{% endblock %}
+{% block depois_detalhe %}
+{% with sols=object.solicitacoes %}{% if sols %}
+<div class="card mb-3"><div class="card-header bg-body"><strong><i class="bi bi-diagram-2 me-1"></i>Aprovações</strong></div>
+  <ul class="list-group list-group-flush small">{% for s in sols %}
+    <li class="list-group-item d-flex"><a href="{{ s.get_absolute_url }}">{{ s }}</a><span class="ms-auto">{% if s.status == "andamento" %}{{ s.etapa_atual.nome }} · {% endif %}{{ s.get_status_display|badge }}</span></li>{% endfor %}
+  </ul></div>
+{% endif %}{% endwith %}
+<div class="card mb-3"><div class="card-header bg-body"><strong><i class="bi bi-clock-history me-1"></i>Linha do tempo</strong></div>
+  <ul class="list-group list-group-flush small">{% for e in object.eventos.all %}
+    <li class="list-group-item"><span class="text-secondary">{{ e.data|date:"d/m/Y H:i" }}</span> · {{ e.descricao }}{% if e.usuario %} <span class="text-secondary">— {{ e.usuario.get_full_name|default:e.usuario }}</span>{% endif %}</li>
+  {% empty %}<li class="list-group-item text-secondary">Sem eventos.</li>{% endfor %}</ul></div>
+{% endblock %}

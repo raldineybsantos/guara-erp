@@ -47,6 +47,15 @@ def dashboard(request):
     if u.has_perm("core.view_colaborador"):
         ctx["colaboradores_ativos"] = Colaborador.objects.filter(status="ativo").count()
     ctx["tarefas"] = Instancia.objects.pendentes_para(u).select_related("processo", "etapa_atual")[:8]
+    from apps.tarefas.models import Atividade
+    minhas = Atividade.objects.minhas(u).exclude(status__in=["concluida", "cancelada"]).distinct()
+    ctx["atividades_abertas"] = minhas.count()
+    ctx["atividades_atrasadas"] = minhas.filter(prazo__lt=hoje).count()
+    if u.has_perm("juridico.view_contrato"):
+        from apps.juridico.models import Contrato
+        ctx["contratos_vencer"] = [c for c in Contrato.objects.filter(status="vigente", fim_vigencia__gte=hoje)
+                                   .select_related("fornecedor", "cliente").order_by("fim_vigencia")[:50]
+                                   if c.dias_para_vencer <= c.alerta_dias][:6]
     return render(request, "dashboard.html", ctx)
 
 

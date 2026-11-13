@@ -23,8 +23,10 @@
   </div></div></div>
   {% endif %}
   <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body">
-    <div class="rotulo"><i class="bi bi-check2-square me-1"></i>Minhas tarefas</div>
-    <div class="valor">{{ tarefas|length }}</div>
+    <div class="rotulo"><i class="bi bi-kanban me-1"></i>Minhas tarefas</div>
+    <div class="valor"><a class="text-reset text-decoration-none" href="{% url 'tarefas:quadro' %}">{{ atividades_abertas }}</a>
+      {% if atividades_atrasadas %}<small class="fs-6 text-danger">{{ atividades_atrasadas }} atrasada(s)</small>{% endif %}</div>
+    <small class="text-secondary">{{ tarefas|length }} aprovação(ões) pendente(s)</small><br>
     {% if colaboradores_ativos is not None %}<small class="text-secondary">{{ colaboradores_ativos }} colaborador(es) ativo(s)</small>{% endif %}
   </div></div></div>
 </div>
@@ -57,13 +59,23 @@
   </div></div>
   {% endif %}
   <div class="col-lg-6"><div class="card h-100">
-    <div class="card-header bg-body d-flex"><strong>Tarefas pendentes</strong><a href="{% url 'workflow:minhas_tarefas' %}" class="ms-auto small">Ver todas</a></div>
+    <div class="card-header bg-body d-flex"><strong>Tarefas pendentes</strong><a href="{% url 'tarefas:quadro' %}" class="ms-auto small">Ver quadro</a></div>
     <table class="table table-sm mb-0"><tbody>
       {% for i in tarefas %}<tr><td><a href="{{ i.get_absolute_url }}">{{ i }}</a><br><small class="text-secondary">{{ i.processo }} · {{ i.etapa_atual.nome }}</small></td>
         <td class="text-end">{% if i.atrasada %}<span class="badge text-bg-danger">Atrasada</span>{% else %}<small>{{ i.prazo|date:"d/m H:i" }}</small>{% endif %}</td></tr>
       {% empty %}<tr><td class="text-secondary p-3">Nenhuma tarefa pendente.</td></tr>{% endfor %}
     </tbody></table>
   </div></div>
+  {% if contratos_vencer is not None %}
+  <div class="col-lg-6"><div class="card h-100">
+    <div class="card-header bg-body d-flex"><strong>Contratos a vencer</strong><a href="{% url 'juridico:painel' %}" class="ms-auto small">Painel jurídico</a></div>
+    <table class="table table-sm mb-0"><tbody>
+      {% for c in contratos_vencer %}<tr><td><a href="{{ c.get_absolute_url }}">{{ c.numero }}</a> {{ c.titulo }}<br><small class="text-secondary">{{ c.parte }}</small></td>
+        <td class="text-end">{{ c.fim_vigencia|date:"d/m/Y" }}<br><small class="{% if c.dias_para_vencer <= 15 %}text-danger{% else %}text-secondary{% endif %}">{{ c.dias_para_vencer }} dia(s)</small></td></tr>
+      {% empty %}<tr><td class="text-secondary p-3">Nenhum contrato perto do vencimento.</td></tr>{% endfor %}
+    </tbody></table>
+  </div></div>
+  {% endif %}
   {% if contas %}
   <div class="col-lg-6"><div class="card h-100">
     <div class="card-header bg-body"><strong>Saldos por conta</strong></div>

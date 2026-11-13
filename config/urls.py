@@ -30,6 +30,8 @@ urlpatterns = [
     path("fiscal/", include("apps.fiscal.urls")),
     path("workflow/", include("apps.workflow.urls")),
     path("ged/", include("apps.ged.urls")),
+    path("tarefas/", include("apps.tarefas.urls")),
+    path("juridico/", include("apps.juridico.urls")),
     # O login do Admin passa pela mesma tela (com bloqueio por tentativas e auditoria)
     path("admin/login/", RedirectView.as_view(url="/login/", query_string=True)),
     path("admin/", admin.site.urls),

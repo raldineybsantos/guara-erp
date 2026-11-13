@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="row g-3" style="max-width:1100px">
+  <div class="col-lg-7">
+    <form method="post" enctype="multipart/form-data" novalidate autocomplete="off">{% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+      <div class="card mb-3">
+        <div class="card-header bg-body"><strong><i class="bi bi-file-earmark-lock me-1"></i>{{ doc }}</strong> · versão {{ versao.numero }}</div>
+        <div class="card-body">
+          <p class="small mb-3">Arquivo: <a href="{% url 'ged:download' versao.pk %}{% if eh_pdf %}?ver=1{% endif %}" target="_blank">{{ versao.nome_original }}</a> ({{ versao.tamanho|tamanho_arquivo }})
+            · <a href="{% url 'ged:verificar' versao.pk %}">assinaturas existentes</a></p>
+          {% include "crud/_campos.html" %}
+        </div>
+      </div>
+      <button class="btn btn-primary"><i class="bi bi-pen"></i> Assinar digitalmente</button>
+      <a href="{% if next %}{{ next }}{% else %}{{ doc.get_absolute_url }}{% endif %}" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+  </div>
+  <div class="col-lg-5">
+    <div class="card border-0 bg-body-tertiary"><div class="card-body small">
+      <h2 class="h6"><i class="bi bi-shield-lock me-1"></i>Como funciona</h2>
+      <ul class="ps-3 mb-2">
+        {% if eh_pdf %}<li>A assinatura <strong>PAdES</strong> fica embutida no PDF. O resultado é salvo como <strong>nova versão</strong> do documento e pode ser conferido no Adobe Reader ou em <a href="https://verificador.iti.gov.br" target="_blank" rel="noopener">verificador.iti.gov.br</a>.</li>
+        <li>Outras pessoas podem assinar o mesmo PDF depois: as assinaturas anteriores continuam válidas.</li>
+        {% else %}<li>Como o arquivo não é PDF, é gerada uma assinatura <strong>CAdES destacada (.p7s)</strong>, guardada junto ao documento. O arquivo original não é alterado.</li>{% endif %}
+        <li>Use seu certificado <strong>ICP-Brasil A1</strong> (e-CPF ou, com permissão, e-CNPJ). O CPF do certificado precisa ser o do seu cadastro de colaborador.</li>
+        <li>O arquivo do certificado e a senha são usados <strong>só durante esta operação</strong>. Eles não são gravados no servidor.</li>
+      </ul>
+      <p class="mb-0 text-secondary">Certificado A3 (token ou cartão): assine o PDF no seu computador, por exemplo no Assinador SERPRO ou no gov.br, e envie como nova versão. O sistema reconhece e verifica as assinaturas embutidas.</p>
+    </div></div>
+  </div>
+</div>
+{% endblock %}

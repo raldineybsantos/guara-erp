@@ -12,7 +12,7 @@ from apps.cobranca.models import ReguaCobranca
 
 
 class Command(BaseCommand):
-    help = "Executa a régua de cobrança diariamente no horário informado (fuso do sistema: TIME_ZONE)."
+    help = "Rotinas diárias no horário informado: régua de cobrança e vencimento/renovação de contratos."
 
     def add_arguments(self, parser):
         parser.add_argument("--hora", default="08:00", help="Horário HH:MM (padrão 08:00)")
@@ -29,5 +29,11 @@ class Command(BaseCommand):
                     self.stdout.write(f"{agora:%d/%m/%Y %H:%M} régua executada: {n} envio(s).")
                 except Exception as exc:  # mantém o agendador vivo
                     self.stderr.write(f"Erro na régua: {exc}")
+                try:
+                    from apps.juridico.models import processar_vencimentos
+                    alertas, renovados = processar_vencimentos()
+                    self.stdout.write(f"Contratos: {alertas} alerta(s), {renovados} renovação(ões) automática(s).")
+                except Exception as exc:
+                    self.stderr.write(f"Erro nos contratos: {exc}")
                 ultimo_dia = agora.date()
             time.sleep(30)

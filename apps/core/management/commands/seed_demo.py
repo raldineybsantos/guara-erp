@@ -3,7 +3,7 @@ import datetime
 import random
 from decimal import Decimal
 
-from django.contrib.auth.models import Group, User
+from django.contrib.auth.models import Group, Permission, User
 from django.core.management import call_command
 from django.core.management.base import BaseCommand
 from django.db import transaction
@@ -125,14 +125,91 @@ class Command(BaseCommand):
             nf.emitir()
 
         # usuários de demonstração por perfil
-        for username, grupo, nome in (("financeiro", "Financeiro", "Fernanda Financeiro"), ("rh", "RH", "Roberto RH"),
-                                      ("fiscal", "Fiscal", "Fábio Fiscal"), ("diretor", "Administradores", "Diana Diretora")):
+        usuarios = {}
+        for username, grupo, nome, cpf, depto in (
+                ("diretor", "Administradores", "Diana Diretora", "39053344705", "ADM"),
+                ("financeiro", "Financeiro", "Fernanda Financeiro", "52998224725", "FIN"),
+                ("rh", "RH", "Roberto RH", "11144477735", "RH"),
+                ("fiscal", "Fiscal", "Fábio Fiscal", "93541134780", "FIN"),
+                ("juridico", "Jurídico", "Júlia Jurídico", "15350946056", "ADM")):
             u, criado = User.objects.get_or_create(username=username, defaults={
                 "first_name": nome.split()[0], "last_name": nome.split()[1], "email": f"{username}@exemplo.com.br"})
             if criado:
                 u.set_password(senha)
                 u.save()
             u.groups.add(Group.objects.get(name=grupo))
+            dep = Departamento.objects.get(codigo=depto)
+            Colaborador.objects.update_or_create(cpf=cpf, defaults=dict(
+                nome=nome, usuario=u, departamento=dep, cargo=cargos[2], email=u.email, matricula=f"9{len(usuarios):03d}"))
+            usuarios[username] = u
+        # estrutura de gestão: a diretora responde pelo Administrativo e é gestora direta dos demais
+        diana = Colaborador.objects.get(usuario=usuarios["diretor"])
+        Departamento.objects.filter(codigo="ADM").update(responsavel=diana)
+        Colaborador.objects.filter(usuario__in=[usuarios[k] for k in ("financeiro", "rh", "fiscal", "juridico")]).update(gestor=diana)
+        usuarios["juridico"].user_permissions.add(*Permission.objects.filter(codename="assinar_ecnpj"))
+
+        # quadro de tarefas
+        from apps.tarefas.models import Atividade
+        g = {n: Group.objects.get(name=n) for n in ("Financeiro", "RH", "Fiscal", "Jurídico")}
+        for titulo, status, prio, resp, grupo, dias in (
+                ("Conciliar extrato bancário de outubro", "fazendo", "alta", "financeiro", "Financeiro", 2),
+                ("Cobrar clientes com títulos vencidos", "a_fazer", "urgente", "financeiro", "Financeiro", -1),
+                ("Revisar plano de contas 2027", "a_fazer", "media", None, "Financeiro", 20),
+                ("Integração do novo analista", "revisao", "media", "rh", "RH", 5),
+                ("Atualizar política de férias", "a_fazer", "baixa", None, "RH", 30),
+                ("Conferir notas de entrada da semana", "fazendo", "alta", "fiscal", "Fiscal", 1),
+                ("Apuração do ICMS do mês", "a_fazer", "alta", "fiscal", "Fiscal", 8),
+                ("Revisar minuta de NDA com cliente", "revisao", "alta", "juridico", "Jurídico", 3),
+                ("Fechamento contábil de setembro", "concluida", "media", "financeiro", "Financeiro", -20)):
+            a = Atividade.objects.create(titulo=titulo, status=status, prioridade=prio, grupo=g[grupo],
+                                         responsavel=usuarios.get(resp) if resp else None,
+                                         prazo=hoje + datetime.timedelta(days=dias), criado_por=usuarios["diretor"],
+                                         etiquetas=grupo.lower())
+            a.mudar_status(status)
+            a.save()
+
+        # contratos
+        from apps.core.pdf_simples import gerar_pdf
+        from django.core.files.base import ContentFile
+        from apps.juridico.models import Contrato, Evento, somar_meses
+        from apps.juridico.telas import pasta_juridico
+        from apps.ged.models import Documento
+        pasta = pasta_juridico()
+        for titulo, forn, cli, cat, inicio_meses, duracao, mensal, renova, status in (
+                ("Locação da sede administrativa", forns[3], None, "locacao", -22, 24, 7500, True, "vigente"),
+                ("Hospedagem em nuvem e backup", forns[1], None, "software", -11, 12, 2400, False, "vigente"),
+                ("Fornecimento de energia (mercado livre)", forns[2], None, "fornecimento", -6, 36, 1300, False, "vigente"),
+                ("Suporte mensal de TI", None, clis[2], "servicos", -1, 12, 2500, True, "aprovado"),
+                ("Confidencialidade (NDA) — projeto escola", None, clis[3], "nda", 0, 24, 0, False, "rascunho")):
+            inicio = somar_meses(hoje, inicio_meses)
+            fim = somar_meses(inicio, duracao) - datetime.timedelta(days=1)
+            if titulo.startswith("Hospedagem"):
+                fim = hoje + datetime.timedelta(days=25)  # vence em breve: aparece nos alertas
+            c = Contrato.objects.create(
+                titulo=titulo, tipo="fornecedor" if forn else "cliente", categoria=cat, fornecedor=forn, cliente=cli,
+                objeto=f"{titulo} conforme proposta comercial.", valor_mensal=Decimal(mensal),
+                valor_total=Decimal(mensal) * duracao, indice_reajuste="ipca" if mensal else "", inicio_vigencia=inicio,
+                fim_vigencia=fim, renovacao_automatica=renova, responsavel=usuarios["juridico"],
+                departamento=Departamento.objects.get(codigo="ADM"), criado_por=usuarios["juridico"],
+                data_assinatura=inicio if status == "vigente" else None)
+            parte = forn or cli
+            pdf = gerar_pdf(f"CONTRATO {c.numero}", [
+                f"Contratante: {emp.razao_social}", f"Contratada/Contratante: {parte.nome}", "",
+                f"Objeto: {c.objeto}", f"Vigência: {inicio:%d/%m/%Y} a {fim:%d/%m/%Y}",
+                f"Valor mensal: R$ {mensal:,.2f}".replace(",", "X").replace(".", ",").replace("X", "."),
+                "", "Cláusula 1ª - As partes acima identificadas têm entre si justo e contratado o presente instrumento.",
+                "Cláusula 2ª - O reajuste anual seguirá o índice indicado neste contrato.",
+                "Cláusula 3ª - Qualquer das partes poderá rescindir mediante aviso prévio de 30 dias.",
+                "", "Documento de DEMONSTRAÇÃO gerado pelo Guará ERP."])
+            doc = Documento.objects.create(pasta=pasta, titulo=f"Contrato {c.numero} — {titulo}"[:200], tipo="contrato",
+                                           validade=fim, tags=f"contrato, {c.numero}")
+            doc.adicionar_versao(ContentFile(pdf, name=f"{c.numero}.pdf"), "Minuta", usuarios["juridico"])
+            c.documento = doc
+            c.status = status
+            c.save()
+            Evento.objects.create(contrato=c, tipo="criacao", usuario=usuarios["juridico"], descricao="Contrato cadastrado.")
+        rascunho = Contrato.objects.get(status="rascunho")
+        rascunho.enviar_para_aprovacao(usuarios["juridico"])
 
         admin = User.objects.filter(is_superuser=True).first() or User.objects.get(username="diretor")
         proc = Processo.objects.get(codigo="aprovacao-pagamento")
@@ -140,4 +217,4 @@ class Command(BaseCommand):
             proc.iniciar(f"Aprovar pagamento: {cp}", admin, f"Fornecedor: {cp.fornecedor}", objeto=cp)
 
         self.stdout.write(self.style.SUCCESS(
-            f"Dados de demonstração criados. Usuários: financeiro, rh, fiscal, diretor (senha: {senha})."))
+            f"Dados de demonstração criados. Usuários: diretor, financeiro, rh, fiscal, juridico (senha: {senha})."))

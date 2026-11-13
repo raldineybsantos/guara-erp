@@ -69,6 +69,28 @@ Grupos padrão (recriados por `python manage.py setup_erp`; ajustes manuais nos 
 | Compras | Fornecedores, lançamento de contas a pagar e de notas. |
 | Usuários | Abrir e acompanhar solicitações, consultar e enviar documentos no GED. |
 
+### Assinatura digital (certificado ICP-Brasil)
+
+| Item | Como é tratado |
+|---|---|
+| Arquivo do certificado (.pfx) e senha | Lidos **só em memória** durante a requisição: a tela de assinatura desliga o armazenamento temporário em disco do upload. Nunca são gravados em disco, banco ou log, e são descartados ao fim da operação (há teste automatizado para isso). Limite de 100 KB. |
+| Assinar em nome de outra pessoa | Bloqueado: o CPF do e-CPF precisa ser igual ao do colaborador ligado ao usuário. O e-CNPJ exige a permissão `ged.assinar_ecnpj` e um CNPJ de empresa cadastrada. |
+| Certificado vencido ou sem uso para assinatura | Recusado. |
+| Arquivo trocado no servidor | Antes de assinar, o SHA-256 do arquivo é comparado com o registrado no envio. |
+| Integridade depois da assinatura | PAdES/CAdES com SHA-256. Qualquer alteração aparece como *Inválida / alterada* na verificação. |
+| Rastreabilidade | Cada assinatura registra titular, CPF/CNPJ, autoridade certificadora, número de série, validade, motivo, IP e data. O registro é somente leitura e também vai para a auditoria. |
+| Cadeia de confiança | Validada contra as raízes da ICP-Brasil colocadas em `ICP_BRASIL_CAS_DIR`. Sem elas, a assinatura aparece como "não verificada" em vez de "confiável". |
+| Certificados de teste | `gerar_certificado_teste` cria certificados identificados como "NAO E ICP-Brasil", que nunca são marcados como ICP-Brasil. |
+
+### Tarefas e contratos
+
+- O quadro Kanban só mostra atividades da própria pessoa, dos seus grupos e da equipe que ela gerencia.
+  O servidor confere isso também ao mover cartões: atividade não visível responde 404, e coluna inválida responde 400.
+- Os termos de contratos aprovados (partes, valores, vigência) ficam travados. A mudança passa por
+  aditivo, que fica registrado.
+- A pasta *Jurídico* do GED é restrita aos grupos Jurídico e Administradores. Enviar contrato para
+  aprovação e registrar assinatura exigem a permissão `juridico.aprovar_contrato`.
+
 ## 3. Portas
 
 | Porta | Serviço | Exposição padrão | Recomendação |

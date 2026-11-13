@@ -141,3 +141,42 @@ class Versao(models.Model):
     @property
     def extensao(self):
         return os.path.splitext(self.nome_original or self.arquivo.name)[1].lower()
+
+
+def caminho_p7s(instance, filename):
+    return f"ged/assinaturas/{timezone.now():%Y/%m}/{instance.documento_id}/{filename}"
+
+
+class Assinatura(models.Model):
+    """Registro de cada assinatura digital feita pelo sistema (ICP-Brasil, certificado A1)."""
+
+    TIPOS = [("pades", "PAdES (embutida no PDF)"), ("cades", "CAdES (arquivo .p7s destacado)")]
+    documento = models.ForeignKey(Documento, on_delete=models.CASCADE, related_name="assinaturas")
+    versao_origem = models.ForeignKey(Versao, verbose_name="versão assinada", on_delete=models.CASCADE,
+                                      related_name="assinaturas")
+    versao_resultante = models.ForeignKey(Versao, verbose_name="versão gerada", null=True, blank=True,
+                                          on_delete=models.SET_NULL, related_name="+")
+    arquivo_p7s = models.FileField("assinatura .p7s", upload_to=caminho_p7s, blank=True)
+    tipo = models.CharField(max_length=5, choices=TIPOS)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    titular = models.CharField("titular do certificado", max_length=200)
+    documento_titular = models.CharField("CPF/CNPJ do certificado", max_length=14, blank=True)
+    emissor = models.CharField("autoridade certificadora", max_length=200, blank=True)
+    serial = models.CharField("série do certificado", max_length=80, blank=True)
+    certificado_valido_ate = models.DateTimeField("certificado válido até", null=True, blank=True)
+    icp_brasil = models.BooleanField("ICP-Brasil", default=False)
+    motivo = models.CharField(max_length=120, blank=True)
+    local = models.CharField(max_length=120, blank=True)
+    hash_sha256 = models.CharField("SHA-256 do arquivo assinado", max_length=64, blank=True)
+    ip = models.GenericIPAddressField("IP", null=True, blank=True)
+    data = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "assinatura digital"
+        verbose_name_plural = "assinaturas digitais"
+        ordering = ["-data"]
+        permissions = [("assinar_documento", "Pode assinar documentos com certificado digital"),
+                       ("assinar_ecnpj", "Pode assinar com o certificado da empresa (e-CNPJ)")]
+
+    def __str__(self):
+        return f"{self.titular} em {timezone.localtime(self.data):%d/%m/%Y %H:%M}"

@@ -15,10 +15,12 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 6. [Financeiro](#6-financeiro)
 7. [Cobrança](#7-cobrança)
 8. [Fiscal](#8-fiscal)
-9. [Workflow / BPM](#9-workflow--bpm)
-10. [GED — documentos](#10-ged--documentos)
-11. [Administração](#11-administração)
-12. [Perguntas frequentes](#12-perguntas-frequentes)
+9. [Minhas tarefas — quadro Kanban](#9-minhas-tarefas--quadro-kanban)
+10. [Workflow / BPM](#10-workflow--bpm)
+11. [Jurídico — contratos](#11-jurídico--contratos)
+12. [GED — documentos e assinatura digital](#12-ged--documentos-e-assinatura-digital)
+13. [Administração](#13-administração)
+14. [Perguntas frequentes](#14-perguntas-frequentes)
 
 ---
 
@@ -69,6 +71,13 @@ Siga esta ordem logo depois da instalação:
 6. **Régua de cobrança** (Cobrança → Régua de cobrança): revise os textos dos e-mails.
 7. **Processos** (Workflow / BPM → Modelar processos): revise quem aprova cada etapa.
 8. **Pastas do GED**: crie as pastas e defina os grupos que podem acessar cada uma.
+9. **Gestores e assinaturas:**
+   - No cadastro de cada colaborador, preencha **Usuário do sistema** e **Gestor**.
+   - Nos departamentos, preencha o **Responsável**.
+   - Isso define quem vê a aba *Minha equipe* do quadro de tarefas e permite conferir o CPF nas
+     assinaturas digitais.
+   - Para quem assina pela empresa com **e-CNPJ**, dê a permissão *Pode assinar com o certificado da
+     empresa* em Usuários e grupos.
 
 ---
 
@@ -83,9 +92,16 @@ Cada usuário pertence a um ou mais **grupos**. O grupo define quais menus e aç
 | **Fiscal** | Departamento fiscal, faturamento | Notas e produtos completos; consultar o financeiro e lançar títulos; cadastrar clientes e fornecedores |
 | **RH** | Recursos humanos | Colaboradores, departamentos e cargos; criar pastas no GED |
 | **Compras** | Compradores | Fornecedores, lançar contas a pagar e notas de entrada |
+| **Jurídico** | Advogados, analistas de contratos | Contratos completos (cadastro, aprovação, renovação, aditivos, encerramento); pasta Jurídico do GED; cadastrar clientes e fornecedores |
 | **Usuários** | Demais colaboradores | Abrir e acompanhar solicitações; consultar e enviar documentos no GED |
 
-Todos os grupos podem abrir solicitações de workflow e usar o GED, dentro das pastas permitidas.
+Todos os grupos podem usar o quadro de tarefas, abrir solicitações de workflow, usar o GED (dentro das
+pastas permitidas) e assinar documentos com o próprio certificado digital.
+
+**Gestores** não são um grupo: o sistema reconhece o gestor pela estrutura cadastrada. São gestores
+quem consta como *gestor* no cadastro de colaboradores e quem é *responsável* por um departamento
+(inclusive os subdepartamentos). Para isso funcionar, o usuário de cada pessoa precisa estar ligado ao
+cadastro de colaborador (campo *Usuário do sistema*).
 
 Algumas regras valem independentemente do grupo:
 
@@ -164,7 +180,7 @@ Outras ações no título:
 - **Estornar pagamentos:** desfaz todas as baixas do título e apaga as movimentações. O título volta a *Em aberto*.
 - **Cancelar título:** só é possível sem pagamentos (estorne antes).
 - **Enviar para aprovação** (contas a pagar): abre uma solicitação no processo *Aprovação de pagamento*
-  (seção 9). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
+  (seção 10). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
 - **Gerar cobrança** (contas a receber): veja a seção 7.
 
 ### 6.2 Contas bancárias, extrato e transferências
@@ -263,12 +279,67 @@ pela contabilidade.
 
 ---
 
-## 9. Workflow / BPM
+## 9. Minhas tarefas — quadro Kanban
+
+![Quadro Kanban](img/kanban.jpg)
+
+O menu **Minhas tarefas** abre o quadro de atividades, com quatro colunas: **A fazer**, **Em andamento**,
+**Em revisão** e **Concluída**.
+
+**Criar uma atividade:** clique em **Nova atividade** (ou no **+** de uma coluna). Informe:
+
+- título e descrição;
+- prioridade (baixa, média, alta, urgente);
+- prazo e etiquetas (separadas por vírgula, ex.: `cliente x, urgente`);
+- **para quem** é a atividade:
+  - *Responsável* (uma pessoa): atividade individual.
+  - *Grupo* sem responsável: atividade do grupo. Qualquer membro pode assumir. Ao arrastá-la para
+    "Em andamento", você passa a ser o responsável.
+  - Responsável **e** grupo: atividade individual que também aparece para o grupo.
+
+**Mover:** arraste o cartão para outra coluna ou para cima e para baixo, para priorizar. A mudança é
+salva na hora e fica no histórico da atividade.
+
+**Ler o cartão:**
+
+- A cor da borda indica a prioridade: verde é baixa, dourado é média, laranja é alta e vermelho é urgente.
+- O prazo fica vermelho quando está atrasado.
+- O círculo com as iniciais é o responsável; um **?** indica atividade do grupo, ainda sem responsável.
+
+Clique no título para abrir a atividade, ver o histórico e **comentar**.
+
+**Visões** (abas no topo):
+
+| Aba | Mostra |
+|---|---|
+| **Minhas** | O que é seu, o que você criou e as atividades sem responsável dos seus grupos |
+| **Meus grupos** | Todas as atividades dos grupos de que você participa |
+| **Minha equipe** | Só para gestores: atividades das pessoas que você gerencia |
+| **Todas** | Só para quem tem a permissão *ver todas as atividades* (Administradores) |
+
+![Visão do gestor](img/kanban-equipe.jpg)
+
+**Gestão pelos gerentes:** na aba **Minha equipe**, o gestor vê:
+
+- um resumo por pessoa: a fazer, em andamento, atrasadas e concluídas nos últimos 30 dias;
+- o quadro da equipe, que pode ser filtrado por pessoa, grupo ou prioridade.
+
+O gestor pode mover, reatribuir e comentar as atividades de quem ele gerencia.
+
+As atividades concluídas saem do quadro depois de 30 dias e continuam em **Lista de atividades**,
+que tem busca, filtros e exportação.
+
+O botão **Aprovações do workflow** leva às aprovações que aguardam você (seção 10). Os **alertas de
+contratos a vencer** chegam como cartões no quadro do responsável pelo contrato (seção 11).
+
+---
+
+## 10. Workflow / BPM
 
 O módulo organiza processos que passam por várias pessoas, como aprovações, admissões e solicitações
 internas.
 
-### 9.1 Modelar um processo (administrador)
+### 10.1 Modelar um processo (administrador)
 
 ![Diagrama do processo](img/processo.jpg)
 
@@ -282,17 +353,18 @@ Em **Modelar processos → Novo**, informe o nome e um código. Depois, na grade
 - **Prazo (dias):** solicitações com o prazo vencido aparecem como **Atrasada**.
 - **Instruções:** orientação que aparece para o responsável.
 
-O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com dois processos:
+O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com três processos:
 
 - **Aprovação de pagamento:** conferência do Financeiro, depois aprovação da diretoria.
+- **Aprovação de contrato:** análise jurídica, depois aprovação da diretoria (seção 11).
 - **Admissão de colaborador:** documentos (RH), depois acessos de TI, depois integração.
 
-### 9.2 Usar no dia a dia
+### 10.2 Usar no dia a dia
 
 ![Solicitação em andamento](img/solicitacao.jpg)
 
 - **Nova solicitação:** escolha o processo, dê um título e descreva o pedido.
-- **Minhas tarefas:** lista o que está aguardando você e as solicitações que você abriu.
+- **Aprovações pendentes** (no menu Workflow, ou pelo botão no quadro de tarefas): lista o que está aguardando você e as solicitações que você abriu.
 - Ao abrir uma solicitação, você vê:
   - o fluxo, com a etapa atual destacada;
   - o histórico completo (quem fez o quê e quando);
@@ -301,9 +373,88 @@ O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com dois
 
 ---
 
-## 10. GED — documentos
+## 11. Jurídico — contratos
+
+![Painel jurídico](img/juridico-painel.jpg)
+
+O **Painel jurídico** mostra:
+
+- os contratos vigentes;
+- os que estão na janela de alerta de vencimento;
+- os vencidos que ainda constam como vigentes;
+- os que aguardam aprovação ou assinatura;
+- a atividade recente.
+
+### 11.1 Cadastrar um contrato
+
+Em **Jurídico → Contratos → Novo**, preencha:
+
+- **Parte:** tipo *com fornecedor*, *com cliente* ou *outro* (parceria, locação etc.), e o cadastro
+  correspondente. Os contratos ficam ligados à ficha do fornecedor ou do cliente.
+- **Termos:** categoria, objeto, valor mensal e total, e índice de reajuste.
+- **Vigência:** início e fim (vazio = prazo indeterminado). Diga também se há **renovação
+  automática**, o prazo de cada renovação, o **aviso prévio** para rescisão e com **quantos dias de
+  antecedência** o sistema deve alertar.
+- **Assinaturas digitais necessárias:** quantas assinaturas o PDF precisa ter para o contrato ficar
+  vigente (normalmente 2: a empresa e a outra parte).
+- **Gestor do contrato:** quem recebe os alertas de vencimento.
+- **Arquivo do contrato:** de preferência em PDF. Ele fica guardado no GED, na pasta *Jurídico*,
+  com controle de versões.
+
+O número é gerado sozinho, no formato `CT-2026-0001`.
+
+### 11.2 Ciclo de vida
+
+```
+Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente → Encerrado / Rescindido
+                       ↘ Recusado → (corrige) → Em aprovação
+```
+
+1. **Enviar para aprovação:** o contrato entra no processo *Aprovação de contrato*, com a análise
+   jurídica e depois a diretoria (seção 10).
+   - Quem aprova ou recusa faz isso na própria solicitação.
+   - A **recusa** exige o motivo, que aparece no contrato. Corrija e envie de novo.
+2. **Aprovado:** com o contrato aprovado, os termos (partes, valores, vigência) ficam **travados**. A
+   partir daqui, eles só mudam por aditivo.
+3. **Assinatura:**
+   - **Digital** (recomendado): no quadro *Documento e assinaturas*, cada signatário clica em
+     **Assinar com certificado digital** (seção 12.2).
+   - A outra parte pode assinar pelo gov.br ou por outra plataforma. Envie o PDF assinado como nova
+     versão (editando o contrato) e clique em **Conferir e ativar**.
+   - Quando o PDF tiver o número de assinaturas válidas exigido, o contrato passa a **Vigente**
+     sozinho, e a data de assinatura é registrada.
+   - **Em papel:** use **Registrar assinatura em papel/externa**, informando a data.
+4. **Vigente:** use **Renovar** (prazo e % de reajuste), **Aditivo** (prazo, valor, escopo ou
+   reajuste) ou **Encerrar / rescindir** (motivo obrigatório).
+   - Renovações e aditivos atualizam a vigência e o valor do contrato.
+   - Todos ficam registrados em *Aditivos e renovações*.
+
+![Contrato](img/contrato.jpg)
+
+A **linha do tempo** registra cada mudança de situação, assinatura, alerta e renovação, com data e usuário.
+
+### 11.3 Vencimentos e renovação
+
+Todo dia às 08:00, o sistema verifica os contratos (no Docker, pelo serviço `agendador`):
+
+- **Contrato entrando na janela de alerta** (ex.: 60 dias antes do fim):
+  - cria um cartão **"Contrato a vencer"** no quadro de tarefas do gestor do contrato (ou do grupo
+    Jurídico, se não houver gestor);
+  - o prazo do cartão é a data limite do **aviso prévio**, o último dia para avisar a outra parte, caso
+    não queira renovar;
+  - o cartão é criado uma vez por vencimento.
+- **Contrato com renovação automática que passou do fim:** é renovado sozinho pelo prazo definido, com
+  registro na linha do tempo.
+
+Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou 90 dias e os vencidos.
+
+---
+
+## 12. GED — documentos e assinatura digital
 
 ![Documentos](img/ged.jpg)
+
+### 12.1 Pastas, documentos e versões
 
 **Pastas:**
 
@@ -339,9 +490,63 @@ O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com dois
 - **Confidencial:** só quem enviou e quem tem a permissão especial (Administradores) podem ver.
 - **Busca:** a busca procura no título, na descrição, nas palavras-chave e no nome do arquivo.
 
+
+### 12.2 Assinatura digital com certificado ICP-Brasil
+
+![Assinar digitalmente](img/assinar.jpg)
+
+**Para assinar:**
+
+1. No detalhe do documento, clique em **Assinar digitalmente**. Em contratos, use **Assinar com
+   certificado digital**.
+2. Escolha o arquivo do certificado **A1** (`.pfx` ou `.p12`) e digite a senha dele.
+3. Escolha o motivo (ex.: "Sou parte deste contrato").
+4. Confirme que leu o documento e clique em **Assinar digitalmente**.
+
+O tipo de assinatura depende do arquivo:
+
+| Tipo de arquivo | Assinatura gerada | Onde fica |
+|---|---|---|
+| **PDF** | **PAdES**, embutida no próprio PDF | O PDF assinado vira uma **nova versão**. Outras pessoas podem assinar depois, e as assinaturas anteriores continuam válidas |
+| Outros (Word, planilha, imagem...) | **CAdES** destacada (`.p7s`) | Guardada junto ao documento, para baixar no quadro *Assinaturas digitais*. O arquivo original não muda |
+
+**Regras de segurança:**
+
+- **e-CPF:** o CPF do certificado precisa ser o **mesmo do seu cadastro de colaborador**. Ninguém
+  assina com o certificado de outra pessoa.
+- **e-CNPJ** (certificado da empresa): exige a permissão *Pode assinar com o certificado da empresa*,
+  dada aos representantes legais. O CNPJ precisa ser de uma empresa cadastrada.
+- O certificado precisa estar dentro da validade e permitir assinatura.
+- O arquivo do certificado e a senha **não são guardados** no servidor: são usados só durante a operação.
+- Antes de assinar, o sistema confere se o arquivo armazenado é o mesmo enviado originalmente (hash SHA-256).
+- Toda assinatura fica registrada na auditoria, com titular, CPF/CNPJ, autoridade certificadora e IP.
+
+**Certificado A3 (token ou cartão):**
+
+1. Assine o PDF no seu computador, por exemplo pelo Assinador SERPRO, pelo gov.br ou pelo Adobe Reader.
+2. Envie o PDF assinado como **nova versão**.
+
+O sistema reconhece e verifica as assinaturas embutidas.
+
+### 12.3 Verificar assinaturas
+
+![Verificar assinaturas](img/verificar-assinaturas.jpg)
+
+O botão **Verificar assinaturas** lista todas as assinaturas digitais da versão, inclusive as feitas
+fora do sistema. Para cada uma, mostra:
+
+- o titular, o CPF/CNPJ e a autoridade certificadora;
+- a data;
+- a **integridade**: se o arquivo foi alterado depois da assinatura, ela aparece como *Inválida / alterada*;
+- a **cadeia ICP-Brasil**: aparece como *Confiável* quando o servidor tem os certificados raiz da
+  ICP-Brasil configurados (veja o guia de instalação).
+
+Para a validação oficial de conformidade, use também o verificador do ITI: https://verificador.iti.gov.br.
+
+
 ---
 
-## 11. Administração
+## 13. Administração
 
 | Tela | Uso |
 |---|---|
@@ -364,7 +569,7 @@ A página **Banco de dados** mostra:
 
 ---
 
-## 12. Perguntas frequentes
+## 14. Perguntas frequentes
 
 **Não vejo um menu que meu colega vê.**
 O menu depende do grupo do usuário. Peça ao administrador para conferir seus grupos.
@@ -387,6 +592,21 @@ O Guará ERP não transmite notas. Use o seu emissor e depois registre chave e p
 
 **Esqueci minha senha.**
 Peça ao administrador para definir uma senha temporária em *Usuários e grupos*. Troque-a depois do primeiro acesso.
+
+**Como faço para assinar com meu certificado digital?**
+Você precisa de um certificado ICP-Brasil **A1** (arquivo `.pfx`). Peça ao RH ou à TI para ligar seu
+usuário ao seu cadastro de colaborador, porque o CPF precisa conferir. Veja a seção 12.2.
+
+**Assinei, mas aparece "Cadeia ICP-Brasil: não verificada".**
+A assinatura é íntegra. Só falta a TI instalar os certificados raiz da ICP-Brasil no servidor (guia de
+instalação, seção "Assinatura digital").
+
+**O contrato não ficou vigente depois de assinado.**
+Confira se ele estava **aprovado** e se o PDF tem o número de assinaturas exigido. Use **Conferir e ativar**.
+
+**Não vejo a aba "Minha equipe" no quadro.**
+Ela aparece para quem é gestor no cadastro de colaboradores ou responsável por um departamento, e
+precisa que o seu usuário esteja ligado ao seu cadastro de colaborador.
 
 **Fiquei bloqueado no login.**
 Aguarde 15 minutos. O bloqueio acontece após 5 tentativas erradas.

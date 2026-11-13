@@ -51,6 +51,8 @@ INSTALLED_APPS = [
     "apps.fiscal",
     "apps.workflow",
     "apps.ged",
+    "apps.tarefas",
+    "apps.juridico",
 ]
 
 MIDDLEWARE = [
@@ -150,6 +152,11 @@ LOGIN_BLOQUEIO_MINUTOS = int(os.getenv("LOGIN_BLOQUEIO_MINUTOS", "15"))
 # Só ative se o ERP estiver atrás de um proxy reverso (nginx/Caddy/Traefik) que define o cabeçalho
 CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 
+# Assinatura digital: pasta com os certificados raiz/intermediários da ICP-Brasil (.crt/.pem)
+# para validar a cadeia (baixe em https://www.gov.br/iti/pt-br/assuntos/repositorio) e carimbo do tempo opcional.
+ICP_BRASIL_CAS_DIR = os.getenv("ICP_BRASIL_CAS_DIR", str(BASE_DIR / "certificados" / "icp-brasil"))
+ASSINATURA_TSA_URL = os.getenv("ASSINATURA_TSA_URL", "")
+
 # Tamanho máximo de arquivos enviados (GED, XML)
 ARQUIVO_MAX_MB = int(os.getenv("ARQUIVO_MAX_MB", "50"))
 
@@ -180,4 +187,6 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
+    # a validação de cadeia sem as raízes ICP-Brasil gera avisos longos e esperados
+    "loggers": {"pyhanko": {"level": "ERROR"}, "pyhanko_certvalidator": {"level": "CRITICAL"}},
 }

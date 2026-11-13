@@ -40,8 +40,10 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 | **Financeiro** | Contas a pagar e a receber com parcelamento, juros/desconto, baixa total ou parcial, estorno e cancelamento. Contas bancárias com saldo, extrato, transferências, plano de contas e centros de custo. Fluxo de caixa realizado × previsto com saldo projetado. |
 | **Cobrança** | Cobranças por PIX (gera o **PIX copia-e-cola + QR Code** a partir da chave da empresa), boleto ou link. **Régua de cobrança** automática por e-mail (ex.: 3 dias antes, no dia, 3 e 10 dias após), com histórico de envios. Status sincronizado com o título. |
 | **Fiscal** | Produtos/serviços com NCM, CFOP e alíquotas. Notas fiscais (NF-e, NFC-e, NFS-e) com itens e cálculo de ICMS/IPI/PIS/COFINS/ISS. **Importação de XML de NF-e** de fornecedores (cadastra o fornecedor e gera a conta a pagar). Geração de títulos a partir da nota e resumo para apuração. |
+| **Minhas tarefas (Kanban)** | Quadro com arrastar e soltar (a fazer, em andamento, em revisão, concluída). Atividades individuais ou do grupo, prioridade, prazo, etiquetas e comentários. Visões **Minhas**, **Meus grupos** e **Minha equipe**: o gestor vê o resumo e o quadro das pessoas que gerencia, definidas pelo gestor direto e pelo responsável do departamento. |
+| **Jurídico** | Contratos de fornecedores e clientes: cadastro, vigência, valores e reajuste, **aprovação/recusa** por workflow, **assinatura digital**, renovação (manual ou automática), aditivos, encerramento/rescisão e linha do tempo. **Alertas de vencimento** viram cartões no Kanban do gestor do contrato. |
 | **Workflow / BPM** | Modelagem de processos com etapas (tarefa ou aprovação), responsável por usuário ou grupo e prazo. Diagrama do fluxo, caixa "Minhas tarefas", histórico completo. Integração pronta: **aprovação de pagamento** de contas a pagar. |
-| **GED** | Pastas com controle de acesso por grupo, documentos com **versões**, hash SHA-256, validade (contratos, alvarás), documentos confidenciais, download auditado e visualização no navegador. |
+| **GED** | Pastas com controle de acesso por grupo, documentos com **versões**, hash SHA-256, validade (contratos, alvarás), documentos confidenciais, download auditado e visualização no navegador. **Assinatura digital ICP-Brasil** com certificado A1: PAdES em PDF (vários signatários) e CAdES `.p7s` nos demais arquivos. Inclui verificação de assinaturas, também das feitas fora do sistema (gov.br, token A3). |
 | **Administração** | Usuários, grupos e permissões; **auditoria** automática de toda inclusão/alteração/exclusão (com o que mudou); página de **Banco de dados** (tamanho, tabelas, backup `.sql` com um clique, VACUUM) e **pgAdmin** incluso no Docker. |
 
 Toda tela de listagem tem busca, filtros, ordenação, paginação e **exportação para CSV/Excel**.
@@ -119,7 +121,9 @@ python manage.py seed_demo          # Docker: docker compose exec web python man
 | `python manage.py setup_erp` | Cria/atualiza grupos, permissões, plano de contas, régua e processos padrão (pode repetir). |
 | `python manage.py seed_demo` | Carrega dados fictícios (só em banco vazio). |
 | `python manage.py executar_regua` | Envia agora as cobranças previstas pela régua. |
-| `python manage.py agendador --hora 08:00` | Fica rodando e executa a régua todo dia no horário. |
+| `python manage.py agendador --hora 08:00` | Fica rodando e executa, todo dia no horário, a régua e as rotinas de contratos. |
+| `python manage.py alertar_contratos` | Cria os alertas de vencimento e renova os contratos automáticos. |
+| `python manage.py gerar_certificado_teste --nome N --cpf C` | Gera um certificado A1 de **teste** (sem validade jurídica) para experimentar a assinatura. |
 | `python manage.py test tests` | Roda a suíte de testes automatizados. |
 | `docker compose exec db pg_dump -U postgres erp > backup.sql` | Backup pelo terminal. |
 
@@ -157,7 +161,9 @@ apps/financeiro/   títulos, baixas, contas bancárias, extrato, fluxo de caixa
 apps/cobranca/     cobranças, PIX (pix.py), régua e histórico
 apps/fiscal/       produtos, notas fiscais, importador de XML NF-e
 apps/workflow/     processos BPM, etapas, solicitações e histórico
-apps/ged/          pastas, documentos e versões
+apps/ged/          pastas, documentos, versões e assinatura digital (assinatura.py)
+apps/tarefas/      quadro Kanban de atividades e visão do gestor
+apps/juridico/     contratos, aditivos, aprovação, vencimentos e renovação
 templates/         telas (Bootstrap 5)
 docker/            entrypoint, criação do usuário restrito do banco, pgAdmin e proxy HTTPS (Caddy)
 scripts/           instaladores Linux/Windows
@@ -187,6 +193,8 @@ formulário, detalhe, exclusão, menu e permissões são gerados automaticamente
 - **Boleto registrado / PIX dinâmico**: o PIX gerado é o copia-e-cola **estático** (sem confirmação automática).
   Boleto e PIX com baixa automática exigem integração com o banco ou um gateway (Asaas, Iugu, Gerencianet etc.).
 - **Folha de pagamento** e **estoque** não fazem parte desta versão.
+- **Certificado A3** (token ou cartão) não assina direto pelo navegador. Assine no computador (Assinador
+  SERPRO, gov.br, Adobe) e envie o PDF: o sistema verifica as assinaturas e ativa o contrato.
 - Os cálculos de impostos são gerenciais; a apuração oficial deve ser validada pela contabilidade.
 
 ## Licença

@@ -4,7 +4,7 @@ from decimal import Decimal
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-AUDITADOS = {"core", "financeiro", "cobranca", "fiscal", "workflow", "ged"}
+AUDITADOS = {"core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico"}
 IGNORAR = {"criado_em", "atualizado_em"}
 
 

@@ -4,20 +4,22 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Cadastros", "Financeiro", "Cobrança", "Fiscal", "Workflow / BPM", "GED", "Administração"]
+ORDEM_GRUPOS = ["Principal", "Cadastros", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
 ICONES_GRUPOS = {"Principal": "speedometer2", "Cadastros": "person-lines-fill", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
-                 "GED": "archive", "Administração": "gear"}
+                 "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
 # (grupo, rótulo, url_name, ícone, permissão, ordem)
 LINKS_EXTRAS = [
     ("Principal", "Painel", "dashboard", "speedometer2", None, 1),
-    ("Principal", "Minhas tarefas", "workflow:minhas_tarefas", "check2-square", None, 2),
+    ("Principal", "Minhas tarefas", "tarefas:quadro", "kanban", None, 2),
     ("Financeiro", "Fluxo de caixa", "financeiro:fluxo_caixa", "graph-up", "financeiro.view_movimentacao", 4),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),
     ("Cobrança", "Executar régua agora", "cobranca:executar_regua", "send", "cobranca.change_cobranca", 9),
+    ("Jurídico", "Painel jurídico", "juridico:painel", "speedometer2", "juridico.view_contrato", 0),
     ("Fiscal", "Importar XML NF-e", "fiscal:importar_xml", "upload", "fiscal.add_notafiscal", 5),
     ("Fiscal", "Apuração de impostos", "fiscal:apuracao", "calculator", "fiscal.view_notafiscal", 6),
+    ("Workflow / BPM", "Aprovações pendentes", "workflow:minhas_tarefas", "check2-square", None, 0),
     ("Workflow / BPM", "Nova solicitação", "workflow:nova_solicitacao", "plus-circle", "workflow.add_instancia", 1),
     ("Administração", "Usuários e grupos", "admin:auth_user_changelist", "person-gear", "auth.view_user", 1),
     ("Administração", "Banco de dados", "banco_dados", "database", "is_superuser", 2),

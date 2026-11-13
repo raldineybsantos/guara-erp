@@ -2,7 +2,7 @@
 {% for h in form.hidden_fields %}{{ h }}{% endfor %}
 <div class="row g-3">
   {% for campo in form.visible_fields %}
-  <div class="{% if campo.field.widget.input_type == 'textarea' or campo.name in 'observacoes descricao mensagem instrucoes' %}col-12{% elif campo.field.widget.input_type == 'checkbox' %}col-sm-6 col-lg-3 d-flex align-items-end{% else %}col-sm-6 col-lg-4 col-xl-3{% endif %}">
+  <div class="{% if uma_coluna %}col-12{% elif campo.field.widget.input_type == 'textarea' or campo.name in 'observacoes descricao mensagem instrucoes' %}col-12{% elif campo.field.widget.input_type == 'checkbox' %}col-sm-6 col-lg-3 d-flex align-items-end{% else %}col-sm-6 col-lg-4 col-xl-3{% endif %}">
     {% if campo.field.widget.input_type == 'checkbox' %}
       <div class="form-check">{{ campo }} <label class="form-check-label" for="{{ campo.id_for_label }}">{{ campo.label }}</label></div>
     {% else %}

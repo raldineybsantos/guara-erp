@@ -97,3 +97,36 @@ body { background: var(--bs-tertiary-bg); font-size: .925rem; }
 [data-bs-theme="dark"] .btn-light { --bs-btn-bg: #262d27; --bs-btn-color: #e6e0d2; --bs-btn-border-color: #333b34;
   --bs-btn-hover-bg: #303830; --bs-btn-hover-color: #fff; --bs-btn-active-bg: #353e36; }
 [data-bs-theme="dark"] .topo { background: #1d231e; }
+
+/* ---- Kanban ---- */
+.kanban { display: grid; grid-template-columns: repeat(4, minmax(240px, 1fr)); gap: 1rem; overflow-x: auto; padding-bottom: .5rem; }
+.kanban-coluna { background: var(--bs-secondary-bg, #ebe6da); border-radius: .75rem; display: flex; flex-direction: column; min-height: 60vh; }
+[data-bs-theme="light"] .kanban-coluna { background: #ece7dc; }
+.kanban-coluna header { display: flex; align-items: center; gap: .4rem; padding: .7rem .9rem; font-weight: 600; font-size: .85rem;
+  text-transform: uppercase; letter-spacing: .04em; color: var(--bs-secondary-color); }
+.kanban-ponto { width: .6rem; height: .6rem; border-radius: 50%; display: inline-block; }
+.st-a_fazer { background: #8a817a; } .st-fazendo { background: var(--guara-laranja); }
+.st-revisao { background: var(--guara-dourado); } .st-concluida { background: #3c7a4f; }
+.kanban-lista { flex: 1; padding: 0 .6rem .8rem; display: flex; flex-direction: column; gap: .55rem; border-radius: 0 0 .75rem .75rem; transition: background .15s; }
+.kanban-lista.sobre { background: rgba(195,95,35,.08); outline: 2px dashed rgba(195,95,35,.4); outline-offset: -4px; }
+.kanban-card { background: var(--bs-body-bg); border-radius: .55rem; padding: .65rem .75rem; box-shadow: 0 1px 2px rgba(0,0,0,.08);
+  border-left: 4px solid #b9b0a5; cursor: grab; }
+.kanban-card[data-bloqueado] { cursor: default; opacity: .9; }
+.kanban-card.arrastando { opacity: .45; transform: rotate(1.5deg); }
+.kanban-card.prio-baixa { border-left-color: #9fb5a3; } .kanban-card.prio-media { border-left-color: var(--guara-dourado); }
+.kanban-card.prio-alta { border-left-color: var(--guara-laranja); } .kanban-card.prio-urgente { border-left-color: #b02a2a; }
+.kanban-card.atrasada { box-shadow: 0 0 0 1px rgba(176,42,42,.35), 0 1px 2px rgba(0,0,0,.08); }
+.kanban-titulo { font-weight: 600; color: var(--bs-body-color); text-decoration: none; display: block; line-height: 1.25; }
+.kanban-titulo:hover { color: var(--bs-link-color); }
+.kanban-meta { display: flex; align-items: center; gap: .6rem; margin-top: .5rem; font-size: .78rem; color: var(--bs-secondary-color); }
+.kanban-meta .prio { background: var(--bs-tertiary-bg); color: var(--bs-body-color); font-weight: 500; }
+.prio-urgente .prio { background: #b02a2a; color: #fff; } .prio-alta .prio { background: var(--guara-laranja); color: #fff; }
+.avatar { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: var(--guara-verde); color: var(--guara-creme);
+  display: inline-flex; align-items: center; justify-content: center; font-size: .66rem; font-weight: 700; }
+.avatar.vazio { background: transparent; border: 1px dashed var(--bs-secondary-color); color: var(--bs-secondary-color); }
+.chip-grupo { font-size: .68rem; background: var(--bs-tertiary-bg); border-radius: 1rem; padding: .1rem .45rem; white-space: nowrap; }
+.kanban-vazio { color: var(--bs-secondary-color); font-size: .8rem; text-align: center; padding: 1.5rem .5rem; border: 1px dashed var(--bs-border-color); border-radius: .5rem; }
+.nav-pills .nav-link.active { background: var(--guara-laranja); }
+.nav-pills .nav-link { color: var(--bs-body-color); }
+@media (max-width: 991px) { .kanban { grid-template-columns: repeat(4, 80vw); } }
+.kanban-marcador { border: 2px dashed var(--guara-laranja); border-radius: .55rem; background: rgba(195,95,35,.06); flex-shrink: 0; }

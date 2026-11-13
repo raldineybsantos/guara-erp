@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3">
+  <ul class="nav nav-pills">
+    {% for v, nome in visoes %}
+    <li class="nav-item"><a class="nav-link py-1 {% if v == visao %}active{% endif %}" href="?visao={{ v }}">{{ nome }}</a></li>
+    {% endfor %}
+  </ul>
+  <a href="{% url 'workflow:minhas_tarefas' %}" class="btn btn-sm btn-outline-secondary ms-lg-2">
+    <i class="bi bi-diagram-2"></i> Aprovações do workflow {% if aprovacoes %}<span class="badge text-bg-danger">{{ aprovacoes }}</span>{% endif %}
+  </a>
+  {% if pode_criar %}<a href="{% url 'tarefas:atividade_create' %}?next={{ request.get_full_path|urlencode }}" class="btn btn-sm btn-success ms-auto"><i class="bi bi-plus-lg"></i> Nova atividade</a>{% endif %}
+</div>
+
+<form method="get" class="row g-2 align-items-end mb-3 no-print">
+  <input type="hidden" name="visao" value="{{ visao }}">
+  <div class="col-md-3"><input type="search" name="q" value="{{ f.q }}" class="form-control form-control-sm" placeholder="Buscar atividade ou etiqueta..."></div>
+  {% if visao != "minhas" %}
+  <div class="col-6 col-md-2"><select name="responsavel" class="form-select form-select-sm">
+    <option value="">Todos os responsáveis</option><option value="sem" {% if f.responsavel == "sem" %}selected{% endif %}>Sem responsável (do grupo)</option>
+    {% for p in pessoas %}<option value="{{ p.pk }}" {% if f.responsavel == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.get_full_name|default:p.username }}</option>{% endfor %}
+  </select></div>
+  {% endif %}
+  <div class="col-6 col-md-2"><select name="grupo" class="form-select form-select-sm">
+    <option value="">Todos os grupos</option>
+    {% for g in grupos %}<option value="{{ g.pk }}" {% if f.grupo == g.pk|stringformat:"s" %}selected{% endif %}>{{ g.name }}</option>{% endfor %}
+  </select></div>
+  <div class="col-6 col-md-2"><select name="prioridade" class="form-select form-select-sm">
+    <option value="">Qualquer prioridade</option>
+    {% for v, n in prioridades %}<option value="{{ v }}" {% if f.prioridade == v %}selected{% endif %}>{{ n }}</option>{% endfor %}
+  </select></div>
+  <div class="col-auto"><button class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Filtrar</button>
+    <a href="?visao={{ visao }}" class="btn btn-sm btn-outline-secondary">Limpar</a></div>
+</form>
+
+{% if resumo %}
+<div class="card mb-3">
+  <div class="card-header bg-body"><strong><i class="bi bi-people me-1"></i>{% if visao == "equipe" %}Minha equipe{% else %}Por responsável{% endif %}</strong></div>
+  <div class="table-responsive"><table class="table table-sm mb-0 text-center">
+    <thead class="table-light"><tr><th class="text-start">Pessoa</th><th>A fazer</th><th>Em andamento</th><th>Atrasadas</th><th>Concluídas (30 dias)</th><th></th></tr></thead>
+    <tbody>{% for r in resumo %}<tr>
+      <td class="text-start">{{ r.pessoa.get_full_name|default:r.pessoa.username }}</td>
+      <td>{{ r.a_fazer }}</td><td>{{ r.fazendo }}</td>
+      <td>{% if r.atrasadas %}<span class="badge text-bg-danger">{{ r.atrasadas }}</span>{% else %}0{% endif %}</td>
+      <td>{{ r.concluidas_30d }}</td>
+      <td><a href="?visao={{ visao }}&responsavel={{ r.pessoa.pk }}" class="small">ver quadro</a></td>
+    </tr>{% endfor %}</tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="kanban" data-url-mover="{% url 'tarefas:mover' %}">
+  {% for col in colunas %}
+  <section class="kanban-coluna" data-status="{{ col.id }}">
+    <header><span class="kanban-ponto st-{{ col.id }}"></span>{{ col.nome }} <span class="badge text-bg-light ms-1 contador">{{ col.cards|length }}</span>
+      {% if pode_criar and col.id != "concluida" %}<a class="ms-auto text-secondary" title="Nova atividade nesta coluna" href="{% url 'tarefas:atividade_create' %}?status={{ col.id }}&next={{ request.get_full_path|urlencode }}"><i class="bi bi-plus-lg"></i></a>{% endif %}
+    </header>
+    <div class="kanban-lista" data-status="{{ col.id }}">
+      {% for a in col.cards %}
+      <article class="kanban-card prio-{{ a.prioridade }} {% if a.atrasada %}atrasada{% endif %}" data-id="{{ a.pk }}" {% if a.editavel %}draggable="true"{% else %}data-bloqueado="1"{% endif %}>
+        <a href="{{ a.get_absolute_url }}" class="kanban-titulo" draggable="false">{{ a.titulo }}</a>
+        {% if a.lista_etiquetas %}<div class="mt-1">{% for e in a.lista_etiquetas %}<span class="badge rounded-pill text-bg-light border me-1">{{ e }}</span>{% endfor %}</div>{% endif %}
+        <div class="kanban-meta">
+          <span class="badge prio">{{ a.get_prioridade_display }}</span>
+          {% if a.prazo %}<span class="{% if a.atrasada %}text-danger fw-semibold{% endif %}"><i class="bi bi-calendar-event"></i> {{ a.prazo|date:"d/m" }}</span>{% endif %}
+          {% if a.n_coment %}<span><i class="bi bi-chat-left-text"></i> {{ a.n_coment }}</span>{% endif %}
+          <span class="ms-auto d-flex gap-1">
+            {% if a.grupo %}<span class="chip-grupo" title="Grupo {{ a.grupo.name }}"><i class="bi bi-people-fill"></i> {{ a.grupo.name }}</span>{% endif %}
+            {% if a.responsavel %}<span class="avatar" title="{{ a.responsavel.get_full_name|default:a.responsavel.username }}">{{ a.responsavel.first_name|default:a.responsavel.username|slice:":1"|upper }}{{ a.responsavel.last_name|slice:":1"|upper }}</span>
+            {% else %}<span class="avatar vazio" title="Sem responsável: qualquer membro do grupo pode assumir">?</span>{% endif %}
+          </span>
+        </div>
+      </article>
+      {% empty %}<div class="kanban-vazio">Arraste atividades para cá</div>{% endfor %}
+    </div>
+  </section>
+  {% endfor %}
+</div>
+<p class="small text-secondary mt-2 mb-0"><i class="bi bi-info-circle"></i> Arraste os cartões entre as colunas. Ao mover uma atividade do grupo, você passa a ser o responsável. Concluídas há mais de 30 dias saem do quadro e continuam na <a href="{% url 'tarefas:atividade_list' %}">lista de atividades</a>.</p>
+{% csrf_token %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  const quadro = document.querySelector(".kanban");
+  const csrf = document.querySelector("[name=csrfmiddlewaretoken]").value;
+  const marcador = document.createElement("div");
+  marcador.className = "kanban-marcador";
+  let arrastando = null;
+
+  quadro.addEventListener("dragstart", e => {
+    const card = e.target.closest(".kanban-card[draggable=true]");
+    if (!card) { e.preventDefault(); return; }
+    arrastando = card;
+    marcador.style.height = card.offsetHeight + "px";
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", card.dataset.id);
+    requestAnimationFrame(() => card.classList.add("arrastando"));
+  });
+  quadro.addEventListener("dragend", () => {
+    if (arrastando) arrastando.classList.remove("arrastando");
+    marcador.remove(); arrastando = null;
+    document.querySelectorAll(".kanban-lista.sobre").forEach(l => l.classList.remove("sobre"));
+  });
+  quadro.addEventListener("dragover", e => {
+    const lista = e.target.closest(".kanban-lista");
+    if (!lista || !arrastando) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    document.querySelectorAll(".kanban-lista.sobre").forEach(l => l !== lista && l.classList.remove("sobre"));
+    lista.classList.add("sobre");
+    const depois = [...lista.querySelectorAll(".kanban-card:not(.arrastando)")]
+      .find(c => e.clientY < c.getBoundingClientRect().top + c.offsetHeight / 2);
+    if (depois) { if (marcador.nextSibling !== depois) lista.insertBefore(marcador, depois); }
+    else if (marcador.parentElement !== lista || marcador.nextElementSibling) lista.appendChild(marcador);
+  });
+  quadro.addEventListener("drop", e => {
+    const lista = e.target.closest(".kanban-lista");
+    if (!lista || !arrastando) return;
+    e.preventDefault();
+    const card = arrastando, de = card.parentElement, proximo = card.nextSibling;
+    if (marcador.parentElement === lista) lista.insertBefore(card, marcador); else lista.appendChild(card);
+    marcador.remove(); lista.classList.remove("sobre");
+    atualizarContadores();
+    fetch(quadro.dataset.urlMover, {
+      method: "POST", headers: { "Content-Type": "application/json", "X-CSRFToken": csrf },
+      body: JSON.stringify({ id: card.dataset.id, status: lista.dataset.status,
+                             ordem: [...lista.querySelectorAll(".kanban-card")].map(c => c.dataset.id) })
+    }).then(r => r.json().then(j => ({ ok: r.ok, j }))).then(({ ok, j }) => {
+      if (!ok || !j.ok) throw new Error(j.erro || "Não foi possível mover.");
+    }).catch(err => { de.insertBefore(card, proximo); atualizarContadores(); alertar(err.message); });
+  });
+  function atualizarContadores() {
+    document.querySelectorAll(".kanban-coluna").forEach(col => {
+      const n = col.querySelectorAll(".kanban-card").length;
+      col.querySelector(".contador").textContent = n;
+      const vazio = col.querySelector(".kanban-vazio");
+      if (vazio) vazio.style.display = n ? "none" : "";
+    });
+  }
+  function alertar(msg) {
+    const div = document.createElement("div");
+    div.className = "alert alert-danger alert-dismissible fade show";
+    div.textContent = msg;
+    document.querySelector("main").prepend(div);
+  }
+})();
+</script>
+{% endblock %}
