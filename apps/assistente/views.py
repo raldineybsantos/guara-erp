@@ -6,6 +6,8 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.http import HttpResponse, HttpResponseForbidden
 from django.shortcuts import redirect, render
+from django.urls import reverse
+from urllib.parse import urlencode
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
@@ -48,9 +50,17 @@ def conversa(request):
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))
         return redirect("assistente:conversa")
+    from . import consultas
+
     pedidos = list(SolicitacaoCadastro.objects.filter(usuario=request.user)[:15])
-    for p in pedidos:
-        p.linhas = _rotulos(p)
+    for i, p in enumerate(pedidos):
+        if p.tipo == "consulta":
+            crud = catalogo.crud_de(p.alvo)
+            ok = crud is not None and request.user.has_perm(crud.perm("view"))
+            p.url_lista = f"{reverse(crud.url_name('list'))}?{urlencode(p.dados)}" if ok else ""
+            p.resultado = consultas.executar(crud, request, p.dados) if ok and i == 0 else None   # só a mais recente
+        else:
+            p.linhas = _rotulos(p)
     return render(request, "assistente/conversa.html", {
         "titulo": "Assistente de IA", "icone": "stars", "config": config, "pedidos": pedidos,
         "exemplos": [n for _, n, _ in catalogo.disponiveis(request.user)][:8],
@@ -87,7 +97,7 @@ class ConfigForm(BootstrapMixin, forms.ModelForm):
 
     class Meta:
         model = ConfiguracaoIA
-        fields = ["provedor", "url_base", "modelo", "tempo_limite", "telegram_ativo"]
+        fields = ["provedor", "url_base", "modelo", "tempo_limite", "servicedesk_triagem", "telegram_ativo"]
 
     def clean_url_base(self):
         url = self.cleaned_data["url_base"].strip()

@@ -18,6 +18,13 @@
   {% if c.status == "resolvido" %}<a href="{% url 'servicedesk:reabrir' c.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-arrow-counterclockwise"></i> Não resolveu, reabrir</a>{% endif %}
   {% if c.status in "aguardando_aprovacao aberto atendimento aguardando_usuario" %}<a href="{% url 'servicedesk:cancelar' c.pk %}" class="btn btn-sm btn-link text-secondary ms-auto">Cancelar chamado</a>{% endif %}
 </div>
+{% if c.triagem_ia == "orientado" and c.solicitante_id == user.pk and c.status == "aberto" %}
+<form method="post" action="{% url 'servicedesk:ia_resposta' c.pk %}" class="alert alert-primary d-flex flex-wrap align-items-center gap-2">{% csrf_token %}
+  <i class="bi bi-stars fs-5"></i><span class="flex-grow-1">O assistente deixou uma orientação na conversa. Ela resolveu?</span>
+  <button name="resolveu" value="sim" class="btn btn-success btn-sm"><i class="bi bi-hand-thumbs-up"></i> Resolveu, pode encerrar</button>
+  <button name="resolveu" value="nao" class="btn btn-outline-danger btn-sm"><i class="bi bi-person-raised-hand"></i> Não resolveu, quero atendimento</button>
+</form>
+{% endif %}
 <div class="row g-3">
   <div class="col-lg-8">
     <div class="card mb-3">
@@ -55,6 +62,7 @@
     </div>
     <div class="card mb-3"><ul class="list-group list-group-flush small">
       <li class="list-group-item d-flex"><span>Área</span><span class="ms-auto">{{ c.area }}</span></li>
+      {% if c.classificado_por_ia or c.triagem_ia %}<li class="list-group-item d-flex"><span>Assistente de IA</span><span class="ms-auto text-end">{% if c.classificado_por_ia %}classificou{% endif %}{% if c.triagem_ia %}{% if c.classificado_por_ia %} · {% endif %}{{ c.get_triagem_ia_display }}{% endif %}</span></li>{% endif %}
       <li class="list-group-item d-flex"><span>Analista</span><span class="ms-auto">{% if c.analista %}{{ c.analista.get_full_name|default:c.analista.username }}{% else %}—{% endif %}</span></li>
       {% if c.aprovador %}<li class="list-group-item d-flex"><span>Aprovador</span><span class="ms-auto">{{ c.aprovador.get_full_name|default:c.aprovador.username }}</span></li>{% endif %}
       {% if c.avaliacao %}<li class="list-group-item d-flex"><span>Avaliação</span><span class="ms-auto text-warning">{% for i in "12345" %}{% if forloop.counter <= c.avaliacao %}★{% else %}☆{% endif %}{% endfor %}</span></li>{% endif %}
@@ -75,7 +83,7 @@
   let ultimo = 0;
   function bolha(m) {
     const d = document.createElement("div");
-    d.className = "chat-msg" + (m.minha ? " minha" : "") + (m.interna ? " interna" : "") + (m.sistema ? " sistema" : "");
+    d.className = "chat-msg" + (m.minha ? " minha" : "") + (m.interna ? " interna" : "") + (m.sistema ? " sistema" : "") + (m.ia ? " ia" : "");
     const cab = document.createElement("div"); cab.className = "chat-cab";
     cab.textContent = m.autor + " · " + m.data + (m.interna ? " · nota interna" : "");
     const t = document.createElement("div"); t.className = "chat-texto"; t.textContent = m.texto;
@@ -98,7 +106,8 @@
       ev.preventDefault();
       const dados = new FormData(form);
       const r = await fetch(url, {method: "POST", body: dados, headers: {"X-CSRFToken": csrf}});
-      if (r.ok) { form.texto.value = ""; await carregar(); chat.scrollTop = chat.scrollHeight; }
+      if (r.ok) { form.texto.value = ""; await carregar(); chat.scrollTop = chat.scrollHeight;
+        if (document.querySelector("[name=resolveu]")) setTimeout(() => location.reload(), 400); }
       else { const j = await r.json().catch(() => ({})); document.getElementById("chat-status").textContent = j.erro || "Não foi possível enviar."; }
     });
     form.texto.addEventListener("keydown", ev => { if (ev.key === "Enter" && ev.ctrlKey) form.requestSubmit(); });

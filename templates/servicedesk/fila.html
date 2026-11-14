@@ -6,6 +6,7 @@
   <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Resolvidos no prazo (mês)</div><div class="valor">{% if ind.sla_mes is not None %}{{ ind.sla_mes }}%{% else %}—{% endif %}</div></div></div></div>
   <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Satisfação média</div><div class="valor">{% if ind.satisfacao %}{{ ind.satisfacao|floatformat:1 }} ★{% else %}—{% endif %}</div></div></div></div>
   <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Aguardando aprovação</div><div class="valor">{{ ind.aprovacao }}</div></div></div></div>
+  <div class="col-6 col-xl"><div class="card kpi h-100"><div class="card-body"><div class="rotulo">Resolvidos com a IA (mês)</div><div class="valor">{{ ind.ia_mes }}</div></div></div></div>
 </div>
 <ul class="nav nav-tabs mb-0">
   {% for a in abas %}<li class="nav-item"><a class="nav-link {% if a.id == atual %}active{% endif %}" href="?v={{ a.id }}">{{ a.nome }} <span class="badge {% if a.id == 'vencidos' and a.n %}text-bg-danger{% else %}text-bg-light{% endif %}">{{ a.n }}</span></a></li>{% endfor %}
@@ -16,7 +17,8 @@
   <tbody>
   {% for c in chamados %}
     <tr>
-      <td><a href="{{ c.get_absolute_url }}"><strong>{{ c.numero }}</strong></a> {{ c.titulo|truncatechars:60 }}</td>
+      <td><a href="{{ c.get_absolute_url }}"><strong>{{ c.numero }}</strong></a> {{ c.titulo|truncatechars:60 }}
+        {% if c.triagem_ia == "orientado" %}<span class="badge text-bg-info">com a IA</span>{% elif c.triagem_ia == "encaminhado" %}<span class="badge text-bg-light" title="A IA tentou e encaminhou">IA encaminhou</span>{% endif %}</td>
       <td class="small">{{ c.solicitante.get_full_name|default:c.solicitante.username }}</td>
       <td class="small">{{ c.area }}<br><span class="text-secondary">{{ c.servico.nome }}</span></td>
       <td>{{ c.get_prioridade_display }}</td>

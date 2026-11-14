@@ -9,6 +9,8 @@ app_name = "servicedesk"
 urlpatterns = crud_urls(telas.ChamadoCrud, telas.AreaCrud, telas.ServicoCrud, telas.ArtigoCrud,
                         telas.MudancaCrud) + [
     path("abrir/", views.catalogo, name="catalogo"),
+    path("abrir/assistente/", views.abrir_com_ia, name="abrir_com_ia"),
+    path("chamado/<int:pk>/ia/", views.ia_resposta, name="ia_resposta"),
     path("fila/", views.fila, name="fila"),
     path("assistente/", views.assistente, name="assistente"),
     path("solucao/<int:pk>/", views.artigo_ler, name="artigo_ler"),

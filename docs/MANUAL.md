@@ -501,6 +501,30 @@ relacionados**.
    prioridade padrão, SLAs e quem aprova (ninguém, gestor do solicitante, gestor da área ou um usuário).
 3. **CAB:** coloque no grupo *CAB* quem aprova mudanças.
 
+### 13.7 Atendimento inicial pela IA
+
+Com a opção **Triagem do Service Desk pela IA** ligada (Administração → Configuração da IA), o assistente
+faz o primeiro atendimento:
+
+1. **Classifica.** Em *Abrir chamado*, o botão **Abrir chamado com a IA** aceita o problema em texto livre.
+   A IA escolhe o serviço do catálogo, e com ele a **fila da equipe certa** e os SLAs, e sugere a
+   prioridade (nunca *crítica*). Se não identificar o serviço, você volta ao catálogo para escolher.
+2. **Lê o chamado e orienta.** Para qualquer chamado novo, aberto pela IA ou pelo catálogo, ela procura
+   na **biblioteca de soluções** os artigos que você pode ver e responde na conversa com o passo a passo.
+   A mensagem aparece como *Assistente (IA)*.
+3. **Resolveu?** No alto do chamado aparecem dois botões. **Resolveu, pode encerrar** fecha o chamado, e
+   **Não resolveu, quero atendimento** manda para a equipe. Você também pode responder na conversa: a IA
+   tenta de novo até 3 vezes e depois encaminha sozinha.
+4. **Encaminha.** Sem artigo que sirva, se a IA falhar ou estiver fora do ar, o chamado segue direto para
+   a fila e a equipe é avisada no sino.
+
+O que a IA **não** faz: não encerra chamado por conta própria (só você confirma), não usa artigos internos
+da equipe, não inventa solução fora da biblioteca e não atende chamado que espera aprovação. O **SLA
+continua contando** durante a conversa com a IA, e a resposta dela não vale como 1ª resposta. Quando um
+analista assume, a IA sai da conversa. Na fila, a equipe vê os selos *com a IA* e *IA encaminhou* e o
+indicador **Resolvidos com a IA (mês)**. A qualidade do atendimento depende da biblioteca: artigo bom,
+resposta boa.
+
 ## 14. Financeiro
 
 ### 14.1 Contas a pagar e a receber
@@ -1039,7 +1063,10 @@ A página **Banco de dados** mostra:
 
 ### 22.1 Assistente de IA
 
-O assistente transforma um pedido em linguagem comum num **formulário já preenchido**. Vale para todos os
+O assistente faz três coisas: **prepara cadastros**, **consulta** as listas do sistema e faz o
+**atendimento inicial do Service Desk** (seção 13.7).
+
+**Cadastrar.** Um pedido em linguagem comum vira um **formulário já preenchido**. Vale para todos os
 cadastros que você tem permissão de incluir, em qualquer módulo (fornecedor, cliente, pedido, chamado,
 ordem de serviço, oportunidade, conta a pagar...).
 
@@ -1049,12 +1076,20 @@ ordem de serviço, oportunidade, conta a pagar...).
    **pontos para conferir** (CNPJ inválido, nome que não achou, campo obrigatório que faltou).
 3. Clique em **Conferir e salvar**: abre o formulário normal, preenchido. **Só você salva.**
 
-**A IA nunca grava nada.** Ela não consulta nem altera dados existentes, só propõe cadastros novos, e só
-os que o seu usuário já pode incluir. Tudo o que você salvar fica na auditoria em seu nome.
+**A IA nunca grava nada.** Ela só propõe cadastros novos, e só os que o seu usuário já pode incluir. Tudo
+o que você salvar fica na auditoria em seu nome.
+
+**Consultar.** Pergunte, por exemplo, *"quais pedidos de compra estão aguardando aprovação?"* ou
+*"fornecedores com papelaria no nome"*. A IA traduz a pergunta em **busca e filtros** da lista
+correspondente, e o ERP executa a consulta com as suas permissões e mostra até 10 linhas, com o botão
+**Abrir a lista completa**. Os dados da resposta **não são enviados à IA**: ela só vê a pergunta e os nomes
+dos filtros. Vale para toda lista que você pode ver, em qualquer módulo, respeitando as empresas a que
+você tem acesso. A consulta devolve registros de uma lista; totais e cruzamentos continuam nos relatórios.
 
 **Pelo Telegram:** em *Assistente de IA*, clique em **Gerar código de vínculo** e envie ao bot da empresa
 `/vincular CÓDIGO` (vale 10 minutos, uma única vez). Depois é só escrever o pedido ao bot. Ele responde que
 o cadastro foi preparado, **sem repetir os dados na conversa**, e você confere e salva dentro do ERP.
+**Consultas não funcionam pelo Telegram**, para que dados da empresa não saiam do ERP.
 `/desvincular` encerra o vínculo.
 
 **Configuração (administrador):** em **Administração → Configuração da IA**, escolha o provedor:

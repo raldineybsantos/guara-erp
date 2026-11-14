@@ -3,7 +3,8 @@
 <div class="alert alert-info d-flex align-items-center gap-2">
   <i class="bi bi-robot fs-4"></i>
   <div class="flex-grow-1">Não sabe qual serviço escolher, ou quer tentar resolver sozinho primeiro? Descreva o problema ao assistente.</div>
-  <a href="{% url 'servicedesk:assistente' %}" class="btn btn-sm btn-primary">Falar com o assistente</a>
+  {% if triagem_ia %}<a href="{% url 'servicedesk:abrir_com_ia' %}" class="btn btn-sm btn-primary"><i class="bi bi-stars"></i> Abrir chamado com a IA</a>{% endif %}
+  <a href="{% url 'servicedesk:assistente' %}" class="btn btn-sm btn-outline-primary">Procurar na biblioteca</a>
 </div>
 {% if meus %}
 <div class="card mb-3"><div class="card-header bg-body"><strong>Meus chamados em andamento</strong></div>

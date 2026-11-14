@@ -141,6 +141,14 @@ Os instaladores ajudam nisso:
 
 - **A IA não tem acesso de escrita nem de leitura ao banco.** Ela recebe o pedido do usuário e a lista de
   campos do formulário, e devolve um JSON. O ERP trata esse JSON como dado não confiável.
+- **Consultas:** a IA devolve apenas texto de busca e filtros, escolhidos de uma lista fechada. Quem
+  consulta é o ERP, com a permissão de ver, o recorte por empresa e os filtros da própria tela. As linhas
+  encontradas não são enviadas ao modelo. Não há consulta pelo Telegram.
+- **Triagem do Service Desk (opcional, desligada por padrão):** aqui o modelo recebe **o texto do chamado
+  e os artigos da biblioteca visíveis ao solicitante** (nunca os internos). Com provedor na nuvem, esse
+  conteúdo sai da empresa. O serviço vem de lista fechada, a prioridade nunca é crítica, a resposta precisa
+  citar um artigo que foi oferecido, e a IA não encerra chamado: só o solicitante confirma a solução.
+  Falha da IA encaminha o chamado para a equipe, e o SLA não para durante a conversa.
 - **Lista fechada:** o modelo só pode escolher um cadastro que o usuário tem permissão de incluir. Qualquer
   outra resposta é descartada. Campos fora do formulário são ignorados e os valores passam pela validação
   normal (CPF/CNPJ, opções, datas).

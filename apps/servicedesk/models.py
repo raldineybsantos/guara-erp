@@ -126,6 +126,11 @@ class Chamado(NumeradoMixin, ModeloBase):
                                on_delete=models.SET_NULL, related_name="chamados", editable=False)
     avaliacao = models.PositiveSmallIntegerField("avaliação (1 a 5)", null=True, blank=True, editable=False)
     comentario_avaliacao = models.TextField("comentário da avaliação", blank=True, editable=False)
+    TRIAGENS = [("", "Sem IA"), ("orientado", "IA orientou, aguardando o usuário"),
+                ("resolvido", "Resolvido com a orientação da IA"), ("encaminhado", "IA encaminhou para a equipe")]
+    triagem_ia = models.CharField("atendimento pela IA", max_length=12, choices=TRIAGENS, blank=True, editable=False)
+    classificado_por_ia = models.BooleanField(default=False, editable=False)
+    ia_turnos = models.PositiveSmallIntegerField(default=0, editable=False)
     alerta_risco = models.BooleanField(default=False, editable=False)
     alerta_vencido = models.BooleanField(default=False, editable=False)
     alerta_resposta = models.BooleanField(default=False, editable=False)
@@ -261,7 +266,9 @@ class Chamado(NumeradoMixin, ModeloBase):
         anterior = self.analista
         self.analista, self.status = analista, "atendimento"
         self.primeira_resposta_em = self.primeira_resposta_em or timezone.now()
-        self.save(update_fields=["analista", "status", "primeira_resposta_em"])
+        if self.triagem_ia == "orientado":   # uma pessoa assumiu: a IA sai da conversa
+            self.triagem_ia = "encaminhado"
+        self.save(update_fields=["analista", "status", "primeira_resposta_em", "triagem_ia"])
         self.mensagens.create(autor=analista, texto=f"{self._nome(analista)} assumiu o chamado.", sistema=True)
         if anterior and anterior != analista:
             notificar([anterior], f"{self.numero} foi assumido por {self._nome(analista)}.", self.url())
@@ -353,6 +360,37 @@ class Chamado(NumeradoMixin, ModeloBase):
         notificar([self.analista] if self.analista else self.area.equipe(), f"{self.numero} foi reaberto: {motivo}",
                   self.url(), email=True)
 
+    # ------------------------------------------------------------- atendimento inicial pela IA
+    def ia_resolveu(self, usuario):
+        """O solicitante confirma que a orientação da IA resolveu: o chamado é encerrado."""
+        if usuario != self.solicitante:
+            raise ValidationError("Só quem abriu o chamado confirma a solução.")
+        if self.triagem_ia != "orientado" or self.status != "aberto":
+            raise ValidationError("Este chamado não está aguardando a sua confirmação.")
+        agora = timezone.now()
+        ultima = self.mensagens.filter(ia=True).last()
+        self.status, self.triagem_ia, self.resolvido_em, self.fechado_em = "fechado", "resolvido", agora, agora
+        self.solucao = f"Resolvido pelo usuário com a orientação do assistente de IA.\n\n{ultima.texto if ultima else ''}"
+        self.save()
+        self.mensagens.create(autor=usuario, texto="Confirmou que a orientação resolveu. Chamado encerrado.",
+                              sistema=True)
+        if self.artigo_id:
+            ArtigoConhecimento.objects.filter(pk=self.artigo_id).update(util_sim=models.F("util_sim") + 1)
+
+    def ia_encaminhar(self, motivo, autor=None):
+        """Sai do atendimento da IA e segue para a fila da equipe (o SLA nunca parou de contar)."""
+        if self.triagem_ia == "encaminhado" or self.status not in self.ATIVOS:
+            return
+        era_orientado = self.triagem_ia == "orientado"
+        self.triagem_ia = "encaminhado"
+        self.save(update_fields=["triagem_ia"])
+        self.mensagens.create(autor=autor, texto=f"{motivo} Encaminhado para a equipe de {self.area}.", sistema=True,
+                              ia=autor is None)
+        if era_orientado and self.artigo_id:
+            ArtigoConhecimento.objects.filter(pk=self.artigo_id).update(util_nao=models.F("util_nao") + 1)
+        notificar(self.area.equipe(), f"{self.numero} precisa de atendimento (a IA não resolveu): {self.titulo}",
+                  self.url())
+
     def cancelar(self, usuario, motivo):
         if self.status in ("resolvido", "fechado", "cancelado", "recusado"):
             raise ValidationError("Chamado já encerrado.")
@@ -381,6 +419,7 @@ class Mensagem(models.Model):
     texto = models.TextField()
     interna = models.BooleanField("nota interna", default=False)
     sistema = models.BooleanField(default=False)
+    ia = models.BooleanField("escrita pela IA", default=False)
     data = models.DateTimeField(default=timezone.now, db_index=True)
 
     class Meta:

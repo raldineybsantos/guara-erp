@@ -142,3 +142,4 @@ body { background: var(--bs-tertiary-bg); font-size: .925rem; }
 .chat-texto { white-space: pre-wrap; word-break: break-word; }
 .catalogo-card { transition: box-shadow .15s; }
 .catalogo-card:hover { box-shadow: 0 .25rem .75rem rgba(0,0,0,.12); }
+.chat-msg.ia { background: var(--bs-info-bg-subtle); border-left: 3px solid var(--bs-info); }

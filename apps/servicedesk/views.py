@@ -37,8 +37,54 @@ def _executar(request, c, func, ok):
 def catalogo(request):
     areas = Area.objects.filter(ativo=True).prefetch_related("servicos")
     meus = Chamado.objects.filter(solicitante=request.user).exclude(status__in=("fechado", "cancelado", "recusado"))
+    from . import ia_triagem
+
     return render(request, "servicedesk/catalogo.html", {"titulo": "Abrir chamado", "icone": "plus-circle",
-                                                         "areas": areas, "meus": meus[:10]})
+                                                         "areas": areas, "meus": meus[:10],
+                                                         "triagem_ia": ia_triagem.ativa() is not None})
+
+
+class AbrirComIAForm(BootstrapMixin, forms.Form):
+    texto = forms.CharField(label="descreva o que você precisa", max_length=1500, widget=forms.Textarea,
+                            help_text="O assistente escolhe o serviço e a equipe certos e tenta orientar você na "
+                                      "hora. Se não resolver, o chamado segue para a equipe.")
+
+
+@login_required
+@permission_required("servicedesk.add_chamado", raise_exception=True)
+def abrir_com_ia(request):
+    from . import ia_triagem
+
+    form = AbrirComIAForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        texto = form.cleaned_data["texto"]
+        r = ia_triagem.classificar(texto)
+        if r is None:
+            messages.warning(request, "O assistente não conseguiu identificar o serviço. Escolha no catálogo.")
+            return redirect("servicedesk:catalogo")
+        servico, prioridade, titulo = r
+        c = Chamado(servico=servico, titulo=titulo, descricao=texto, prioridade=prioridade, classificado_por_ia=True,
+                    solicitante=request.user)
+        c.save()
+        ia_triagem.primeiro_atendimento(c)
+        messages.success(request, f"Chamado {c.numero} aberto em {c.area} › {servico.nome}.")
+        return redirect(c.get_absolute_url())
+    return render(request, "form_simples.html", {"form": form, "titulo": "Abrir chamado com o assistente",
+                                                 "icone": "stars"})
+
+
+@login_required
+@require_POST
+def ia_resposta(request, pk):
+    c = _chamado(request, pk)
+    if request.POST.get("resolveu") == "sim":
+        return _executar(request, c, lambda: c.ia_resolveu(request.user), "Que bom! Chamado encerrado.")
+    if request.user != c.solicitante:
+        messages.error(request, "Só quem abriu o chamado responde ao assistente.")
+        return redirect(c.get_absolute_url())
+    c.ia_encaminhar("O usuário informou que a orientação não resolveu.", autor=request.user)
+    messages.info(request, f"Chamado encaminhado para a equipe de {c.area}.")
+    return redirect(c.get_absolute_url())
 
 
 # --------------------------------------------------------------------------- fila de atendimento
@@ -73,6 +119,8 @@ def fila(request):
         "sla_mes": round(100 * no_prazo / mes.count()) if mes.count() else None,
         "satisfacao": base.filter(avaliacao__isnull=False).aggregate(m=Avg("avaliacao"))["m"],
         "aprovacao": base.filter(status="aguardando_aprovacao").count(),
+        "ia_mes": base.filter(triagem_ia="resolvido", fechado_em__year=agora.year,
+                              fechado_em__month=agora.month).count(),
     }
     abas = [{"id": k, "nome": v[0], "n": v[1].count()} for k, v in visoes.items()]
     return render(request, "servicedesk/fila.html", {
@@ -91,12 +139,18 @@ def mensagens(request, pk):
             m = c.enviar_mensagem(request.user, request.POST.get("texto", ""), request.POST.get("interna") == "1")
         except ValidationError as e:
             return JsonResponse({"erro": " ".join(e.messages)}, status=400)
+        if request.user == c.solicitante and c.triagem_ia == "orientado":
+            from . import ia_triagem
+
+            ia_triagem.continuar(c, m.texto)
         return JsonResponse({"ok": True, "id": m.pk})
     depois = int(request.GET.get("depois") or 0)
     qs = c.mensagens.filter(pk__gt=depois).select_related("autor")
     if not equipe:
         qs = qs.filter(interna=False)
-    dados = [{"id": m.pk, "autor": (m.autor.get_full_name() or m.autor.username) if m.autor else "Sistema",
+    dados = [{"id": m.pk, "ia": m.ia,
+              "autor": "Assistente (IA)" if m.ia else (m.autor.get_full_name() or m.autor.username) if m.autor
+              else "Sistema",
               "texto": m.texto, "interna": m.interna, "sistema": m.sistema, "minha": m.autor_id == request.user.pk,
               "data": timezone.localtime(m.data).strftime("%d/%m %H:%M")} for m in qs]
     return JsonResponse({"mensagens": dados, "status": c.get_status_display(), "sla": c.sla_situacao()})

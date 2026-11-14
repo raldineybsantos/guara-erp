@@ -20,6 +20,10 @@ class ConfiguracaoIA(models.Model):
     modelo = models.CharField(max_length=80, blank=True, help_text="Nome do modelo no provedor (ex.: llama3.1).")
     chave_api = models.BinaryField(null=True, blank=True, editable=False)
     tempo_limite = models.PositiveSmallIntegerField("tempo limite (s)", default=60)
+    servicedesk_triagem = models.BooleanField(
+        "Service Desk: classificar e fazer o primeiro atendimento", default=False,
+        help_text="A IA escolhe o serviço e a fila do chamado e orienta o usuário com base na biblioteca de "
+                  "soluções. Se não resolver, o chamado segue para a equipe.")
     telegram_ativo = models.BooleanField("receber pedidos pelo Telegram", default=False)
     telegram_token = models.BinaryField(null=True, blank=True, editable=False)
     telegram_segredo = models.CharField(max_length=64, blank=True, editable=False)
@@ -56,7 +60,9 @@ class SolicitacaoCadastro(models.Model):
     CANAIS = [("erp", "Chat do ERP"), ("telegram", "Telegram")]
     STATUS = [("pendente", "Aguardando conferência"), ("encaminhada", "Aberta no formulário"),
               ("nao_entendida", "Não entendida"), ("descartada", "Descartada")]
+    TIPOS = [("cadastro", "Cadastro"), ("consulta", "Consulta")]
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="+")
+    tipo = models.CharField(max_length=8, choices=TIPOS, default="cadastro")
     canal = models.CharField(max_length=10, choices=CANAIS, default="erp")
     texto = models.TextField("pedido")
     alvo = models.CharField("cadastro", max_length=80, blank=True)

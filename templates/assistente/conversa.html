@@ -9,11 +9,12 @@
 <div class="col-lg-8">
   <form method="post" class="card mb-3">{% csrf_token %}
     <div class="card-body">
-      <label class="form-label">O que você quer cadastrar?</label>
+      <label class="form-label">O que você quer cadastrar ou consultar?</label>
       <textarea name="texto" class="form-control" rows="3" maxlength="1500" required autofocus placeholder="Ex.: cadastre o fornecedor Papelaria Sol Ltda, CNPJ 11.444.777/0001-61, telefone (11) 4002-8922, prazo de pagamento de 28 dias"></textarea>
       <div class="form-text">A IA só prepara o formulário. Você confere e salva. Pode pedir: {{ exemplos|join:", " }}…</div>
     </div>
-    <div class="card-footer bg-body"><button class="btn btn-primary"><i class="bi bi-stars"></i> Preparar cadastro</button></div>
+    <div class="card-footer bg-body"><button class="btn btn-primary"><i class="bi bi-stars"></i> Enviar</button>
+      <span class="small text-secondary ms-2">Consultas: “contas a pagar do fornecedor Papelaria em aberto”, “chamados críticos de TI”.</span></div>
   </form>
   {% for p in pedidos %}
   <div class="card mb-2 {% if p.status == 'pendente' %}border-primary{% endif %}">
@@ -21,6 +22,15 @@
       <div class="d-flex small text-secondary"><span><i class="bi bi-{% if p.canal == 'telegram' %}telegram{% else %}chat-left-text{% endif %}"></i> {{ p.criado_em|date:"d/m H:i" }} · {{ p.get_status_display }}</span></div>
       <div class="mb-1">“{{ p.texto|truncatechars:300 }}”</div>
       {% if p.status == "nao_entendida" %}<div class="text-warning-emphasis">{{ p.resposta }}</div>
+      {% elif p.tipo == "consulta" %}
+        <div class="fw-semibold">{{ p.alvo_nome|capfirst }}{% if p.resultado %} — {{ p.resultado.total }} registro(s){% endif %}</div>
+        {% if p.pendencias %}<ul class="small text-warning-emphasis mb-1">{% for x in p.pendencias %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+        {% if p.resultado %}{% if p.resultado.linhas %}
+        <div class="table-responsive"><table class="table table-sm small mb-1">
+          <thead><tr>{% for c in p.resultado.colunas %}<th>{{ c }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for l in p.resultado.linhas %}<tr>{% for v in l.valores %}<td>{% if forloop.first %}<a href="{{ l.url }}">{{ v }}</a>{% else %}{{ v }}{% endif %}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table></div>{% else %}<div class="small text-secondary">Nenhum registro encontrado.</div>{% endif %}{% endif %}
+        {% if p.url_lista %}<a href="{{ p.url_lista }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-list"></i> Abrir a lista completa</a>{% endif %}
       {% elif p.alvo %}
         <div class="fw-semibold">{{ p.alvo_nome|capfirst }}</div>
         <dl class="row small mb-1">{% for rot, v in p.linhas %}<dt class="col-sm-4 text-secondary fw-normal">{{ rot }}</dt><dd class="col-sm-8 mb-0">{{ v }}</dd>{% endfor %}</dl>

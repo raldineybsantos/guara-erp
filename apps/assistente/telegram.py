@@ -64,7 +64,7 @@ def tratar(config, update):
         v.save(update_fields=["chat_id"])
         return chat_id, "Chat desvinculado."
     try:
-        return chat_id, servico.resumo(servico.interpretar(v.usuario, texto, "telegram"))
+        return chat_id, servico.resumo(servico.interpretar(v.usuario, texto, "telegram", consultar=False))
     except ValidationError as e:
         return chat_id, " ".join(e.messages)
 

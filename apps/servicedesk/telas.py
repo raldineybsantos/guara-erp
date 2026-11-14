@@ -90,6 +90,13 @@ class ChamadoCrud(Crud):
         return super().get_queryset(request).filter(pk__in=Chamado.objects.visiveis_para(request.user).values("pk"))
 
     @classmethod
+    def after_save(cls, request, obj, created):
+        if created:   # aberto pelo catálogo: a IA também tenta o primeiro atendimento
+            from . import ia_triagem
+
+            ia_triagem.primeiro_atendimento(obj)
+
+    @classmethod
     def extra_detalhe(cls, request, obj):
         equipe = obj.area.atende(request.user)
         sugestoes = ArtigoConhecimento.buscar(f"{obj.titulo} {obj.descricao}", request.user) \
