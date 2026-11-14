@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<p class="text-secondary">Aparecem aqui só as contas a pagar <strong>em aberto e aprovadas para pagamento</strong> que não estão em outro borderô.</p>
+<form method="post">{% csrf_token %}
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm table-hover mb-0 align-middle">
+  <thead class="table-light"><tr><th></th><th>Vencimento</th><th>Fornecedor</th><th>Descrição</th><th>Forma</th><th class="text-end">Saldo</th></tr></thead>
+  <tbody>{% for c in contas %}<tr><td><input type="checkbox" name="contas" value="{{ c.pk }}" class="form-check-input"></td>
+    <td>{{ c.vencimento|date:"d/m/Y" }}</td><td>{{ c.fornecedor|default:"—" }}</td><td>{{ c }}</td>
+    <td class="small">{% if c.codigo_barras %}Boleto{% else %}Crédito em conta{% endif %}</td><td class="text-end">{{ c.saldo|moeda }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-center text-secondary py-4">Nenhuma conta aprovada para pagamento.</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<button class="btn btn-primary"><i class="bi bi-plus-circle"></i> Adicionar selecionados</button>
+<a href="{{ bordero.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}

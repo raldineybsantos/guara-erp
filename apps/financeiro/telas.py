@@ -12,7 +12,7 @@ DETALHE_TITULO = ["descricao", "documento", "parcela", "total_parcelas", "plano_
 
 class ContaBancariaCrud(Crud):
     model = ContaBancaria
-    fields = ["empresa", "nome", "tipo", "banco", "codigo_banco", "agencia", "conta",
+    fields = ["empresa", "nome", "tipo", "banco", "codigo_banco", "agencia", "conta", "convenio",
               "saldo_inicial", "data_saldo_inicial", "ativa"]
     list_display = ("nome", "tipo", "banco", "agencia", "conta", "saldo_atual", "ativa")
     search_fields = ("nome", "banco")
@@ -25,7 +25,7 @@ class ContaBancariaCrud(Crud):
 
 class PlanoContaCrud(Crud):
     model = PlanoConta
-    fields = ["codigo", "nome", "tipo", "superior", "ativo"]
+    fields = ["codigo", "nome", "tipo", "superior", "conta_contabil", "ativo"]
     list_display = ("codigo", "nome", "tipo", "superior", "ativo")
     search_fields = ("codigo", "nome")
     filter_fields = ("tipo", "ativo")

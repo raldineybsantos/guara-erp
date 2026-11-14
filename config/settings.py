@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     "apps.juridico",
     "apps.compras",
     "apps.estoque",
+    "apps.bancario",
     "apps.contabilidade",
     "apps.servicedesk",
     "apps.sst",
@@ -184,6 +185,8 @@ PROJETOS_HORAS_MES = os.getenv("PROJETOS_HORAS_MES", "220")
 PROJETOS_ENCARGOS_FATOR = os.getenv("PROJETOS_ENCARGOS_FATOR", "1.0")
 # SST: antecedência do alerta de ASO e reciclagem de NR vencendo (dias).
 SST_ALERTA_DIAS = int(os.getenv("SST_ALERTA_DIAS", "30"))
+# Conciliação bancária: diferença máxima de dias entre a data do banco e a do ERP para casar sozinho.
+CONCILIACAO_TOLERANCIA_DIAS = int(os.getenv("CONCILIACAO_TOLERANCIA_DIAS", "3"))
 # Service Desk: horário em que o SLA corre (seg a sex) ou "24x7"; dias para fechar sozinho o chamado
 # resolvido que o usuário não confirmou.
 SERVICEDESK_HORARIO = os.getenv("SERVICEDESK_HORARIO", "08:00-18:00")

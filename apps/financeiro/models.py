@@ -23,6 +23,8 @@ class ContaBancaria(ModeloBase, PorEmpresaMixin):
     codigo_banco = models.CharField("código do banco", max_length=5, blank=True)
     agencia = models.CharField("agência", max_length=10, blank=True)
     conta = models.CharField(max_length=20, blank=True)
+    convenio = models.CharField("convênio de pagamentos", max_length=20, blank=True,
+                                help_text="Código do convênio informado pelo banco para a remessa CNAB.")
     saldo_inicial = models.DecimalField("saldo inicial", max_digits=14, decimal_places=2, default=0)
     data_saldo_inicial = models.DateField("data do saldo inicial", default=timezone.localdate)
     ativa = models.BooleanField(default=True)

@@ -29,6 +29,8 @@ LINKS_EXTRAS = [
     ("Contabilidade", "DRE", "contabilidade:dre", "graph-up-arrow", "contabilidade.view_lancamento", 5),
     ("Contabilidade", "Balanço patrimonial", "contabilidade:balanco", "bank", "contabilidade.view_lancamento", 6),
     ("Contabilidade", "Fechamento de períodos", "contabilidade:periodos", "lock", "contabilidade.add_periodofechado", 7),
+    ("Financeiro", "Importar extrato (OFX)", "bancario:importar_extrato", "upload", "bancario.add_extrato", 6),
+    ("Financeiro", "Importar retorno do banco", "bancario:importar_retorno", "upload", "bancario.change_bordero", 9),
     ("CRM", "Funil de vendas", "crm:funil", "kanban", "crm.view_oportunidade", 1),
     ("Fiscal", "Importar XML NF-e", "fiscal:importar_xml", "upload", "fiscal.add_notafiscal", 5),
     ("Fiscal", "Apuração de impostos", "fiscal:apuracao", "calculator", "fiscal.view_notafiscal", 6),

@@ -2,7 +2,7 @@
 from django.apps import apps
 from django.contrib import admin
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario"]
 
 
 def admin_generico(model):

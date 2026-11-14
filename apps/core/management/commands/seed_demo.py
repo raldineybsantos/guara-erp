@@ -231,6 +231,7 @@ class Command(BaseCommand):
         self._compras(usuarios, forns)
         self._operacao(usuarios, clis)
         self._servicedesk(usuarios)
+        self._bancos(usuarios, forns)
         # Contabilidade: os lançamentos automáticos já nasceram com os dados acima; falta só o capital inicial.
         from apps.contabilidade import servicos
         from apps.contabilidade.models import ContaContabil
@@ -539,4 +540,30 @@ class Command(BaseCommand):
                                janela_inicio=(agora + datetime.timedelta(days=7)).replace(hour=19, minute=0),
                                janela_fim=(agora + datetime.timedelta(days=7)).replace(hour=21, minute=0), **base)
         _local.usuario = None
+
+    def _bancos(self, usuarios, forns):
+        """Borderô aberto com títulos aprovados e um extrato importado com uma tarifa por resolver."""
+        from apps.bancario.models import Bordero, Extrato
+        from apps.core.models import Fornecedor
+        from apps.financeiro.models import ContaBancaria, ContaPagar, Movimentacao
+
+        hoje = datetime.date.today()
+        conta = ContaBancaria.objects.get(codigo_banco="001")
+        ContaBancaria.objects.filter(pk=conta.pk).update(convenio="0001234567")
+        for i, f in enumerate(forns[:3]):
+            Fornecedor.objects.filter(pk=f.pk).update(banco=("341 Itaú", "237 Bradesco", "104 Caixa")[i],
+                                                      agencia=f"0{i + 1}23-4", conta=f"4567{i}-8")
+        b = Bordero.objects.create(conta_bancaria=conta, data_pagamento=hoje + datetime.timedelta(days=2),
+                                   criado_por=usuarios["financeiro"])
+        aprovadas = [c for c in Bordero.elegiveis() if c.fornecedor_id in [f.pk for f in forns[:3]]][:3]
+        if not aprovadas:
+            abertas = ContaPagar.objects.em_aberto().filter(fornecedor__in=forns[:3])[:3]
+            ContaPagar.objects.filter(pk__in=[c.pk for c in abertas]).update(aprovado=True)
+            aprovadas = list(Bordero.elegiveis().filter(fornecedor__in=forns[:3])[:3])
+        b.adicionar(aprovadas)
+        linhas = [{"fitid": f"demo{m.pk}", "data": m.data, "valor": m.valor_sinal, "descricao": m.descricao[:40].upper()}
+                  for m in Movimentacao.objects.filter(conta_bancaria=conta).order_by("-data")[:6]]
+        linhas.append({"fitid": "demo-tarifa", "data": hoje, "valor": Decimal("-39.90"),
+                       "descricao": "TARIFA PACOTE SERVICOS"})
+        Extrato.importar(conta, "extrato-demo.ofx", linhas)
 

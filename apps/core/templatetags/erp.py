@@ -45,3 +45,8 @@ def saldo_dc(valor):
     if not valor:
         return "—"
     return f"{_moeda(abs(valor))} {'D' if valor > 0 else 'C'}"
+
+
+@register.filter
+def nome_modelo(obj):
+    return obj._meta.model_name

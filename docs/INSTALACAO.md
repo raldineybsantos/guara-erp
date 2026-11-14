@@ -134,6 +134,7 @@ Opcionais dos módulos operacionais (os padrões servem para a maioria):
 | `MANUTENCAO_ANTECEDENCIA_DIAS` | `7` | Dias de antecedência para abrir a OS preventiva |
 | `PROJETOS_HORAS_MES` / `PROJETOS_ENCARGOS_FATOR` | `220` / `1.0` | Custo-hora = salário × fator ÷ horas do mês (ex.: fator `1.8` para incluir encargos) |
 | `SST_ALERTA_DIAS` | `30` | Antecedência do alerta de ASO e reciclagem de NR |
+| `CONCILIACAO_TOLERANCIA_DIAS` | `3` | Diferença máxima de dias entre a data do banco e a do ERP para conciliar sozinho |
 | `SERVICEDESK_HORARIO` | `08:00-18:00` | Horário em que o SLA corre (segunda a sexta); `24x7` para contar corrido |
 | `SERVICEDESK_DIAS_FECHAMENTO` | `3` | Dias para fechar sozinho o chamado resolvido que o usuário não confirmou |
 | `ERP_URL_BASE` | vazio | Endereço do ERP nos links dos e-mails de aviso (ex.: `https://erp.empresa.com.br`) |

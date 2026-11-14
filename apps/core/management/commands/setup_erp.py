@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -39,7 +39,7 @@ CADASTROS_BASICOS = ["core.view_empresa", "core.view_departamento", "core.view_c
 
 GRUPOS = {
     "Administradores": ["*"] + ["auth.view_user", "auth.add_user", "auth.change_user", "auth.view_group"],
-    "Financeiro": ["financeiro.*", "cobranca.*", *CADASTROS_BASICOS, "core.add_fornecedor",
+    "Financeiro": ["financeiro.*", "cobranca.*", "bancario.*", *CADASTROS_BASICOS, "core.add_fornecedor",
                    "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "core.change_parceironegocio",
                    "fiscal.view_*", "compras.view_pedidocompra", "compras.view_itempedido",
                    "compras.view_recebimentocompra", "vendas.view_pedidovenda", "vendas.view_itempedidovenda",
@@ -78,7 +78,8 @@ GRUPOS = {
     "SESMT": ["sst.*", "core.view_colaborador", "fiscal.view_produto", "estoque.view_saldo"],
     "Service Desk": ["servicedesk.*", "core.view_colaborador"],
     "CAB": ["servicedesk.view_mudanca", "servicedesk.view_chamado"],
-    "Contabilidade": ["contabilidade.*", "financeiro.view_*", "financeiro.change_planoconta", "fiscal.view_*",
+    "Contabilidade": ["contabilidade.*", "bancario.view_extrato", "bancario.view_linhaextrato",
+                      "bancario.view_bordero", "bancario.view_itembordero", "financeiro.view_*", "financeiro.change_planoconta", "fiscal.view_*",
                       "estoque.view_saldo", "estoque.view_movimento", *CADASTROS_BASICOS],
     "Usuários": [],
 }

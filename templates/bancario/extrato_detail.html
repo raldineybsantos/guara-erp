@@ -1,0 +1,37 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3 align-items-center">
+  <a href="{{ url_list }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Extratos</a>
+  <a href="{% url 'bancario:importar_extrato' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-upload"></i> Importar outro</a>
+  <span class="ms-auto">{{ object.conta_bancaria }} · {{ object.inicio|date:"d/m/Y" }} a {{ object.fim|date:"d/m/Y" }} · {{ object.status|badge }}</span>
+</div>
+{% if pendentes %}
+<div class="card mb-3 border-warning"><div class="card-header bg-warning-subtle d-flex"><strong>No banco, mas não no ERP ({{ pendentes|length }})</strong>
+  <form method="post" action="{% url 'bancario:resolver_linha' pendentes.0.pk %}" class="ms-auto">{% csrf_token %}<button name="acao" value="reconciliar" class="btn btn-sm btn-outline-secondary py-0">Tentar conciliar de novo</button></form></div>
+<div class="table-responsive"><table class="table table-sm mb-0 align-middle">
+  <thead class="table-light"><tr><th>Data</th><th>Descrição no banco</th><th class="text-end">Valor</th><th>Como resolver</th></tr></thead>
+  <tbody>{% for l in pendentes %}
+  <tr><td class="text-nowrap">{{ l.data|date:"d/m/Y" }}</td><td>{{ l.descricao }}</td>
+    <td class="text-end text-nowrap {% if l.valor < 0 %}text-danger{% else %}text-success{% endif %}">{{ l.valor|moeda }}</td>
+    <td>
+      <form method="post" action="{% url 'bancario:resolver_linha' l.pk %}" class="d-flex flex-wrap gap-1 align-items-center">{% csrf_token %}
+        {% if l.sugestoes %}
+        <select name="titulo" class="form-select form-select-sm w-auto">{% for t in l.sugestoes %}<option value="{{ t|nome_modelo }}:{{ t.pk }}">{{ t }} — venc. {{ t.vencimento|date:"d/m" }}</option>{% endfor %}</select>
+        <button name="acao" value="titulo" class="btn btn-sm btn-success"><i class="bi bi-check2"></i> Baixar este título</button>
+        <span class="text-secondary small">ou</span>
+        {% endif %}
+        <input name="descricao" class="form-control form-control-sm w-auto" placeholder="Descrição (ex.: tarifa)" value="{{ l.descricao }}">
+        <button name="acao" value="avulsa" class="btn btn-sm btn-outline-primary">Lançar sem título</button>
+        <button name="acao" value="ignorar" class="btn btn-sm btn-link text-secondary">Ignorar</button>
+      </form>
+    </td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% else %}<div class="alert alert-success">Tudo o que o banco mostrou está no ERP.</div>{% endif %}
+{% if so_no_erp %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>No ERP, mas não no banco ({{ so_no_erp|length }})</strong> <span class="small text-secondary">— confira se a data ou o valor foram lançados errado, ou se ainda não compensou</span></div>
+<table class="table table-sm mb-0">{% for m in so_no_erp %}<tr><td class="text-nowrap">{{ m.data|date:"d/m/Y" }}</td><td>{{ m.descricao }}</td><td class="text-end">{{ m.valor_sinal|moeda }}</td></tr>{% endfor %}</table></div>
+{% endif %}
+<div class="card"><div class="card-header bg-body"><strong>Conciliadas ({{ conciliadas|length }})</strong></div>
+<table class="table table-sm mb-0">{% for l in conciliadas %}<tr><td class="text-nowrap">{{ l.data|date:"d/m/Y" }}</td><td>{{ l.descricao }}</td><td class="text-end text-nowrap">{{ l.valor|moeda }}</td><td class="small text-secondary"><i class="bi bi-link-45deg"></i> {{ l.movimentacao.descricao }}</td></tr>
+{% empty %}<tr><td class="text-secondary">Nenhuma ainda.</td></tr>{% endfor %}</table></div>
+{% endblock %}

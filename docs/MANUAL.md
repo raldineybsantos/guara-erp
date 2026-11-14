@@ -535,6 +535,42 @@ Mostra, mês a mês:
 
 ---
 
+### 14.5 Conciliação bancária (extrato OFX)
+
+1. No internet banking, exporte o extrato em **OFX** (alguns bancos chamam de "Money").
+2. **Financeiro → Importar extrato (OFX):** escolha a conta e o arquivo. Pode importar períodos que se
+   sobrepõem: o que já entrou é ignorado.
+3. O ERP **concilia sozinho** cada linha do banco com a movimentação de mesmo valor e sentido, com até 3
+   dias de diferença na data.
+4. O que sobrar aparece em **No banco, mas não no ERP**, com três saídas por linha:
+   - **Baixar este título:** o ERP sugere as contas em aberto com exatamente aquele valor. Um clique baixa
+     o título na data do banco e concilia.
+   - **Lançar sem título:** para tarifas, juros e IOF. Cria a movimentação e concilia.
+   - **Ignorar:** para linhas que não interessam (ex.: aplicação automática e resgate no mesmo dia).
+5. O quadro **No ERP, mas não no banco** mostra o que foi lançado e o banco não confirmou: data ou valor
+   errado, cheque não compensado ou pagamento que não saiu.
+
+### 14.6 Pagamento a fornecedores por arquivo (CNAB 240)
+
+Em vez de digitar cada pagamento no banco, monte um **borderô** e envie um arquivo:
+
+1. **Financeiro → Borderôs de pagamentos → Novo:** conta pagadora e data de pagamento.
+2. **Adicionar títulos:** só aparecem contas **em aberto e aprovadas para pagamento** (pela conferência de
+   compras, pelo workflow ou manualmente) que não estejam em outro borderô. Título com código de barras
+   vai como **boleto**; os demais, como **crédito em conta (TED)** nos dados bancários do fornecedor.
+3. **Gerar arquivo de remessa:** baixa o arquivo `.rem`. Envie-o pelo internet banking da empresa. Se
+   faltar algum dado (agência do fornecedor, convênio da conta), o ERP lista o que completar.
+4. Quando o banco devolver o arquivo de **retorno**, use **Financeiro → Importar retorno do banco**. Os
+   títulos **pagos** são baixados na data do retorno; os **rejeitados** mostram o motivo e voltam a ficar
+   disponíveis para outro borderô. Importar o mesmo retorno duas vezes não baixa em dobro.
+
+Cadastros necessários: na **conta bancária**, código do banco, agência, conta e **convênio**; no
+**fornecedor**, o campo *Banco* começando pelo código de 3 dígitos (ex.: `341 Itaú`), agência e conta.
+
+> O arquivo segue o padrão FEBRABAN CNAB 240. Cada banco tem particularidades e **exige homologação**:
+> antes de usar de verdade, envie um arquivo de teste ao seu gerente e valide o retorno. PIX por arquivo e
+> contas de consumo (código de 48 dígitos) ainda não entram na remessa.
+
 ## 15. Contabilidade
 
 A contabilidade do Guará é um **razão único**: ninguém "roda a contabilização" no fim do mês. Cada evento
