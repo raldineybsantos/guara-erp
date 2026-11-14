@@ -1037,7 +1037,7 @@ A página **Banco de dados** mostra:
 
 ---
 
-### 22.5 Assistente de IA
+### 22.1 Assistente de IA
 
 O assistente transforma um pedido em linguagem comum num **formulário já preenchido**. Vale para todos os
 cadastros que você tem permissão de incluir, em qualquer módulo (fornecedor, cliente, pedido, chamado,
