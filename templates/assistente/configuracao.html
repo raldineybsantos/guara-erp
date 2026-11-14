@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" style="max-width:900px">{% csrf_token %}
+  <div class="card mb-3"><div class="card-body">{% include "crud/_campos.html" %}</div></div>
+  <div class="alert alert-info small">
+    <strong>Chave de API:</strong> {% if config.chave_api %}guardada (cifrada){% else %}não informada{% endif %} ·
+    <strong>Token do Telegram:</strong> {% if config.telegram_token %}guardado (cifrado){% else %}não informado{% endif %}<br>
+    <strong>Telegram:</strong> registre o webhook <code>{{ webhook }}</code> com o <em>secret_token</em> <code>{{ config.telegram_segredo }}</code>. O ERP precisa estar publicado em HTTPS para o Telegram alcançá-lo.
+  </div>
+  <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+  <button name="testar" value="1" class="btn btn-outline-primary"><i class="bi bi-plug"></i> Salvar e testar a IA</button>
+</form>
+{% endblock %}

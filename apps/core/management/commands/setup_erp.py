@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario", "assistente"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -26,7 +26,9 @@ BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_ins
           "sst.view_incidente", "sst.add_incidente",
           # ... e abrir chamados no Service Desk e consultar a biblioteca de soluções
           "servicedesk.view_chamado", "servicedesk.add_chamado", "servicedesk.view_servico", "servicedesk.view_area",
-          "servicedesk.view_artigoconhecimento", "servicedesk.view_mudanca"]
+          "servicedesk.view_artigoconhecimento", "servicedesk.view_mudanca",
+          # ... e pedir cadastros ao assistente de IA (ele só propõe o que o usuário já pode incluir)
+          "assistente.add_solicitacaocadastro", "assistente.view_solicitacaocadastro"]
 
 # Equipes que atendem chamados das suas áreas (TI fica no grupo "Service Desk").
 ATENDIMENTO = ["servicedesk.change_chamado", "servicedesk.add_artigoconhecimento",

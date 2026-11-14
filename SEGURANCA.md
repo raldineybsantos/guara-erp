@@ -136,3 +136,25 @@ Os instaladores ajudam nisso:
 - O ERP recusa certificado vencido, com senha errada, que não seja e-CNPJ ou de outro CNPJ.
 - Quem tem acesso ao servidor **e** à chave do cofre consegue assinar pela empresa. Restrinja o acesso
   ao `.env` e troque o certificado se houver suspeita de vazamento.
+
+## Assistente de IA e canal Telegram
+
+- **A IA não tem acesso de escrita nem de leitura ao banco.** Ela recebe o pedido do usuário e a lista de
+  campos do formulário, e devolve um JSON. O ERP trata esse JSON como dado não confiável.
+- **Lista fechada:** o modelo só pode escolher um cadastro que o usuário tem permissão de incluir. Qualquer
+  outra resposta é descartada. Campos fora do formulário são ignorados e os valores passam pela validação
+  normal (CPF/CNPJ, opções, datas).
+- **Pessoa no circuito:** nada é gravado pela IA. A proposta abre o formulário normal, e quem salva é o
+  usuário, com as permissões e a auditoria de sempre. Isso limita o efeito de um texto malicioso
+  (injeção de instruções) a uma proposta errada, que o usuário vê antes de salvar.
+- **Dados fora da URL:** o formulário é preenchido por referência à proposta (`?ia=N`), que só o dono abre.
+- **Limites:** 1.500 caracteres por pedido e 30 pedidos por hora por usuário.
+- **Provedor na nuvem:** o texto digitado sai da empresa. A tela avisa o usuário. Para dados que não podem
+  sair, use o Ollama local.
+- **Telegram:** o webhook exige o cabeçalho secreto (comparado em tempo constante) e o canal ligado; só
+  conversas privadas de chats vinculados por código de uso único (10 minutos, gerado dentro do ERP) são
+  atendidas; o bot não repete os dados do cadastro e não responde consultas. Quem tiver o celular
+  desbloqueado de um usuário consegue criar propostas em nome dele, mas não gravar: para isso precisa
+  entrar no ERP. O usuário desfaz o vínculo pelo ERP ou com `/desvincular`.
+- **Segredos:** chave de API e token do bot ficam cifrados (mesmo cofre do certificado A1), fora da
+  auditoria, e não voltam para a tela.

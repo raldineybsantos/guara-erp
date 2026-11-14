@@ -543,7 +543,17 @@ class CriarView(CrudMixin, FormMixin, generic.CreateView):
     acao_perm = "add"
 
     def get_initial(self):
-        return self.crud.initial(self.request)
+        inicial = self.crud.initial(self.request)
+        proposta = self.request.GET.get("ia")
+        if proposta and proposta.isdigit():   # formulário pré-preenchido pelo assistente de IA
+            from apps.assistente.models import SolicitacaoCadastro
+
+            sc = SolicitacaoCadastro.objects.filter(pk=proposta, usuario=self.request.user,
+                                                    alvo=f"{self.crud.app()}.{self.crud.nome()}").first()
+            if sc:
+                inicial = {**sc.dados, **inicial}
+                SolicitacaoCadastro.objects.filter(pk=sc.pk, status="pendente").update(status="encaminhada")
+        return inicial
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

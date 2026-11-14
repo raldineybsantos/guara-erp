@@ -2,7 +2,7 @@
 from django.apps import apps
 from django.contrib import admin
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario", "assistente"]
 
 
 def admin_generico(model):
@@ -17,7 +17,7 @@ def admin_generico(model):
 
 
 SOMENTE_LEITURA = {"core.logauditoria", "workflow.historico", "cobranca.historicocobranca", "ged.assinatura",
-                   "juridico.evento", "contabilidade.lancamento", "contabilidade.partida", "estoque.movimento", "fiscal.transmissao", "fiscal.configuracaofiscal"}
+                   "juridico.evento", "contabilidade.lancamento", "contabilidade.partida", "estoque.movimento", "fiscal.transmissao", "fiscal.configuracaofiscal", "assistente.configuracaoia", "assistente.vinculocanal"}
 
 
 class SomenteLeituraAdmin(admin.ModelAdmin):

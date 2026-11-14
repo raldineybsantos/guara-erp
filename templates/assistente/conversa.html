@@ -1,0 +1,50 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+{% if config.provedor == "desligado" %}
+<div class="alert alert-warning">O assistente de IA está desligado. {% if perms.assistente.change_configuracaoia %}<a href="{% url 'assistente:configuracao' %}">Configurar agora</a>.{% else %}Peça ao administrador para ligar.{% endif %}</div>
+{% elif config.na_nuvem %}
+<div class="alert alert-warning small"><i class="bi bi-cloud me-1"></i>A IA configurada roda <strong>fora da empresa</strong> ({{ config.get_provedor_display }}). O que você escrever aqui é enviado a esse serviço. Não inclua dados que não podem sair da empresa.</div>
+{% endif %}
+<div class="row g-3">
+<div class="col-lg-8">
+  <form method="post" class="card mb-3">{% csrf_token %}
+    <div class="card-body">
+      <label class="form-label">O que você quer cadastrar?</label>
+      <textarea name="texto" class="form-control" rows="3" maxlength="1500" required autofocus placeholder="Ex.: cadastre o fornecedor Papelaria Sol Ltda, CNPJ 11.444.777/0001-61, telefone (11) 4002-8922, prazo de pagamento de 28 dias"></textarea>
+      <div class="form-text">A IA só prepara o formulário. Você confere e salva. Pode pedir: {{ exemplos|join:", " }}…</div>
+    </div>
+    <div class="card-footer bg-body"><button class="btn btn-primary"><i class="bi bi-stars"></i> Preparar cadastro</button></div>
+  </form>
+  {% for p in pedidos %}
+  <div class="card mb-2 {% if p.status == 'pendente' %}border-primary{% endif %}">
+    <div class="card-body py-2">
+      <div class="d-flex small text-secondary"><span><i class="bi bi-{% if p.canal == 'telegram' %}telegram{% else %}chat-left-text{% endif %}"></i> {{ p.criado_em|date:"d/m H:i" }} · {{ p.get_status_display }}</span></div>
+      <div class="mb-1">“{{ p.texto|truncatechars:300 }}”</div>
+      {% if p.status == "nao_entendida" %}<div class="text-warning-emphasis">{{ p.resposta }}</div>
+      {% elif p.alvo %}
+        <div class="fw-semibold">{{ p.alvo_nome|capfirst }}</div>
+        <dl class="row small mb-1">{% for rot, v in p.linhas %}<dt class="col-sm-4 text-secondary fw-normal">{{ rot }}</dt><dd class="col-sm-8 mb-0">{{ v }}</dd>{% endfor %}</dl>
+        {% if p.pendencias %}<ul class="small text-warning-emphasis mb-1">{% for x in p.pendencias %}<li>{{ x }}</li>{% endfor %}</ul>{% endif %}
+        {% if p.status == "pendente" or p.status == "encaminhada" %}
+        <div class="d-flex gap-2"><a href="{{ p.url_formulario }}" class="btn btn-sm btn-success"><i class="bi bi-check2-square"></i> Conferir e salvar</a>
+          <form method="post" action="{% url 'assistente:descartar' p.pk %}">{% csrf_token %}<button class="btn btn-sm btn-link text-secondary">Descartar</button></form></div>
+        {% endif %}
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="col-lg-4">
+  <div class="card"><div class="card-header bg-body"><strong><i class="bi bi-telegram me-1"></i>Pedir pelo Telegram</strong></div>
+    <div class="card-body small">
+      {% if not config.telegram_ativo %}O canal Telegram está desligado.
+      {% elif vinculo.chat_id %}<p>Seu Telegram está vinculado desde {{ vinculo.vinculado_em|date:"d/m/Y H:i" }}.</p>
+        <form method="post" action="{% url 'assistente:vincular' %}">{% csrf_token %}<button name="desvincular" value="1" class="btn btn-sm btn-outline-danger">Desvincular</button></form>
+      {% else %}<p>Gere um código e envie ao bot da empresa. O código vale por 10 minutos e só uma vez.</p>
+        <form method="post" action="{% url 'assistente:vincular' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Gerar código de vínculo</button></form>
+      {% endif %}
+      <hr><p class="text-secondary mb-0">Pelo Telegram a IA também só prepara o cadastro. Os dados não são repetidos na conversa, e você confere e salva aqui no ERP.</p>
+    </div></div>
+</div>
+</div>
+{% endblock %}

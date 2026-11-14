@@ -1037,6 +1037,39 @@ A página **Banco de dados** mostra:
 
 ---
 
+### 22.5 Assistente de IA
+
+O assistente transforma um pedido em linguagem comum num **formulário já preenchido**. Vale para todos os
+cadastros que você tem permissão de incluir, em qualquer módulo (fornecedor, cliente, pedido, chamado,
+ordem de serviço, oportunidade, conta a pagar...).
+
+1. Em **Principal → Assistente de IA**, escreva o pedido. Exemplo: *"cadastre o fornecedor Papelaria Sol
+   Ltda, CNPJ 11.444.777/0001-61, prazo de pagamento de 28 dias"*.
+2. A IA identifica o cadastro e os campos. O ERP valida o que ela devolveu e mostra a proposta, com os
+   **pontos para conferir** (CNPJ inválido, nome que não achou, campo obrigatório que faltou).
+3. Clique em **Conferir e salvar**: abre o formulário normal, preenchido. **Só você salva.**
+
+**A IA nunca grava nada.** Ela não consulta nem altera dados existentes, só propõe cadastros novos, e só
+os que o seu usuário já pode incluir. Tudo o que você salvar fica na auditoria em seu nome.
+
+**Pelo Telegram:** em *Assistente de IA*, clique em **Gerar código de vínculo** e envie ao bot da empresa
+`/vincular CÓDIGO` (vale 10 minutos, uma única vez). Depois é só escrever o pedido ao bot. Ele responde que
+o cadastro foi preparado, **sem repetir os dados na conversa**, e você confere e salva dentro do ERP.
+`/desvincular` encerra o vínculo.
+
+**Configuração (administrador):** em **Administração → Configuração da IA**, escolha o provedor:
+
+| Provedor | Onde roda | Observação |
+|---|---|---|
+| **Ollama** | No servidor da empresa | Os dados não saem da rede e não há custo por uso |
+| **API compatível com OpenAI** | Nuvem ou local | Exige chave de API |
+| **Anthropic (Claude)** | Nuvem | Exige chave de API |
+
+Com provedor na nuvem, o texto que o usuário escreve é enviado a esse serviço, e a tela avisa disso. As
+chaves ficam cifradas e não aparecem na tela depois de salvas. **Salvar e testar a IA** confere a conexão.
+Para o Telegram, crie um bot no @BotFather, informe o token e registre o endereço e o *secret token* que a
+tela mostra. O ERP precisa estar publicado em HTTPS.
+
 ## 23. Perguntas frequentes
 
 **Não vejo um menu que meu colega vê.**

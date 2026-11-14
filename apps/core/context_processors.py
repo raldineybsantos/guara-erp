@@ -12,6 +12,8 @@ ICONES_GRUPOS = {"Contabilidade": "journal-text", "Service Desk": "headset", "SS
 # (grupo, rótulo, url_name, ícone, permissão, ordem)
 LINKS_EXTRAS = [
     ("Principal", "Painel", "dashboard", "speedometer2", None, 1),
+    ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
+    ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
     ("Principal", "Minhas tarefas", "tarefas:quadro", "kanban", None, 2),
     ("Financeiro", "Fluxo de caixa", "financeiro:fluxo_caixa", "graph-up", "financeiro.view_movimentacao", 4),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),
