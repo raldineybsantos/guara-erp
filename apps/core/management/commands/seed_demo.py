@@ -241,6 +241,16 @@ class Command(BaseCommand):
         if emp_demo:
             cfg = ConfiguracaoFiscal.objects.create(empresa=emp_demo)
             cfg.guardar_certificado(gerar_pfx(emp_demo.razao_social, cnpj=emp_demo.cnpj, senha="demo"), "demo")
+            # Filial que emite com numeração própria e o certificado da matriz.
+            raiz = "".join(c for c in emp_demo.cnpj if c.isdigit())[:8]
+            from apps.core.validators import cnpj_valido
+            cnpj_filial = next(c for c in (f"{raiz}0002{dv:02d}" for dv in range(100)) if cnpj_valido(c))
+            filial = Empresa.objects.create(razao_social=f"{emp_demo.razao_social} - Filial Campinas",
+                                            nome_fantasia="Filial Campinas", cnpj=cnpj_filial, matriz_de=emp_demo,
+                                            regime_tributario=emp_demo.regime_tributario, cidade="Campinas",
+                                            uf="SP", codigo_municipio="3509502")
+            ConfiguracaoFiscal.objects.create(empresa=filial, serie_nfe="2", serie_nfse="2",
+                                              usar_certificado_matriz=True)
         # Contabilidade: os lançamentos automáticos já nasceram com os dados acima; falta só o capital inicial.
         from apps.contabilidade import servicos
         from apps.contabilidade.models import ContaContabil

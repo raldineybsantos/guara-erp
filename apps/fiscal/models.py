@@ -121,12 +121,21 @@ class NotaFiscal(ModeloBase, PorEmpresaMixin):
         )
 
     @transaction.atomic
+    def serie_da_empresa(self):
+        """Série configurada para a empresa da nota (cada empresa/filial tem numeração própria)."""
+        config = ConfiguracaoFiscal.objects.filter(empresa=self.empresa).first() if self.empresa_id else None
+        if config is None:
+            return self.serie
+        return config.serie_nfse if self.modelo == "nfse" else config.serie_nfe
+
     def emitir(self):
         """Numera e marca como emitida. A transmissão à SEFAZ/prefeitura é feita por integração externa."""
         if self.status != "rascunho":
             raise ValueError("Apenas notas em rascunho podem ser emitidas.")
         if not self.itens.exists():
             raise ValueError("A nota não possui itens.")
+        if not self.numero and self.tipo == "saida":
+            self.serie = self.serie_da_empresa()
         if not self.numero:
             ultimo = (NotaFiscal.objects.select_for_update()
                       .filter(empresa=self.empresa, modelo=self.modelo, serie=self.serie, tipo="saida")
@@ -215,6 +224,12 @@ class ConfiguracaoFiscal(ModeloBase):
                                    default="simulacao")
     emissor_nfse = models.CharField("NFS-e (serviço) vai por", max_length=10, choices=EMISSORES_NFSE,
                                     default="simulacao")
+    serie_nfe = models.CharField("série da NF-e", max_length=5, default="1")
+    serie_nfse = models.CharField("série da NFS-e", max_length=5, default="1")
+    usar_certificado_matriz = models.BooleanField(
+        "usar o certificado da matriz", default=False,
+        help_text="Para filiais. A SEFAZ aceita o certificado da matriz (mesma raiz de CNPJ); o Emissor Nacional "
+                  "da NFS-e exige o certificado do próprio CNPJ.")
     certificado = models.BinaryField(null=True, blank=True, editable=False)
     senha = models.BinaryField(null=True, blank=True, editable=False)
     certificado_titular = models.CharField("titular do certificado", max_length=200, blank=True, editable=False)
@@ -227,11 +242,18 @@ class ConfiguracaoFiscal(ModeloBase):
     def __str__(self):
         return f"Fiscal de {self.empresa}"
 
+    def _dono_do_certificado(self):
+        """Esta configuração, ou a da matriz quando a filial usa o certificado dela."""
+        if self.usar_certificado_matriz and self.empresa.matriz_de_id:
+            return ConfiguracaoFiscal.objects.filter(empresa_id=self.empresa.matriz_de_id).first()
+        return self
+
     @property
     def status(self):
-        if not self.certificado:
+        dono = self._dono_do_certificado()
+        if dono is None or not dono.certificado:
             return "Pendente: sem certificado"
-        dias = (self.certificado_validade - timezone.now()).days
+        dias = (dono.certificado_validade - timezone.now()).days
         if dias < 0:
             return "Vencido"
         return f"Atenção: vence em {dias} dias" if dias <= 30 else "Vigente"
@@ -267,10 +289,12 @@ class ConfiguracaoFiscal(ModeloBase):
 
         from . import cofre
 
-        if not self.certificado:
-            raise ValidationError("Envie o certificado A1 da empresa em Fiscal → Configuração fiscal.")
+        dono = self._dono_do_certificado()
+        if dono is None or not dono.certificado:
+            raise ValidationError(f"Envie o certificado A1 de {self.empresa} (ou da matriz) em Fiscal → "
+                                  "Configuração fiscal.")
         try:
-            chave, cert, _, _ = carregar_pfx(cofre.decifrar(self.certificado), cofre.decifrar(self.senha).decode())
+            chave, cert, _, _ = carregar_pfx(cofre.decifrar(dono.certificado), cofre.decifrar(dono.senha).decode())
         except ErroAssinatura as e:
             raise ValidationError(str(e)) from None
         return chave, cert

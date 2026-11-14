@@ -124,7 +124,8 @@ class TransmissaoTest(TestCase):
     def test_telas(self):
         self.client.force_login(self.fiscal)
         r = self.client.post(reverse("fiscal:configuracaofiscal_create"), {
-            "empresa": self.emp.pk, "ambiente": "homologacao", "emissor_nfe": "simulacao", "emissor_nfse": "simulacao"})
+            "empresa": self.emp.pk, "ambiente": "homologacao", "emissor_nfe": "simulacao", "emissor_nfse": "simulacao",
+            "serie_nfe": "1", "serie_nfse": "1"})
         c = ConfiguracaoFiscal.objects.get()
         n = self.nota()
         self.client.post(reverse("fiscal:transmitir_nota", args=[n.pk]))

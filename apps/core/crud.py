@@ -138,6 +138,16 @@ class BootstrapMixin:
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        emp = self.fields.get("empresa")
+        if emp is not None and hasattr(emp, "queryset"):
+            from .middleware import empresa_atual, usuario_atual
+            from .models import Empresa
+
+            if emp.queryset.model is Empresa and usuario_atual() is not None:
+                emp.queryset = Empresa.acessiveis(usuario_atual())
+                inst = getattr(self, "instance", None)
+                if empresa_atual() is not None and (inst is None or not inst.pk):
+                    self.initial.setdefault("empresa", empresa_atual().pk)
         for nome, campo in self.fields.items():
             w = campo.widget
             if isinstance(campo, forms.DateTimeField):
@@ -167,6 +177,21 @@ def form_para(model, fields, base=FormBase, exclude=None):
         meta_attrs["exclude"] = exclude or ["criado_por"]
     Meta = type("Meta", (), meta_attrs)
     return type(f"{model.__name__}Form", (base,), {"Meta": Meta})
+
+
+def restringir_por_empresa(qs, model, user):
+    """Registros com campo `empresa` só aparecem para quem tem acesso àquela empresa (sem empresa: todos)."""
+    from .models import Empresa
+
+    try:
+        campo = model._meta.get_field("empresa")
+    except Exception:
+        return qs
+    if getattr(campo, "related_model", None) is not Empresa or user.is_superuser:
+        return qs
+    if not Empresa.objects.filter(usuarios__isnull=False).exists():   # ninguém restringiu nada
+        return qs
+    return qs.filter(models.Q(empresa__in=Empresa.acessiveis(user)) | models.Q(empresa__isnull=True))
 
 
 # --------------------------------------------------------------------------- Crud
@@ -228,6 +253,7 @@ class Crud:
     @classmethod
     def get_queryset(cls, request):
         qs = cls.model._default_manager.all()
+        qs = restringir_por_empresa(qs, cls.model, request.user)
         rel = [f.name for f in cls.meta().fields if f.is_relation and f.many_to_one]
         if rel:
             qs = qs.select_related(*rel)
@@ -337,6 +363,12 @@ class ListaView(CrudMixin, generic.ListView):
         self.filtro = None
         if fs_class:
             self.filtro = fs_class(self.request.GET, queryset=qs)
+            emp = self.filtro.form.fields.get("empresa")
+            if emp is not None and hasattr(emp, "queryset"):
+                from .models import Empresa
+
+                if emp.queryset.model is Empresa:   # o filtro não revela empresas sem acesso
+                    emp.queryset = Empresa.acessiveis(self.request.user)
             for nome, campo in self.filtro.form.fields.items():
                 if nome.endswith("__gte"):
                     campo.label = f"{rotulo(self.crud.model, nome[:-5])} de"

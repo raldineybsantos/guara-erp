@@ -175,3 +175,21 @@ def avisos(request):
         qs.filter(lida=False).update(lida=True)
         return redirect("avisos")
     return render(request, "avisos.html", {"titulo": "Avisos", "icone": "bell", "avisos": qs[:100]})
+
+
+@login_required
+def trocar_empresa(request):
+    """Escolhe a empresa em que o usuário trabalha (padrão dos novos lançamentos e das notas emitidas)."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from .models import Empresa
+
+    if request.method == "POST":
+        emp = Empresa.acessiveis(request.user).filter(pk=request.POST.get("empresa") or 0).first()
+        if emp is None:
+            messages.error(request, "Você não tem acesso a essa empresa.")
+        else:
+            request.session["empresa_id"] = emp.pk
+            messages.success(request, f"Agora você está trabalhando em {emp}.")
+    destino = request.POST.get("next") or "/"
+    return redirect(destino if url_has_allowed_host_and_scheme(destino, None) and destino.startswith("/") else "/")

@@ -192,6 +192,28 @@ revisão. Para encontrá-los, filtre a lista de fornecedores pela palavra *dupli
 
 ---
 
+### 5.2 Várias empresas e filiais
+
+O ERP atende várias empresas na mesma instalação: um grupo com matriz e filiais, ou empresas
+independentes (por exemplo, um escritório que cuida de vários clientes).
+
+- **Cadastrar:** em **Cadastros → Empresas**, crie cada CNPJ com seu regime tributário (MEI, Simples
+  Nacional, Lucro Presumido ou Lucro Real), endereço, **código IBGE do município** e inscrições. Na filial,
+  preencha **Filial de** com a matriz.
+- **Quem acessa:** o campo **Usuários com acesso** define quem pode trabalhar naquela empresa. Em branco,
+  todos os usuários podem. Quem não tem acesso não vê os registros dela nas listas, nem o nome dela nos
+  filtros, e não consegue transmitir nem cancelar as notas dela.
+- **Empresa ativa:** quem acessa mais de uma empresa vê um **seletor na barra superior**. A empresa
+  escolhida é a padrão dos novos lançamentos e das notas emitidas.
+- **Notas fiscais por empresa:** cada empresa tem a sua **Configuração fiscal** (ambiente, emissor, série
+  da NF-e e da NFS-e, certificado). A numeração é própria de cada empresa e série. A filial pode marcar
+  **usar o certificado da matriz**: a SEFAZ aceita, porque a raiz do CNPJ é a mesma; o Emissor Nacional da
+  NFS-e exige o certificado do próprio CNPJ.
+- **Desativar:** desmarque **Ativa** para tirar uma empresa de uso sem apagar o histórico.
+
+> A separação por empresa vale para as telas de cadastro e de lista. Os painéis e relatórios consolidados
+> (fluxo de caixa, balancete, DRE, fila do Service Desk) ainda somam todas as empresas.
+
 ## 6. Compras
 
 O ciclo de compras segue cinco passos. Cada passo pode ser feito por uma pessoa diferente:

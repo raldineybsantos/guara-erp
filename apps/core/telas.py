@@ -8,13 +8,16 @@ ENDERECO = ["cep", "logradouro", "numero", "complemento", "bairro", "cidade", "u
 class EmpresaCrud(Crud):
     model = Empresa
     fields = ["razao_social", "nome_fantasia", "cnpj", "inscricao_estadual", "inscricao_municipal",
-              "regime_tributario", "telefone", "email", "chave_pix", "matriz"] + ENDERECO
-    list_display = ("razao_social", "nome_fantasia", "cnpj", "regime_tributario", "matriz")
+              "regime_tributario", "cnae", "telefone", "email", "chave_pix", "matriz", "matriz_de"] + ENDERECO + [
+                  "codigo_municipio", "usuarios", "ativa"]
+    list_display = ("razao_social", "nome_fantasia", "cnpj", "regime_tributario", "matriz_de", "cidade", "ativa")
+    filter_fields = ("regime_tributario", "ativa")
     search_fields = ("razao_social", "nome_fantasia", "cnpj")
     icon = "building"
     menu = "Cadastros"
     menu_order = 1
-    related = (("departamento_set", "Departamentos", ["nome", "responsavel"]),)
+    related = (("filiais", "Filiais", ["razao_social", "cnpj", "cidade", "uf"]),
+               ("departamento_set", "Departamentos", ["nome", "responsavel"]))
 
 
 class DepartamentoCrud(Crud):

@@ -1,9 +1,10 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 
-from .middleware import usuario_atual
+from .middleware import empresa_atual, usuario_atual
 from .validators import formatar_documento, somente_digitos, validar_cnpj, validar_cpf, validar_cpf_cnpj
 
 UF_CHOICES = [(uf, uf) for uf in (
@@ -76,6 +77,16 @@ class Empresa(ModeloBase, EnderecoMixin):
     chave_pix = models.CharField("chave PIX", max_length=100, blank=True,
                                  help_text="Usada para gerar PIX copia-e-cola nas cobranças.")
     matriz = models.BooleanField(default=True)
+    matriz_de = models.ForeignKey("self", verbose_name="filial de", null=True, blank=True, on_delete=models.PROTECT,
+                                  related_name="filiais", limit_choices_to={"matriz_de__isnull": True},
+                                  help_text="Preencha nas filiais. Em branco = empresa independente ou matriz.")
+    codigo_municipio = models.CharField("código do município (IBGE)", max_length=7, blank=True,
+                                        help_text="7 dígitos. Exigido nas notas fiscais (ex.: São Paulo = 3550308).")
+    cnae = models.CharField("CNAE principal", max_length=9, blank=True)
+    usuarios = models.ManyToManyField(settings.AUTH_USER_MODEL, verbose_name="usuários com acesso", blank=True,
+                                      related_name="empresas_permitidas",
+                                      help_text="Quem pode trabalhar nesta empresa. Em branco = todos os usuários.")
+    ativa = models.BooleanField(default=True)
 
     class Meta:
         verbose_name = "empresa"
@@ -85,9 +96,34 @@ class Empresa(ModeloBase, EnderecoMixin):
     def __str__(self):
         return self.nome_fantasia or self.razao_social
 
+    def save(self, *args, **kwargs):
+        if self.matriz_de_id:
+            self.matriz = False
+        super().save(*args, **kwargs)
+
+    def clean(self):
+        super().clean()
+        if self.matriz_de_id and self.matriz_de_id == self.pk:
+            raise ValidationError({"matriz_de": "Uma empresa não pode ser filial dela mesma."})
+        if self.codigo_municipio and (not self.codigo_municipio.isdigit() or len(self.codigo_municipio) != 7):
+            raise ValidationError({"codigo_municipio": "O código IBGE do município tem 7 dígitos."})
+
     @classmethod
     def padrao(cls):
-        return cls.objects.order_by("-matriz", "pk").first()
+        return cls.objects.filter(ativa=True).order_by("-matriz", "pk").first()
+
+    @classmethod
+    def acessiveis(cls, user):
+        """Empresas em que o usuário pode trabalhar: as sem restrição e as que o listam."""
+        qs = cls.objects.filter(ativa=True)
+        if user is None or not getattr(user, "is_authenticated", False):
+            return qs.none()
+        if user.is_superuser:
+            return qs
+        return qs.filter(models.Q(usuarios__isnull=True) | models.Q(usuarios=user)).distinct()
+
+    def acessivel_para(self, user):
+        return Empresa.acessiveis(user).filter(pk=self.pk).exists()
 
 
 class PorEmpresaMixin(models.Model):
@@ -100,7 +136,7 @@ class PorEmpresaMixin(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.empresa_id:
-            self.empresa = Empresa.padrao()
+            self.empresa = empresa_atual() or Empresa.padrao()
         super().save(*args, **kwargs)
 
 

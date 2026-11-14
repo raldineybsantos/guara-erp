@@ -9,8 +9,10 @@ from . import emissores
 from .models import ConfiguracaoFiscal, Transmissao
 
 
-def _config(nota):
+def _config(nota, usuario=None):
     empresa = nota.empresa or Empresa.padrao()
+    if usuario is not None and empresa is not None and not empresa.acessivel_para(usuario):
+        raise ValidationError(f"Você não tem acesso à empresa {empresa} para transmitir ou cancelar notas dela.")
     config = ConfiguracaoFiscal.objects.filter(empresa=empresa).first() if empresa else None
     if config is None:
         raise ValidationError("Cadastre a configuração fiscal da empresa em Fiscal → Configuração fiscal.")
@@ -40,7 +42,7 @@ def transmitir(nota, usuario=None):
         raise ValidationError("Emita (numere) a nota antes de transmitir.")
     if nota.situacao_fiscal in ("autorizada", "cancelada"):
         raise ValidationError("Esta nota já foi autorizada.")
-    config = _config(nota)
+    config = _config(nota, usuario)
     emissor = _emissor(nota, config)
     r = emissor.autorizar(nota, config)
     t = _registrar(nota, "autorizacao", emissor, config, r, usuario)
@@ -57,7 +59,7 @@ def cancelar(nota, justificativa, usuario=None):
         raise ValidationError("Só notas autorizadas são canceladas no fisco.")
     if len((justificativa or "").strip()) < 15:
         raise ValidationError("A justificativa do cancelamento precisa ter ao menos 15 caracteres.")
-    config = _config(nota)
+    config = _config(nota, usuario)
     emissor = _emissor(nota, config)
     r = emissor.cancelar(nota, config, justificativa.strip())
     t = _registrar(nota, "cancelamento", emissor, config, r, usuario)

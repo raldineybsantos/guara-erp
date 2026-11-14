@@ -46,6 +46,14 @@
       </button>
       <h1 class="h5 mb-0"><i class="bi bi-{{ icone|default:'grid' }} me-2 text-primary"></i>{{ titulo }}</h1>
       <div class="ms-auto d-flex align-items-center gap-2">
+        {% if empresas_acessiveis|length > 1 %}
+        <form method="post" action="{% url 'trocar_empresa' %}" class="d-none d-md-block">{% csrf_token %}
+          <input type="hidden" name="next" value="{{ request.get_full_path }}">
+          <select name="empresa" class="form-select form-select-sm" onchange="this.form.submit()" title="Empresa em que você está trabalhando">
+            {% for e in empresas_acessiveis %}<option value="{{ e.pk }}" {% if empresa_ativa.pk == e.pk %}selected{% endif %}>{{ e }}{% if e.matriz_de_id %} (filial){% endif %}</option>{% endfor %}
+          </select>
+        </form>
+        {% elif empresa_ativa %}<span class="small text-secondary d-none d-md-inline"><i class="bi bi-building"></i> {{ empresa_ativa }}</span>{% endif %}
         <a href="{% url 'avisos' %}" class="btn btn-sm btn-outline-secondary position-relative" title="Avisos">
           <i class="bi bi-bell"></i>{% if avisos_nao_lidos %}<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill text-bg-danger">{{ avisos_nao_lidos }}</span>{% endif %}
         </a>

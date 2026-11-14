@@ -83,4 +83,8 @@ def avisos(request):
         return {}
     from .models import Notificacao
 
-    return {"avisos_nao_lidos": Notificacao.objects.filter(usuario=user, lida=False).count()}
+    from .models import Empresa
+
+    empresas = list(Empresa.acessiveis(user).order_by("-matriz", "razao_social")[:50])
+    return {"avisos_nao_lidos": Notificacao.objects.filter(usuario=user, lida=False).count(),
+            "empresa_ativa": getattr(request, "empresa", None), "empresas_acessiveis": empresas}

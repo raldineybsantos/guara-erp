@@ -17,6 +17,7 @@ admin.site.index_title = "Administração do sistema"
 urlpatterns = [
     path("", core_views.dashboard, name="dashboard"),
     path("avisos/", core_views.avisos, name="avisos"),
+    path("empresa/trocar/", core_views.trocar_empresa, name="trocar_empresa"),
     path("login/", core_views.LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
     path("senha/", auth_views.PasswordChangeView.as_view(template_name="form_simples.html",
