@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+{% include "contabilidade/_periodo.html" %}
+{% if not fecha %}<div class="alert alert-danger">Débitos e créditos do período não fecham. Avise o suporte.</div>{% endif %}
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+  <thead class="table-light"><tr><th>Conta</th><th class="text-end">Saldo anterior</th><th class="text-end">Débitos</th><th class="text-end">Créditos</th><th class="text-end">Saldo final</th></tr></thead>
+  <tbody>{% for l in linhas %}
+    <tr class="{% if l.conta.sintetica %}fw-semibold{% endif %}"><td style="padding-left:{{ l.nivel|add:1 }}rem">{{ l.conta }}</td>
+      <td class="text-end">{{ l.anterior|saldo_dc }}</td><td class="text-end">{{ l.debito|moeda }}</td><td class="text-end">{{ l.credito|moeda }}</td><td class="text-end">{{ l.saldo|saldo_dc }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-center text-secondary py-4">Sem lançamentos até {{ fim|date:"d/m/Y" }}.</td></tr>{% endfor %}</tbody>
+  <tfoot class="table-light fw-semibold"><tr><td>Movimento do período</td><td></td><td class="text-end">{{ tot_d|moeda }}</td><td class="text-end">{{ tot_c|moeda }}</td><td></td></tr></tfoot>
+</table></div></div>
+<p class="small text-secondary mt-2">D = saldo devedor, C = saldo credor. Contas em negrito somam as contas abaixo delas.</p>
+{% endblock %}

@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
@@ -23,6 +23,12 @@ LINKS_EXTRAS = [
     ("Service Desk", "Assistente", "servicedesk:assistente", "robot", "servicedesk.add_chamado", 2),
     ("Service Desk", "Fila de atendimento", "servicedesk:fila", "inboxes", "servicedesk.change_chamado", 0),
     ("Administração", "Avisos", "avisos", "bell", None, 0),
+    ("Contabilidade", "Novo lançamento", "contabilidade:lancar_manual", "journal-plus", "contabilidade.add_lancamento", 1),
+    ("Contabilidade", "Balancete", "contabilidade:balancete", "table", "contabilidade.view_lancamento", 3),
+    ("Contabilidade", "Razão", "contabilidade:razao", "journal-bookmark", "contabilidade.view_lancamento", 4),
+    ("Contabilidade", "DRE", "contabilidade:dre", "graph-up-arrow", "contabilidade.view_lancamento", 5),
+    ("Contabilidade", "Balanço patrimonial", "contabilidade:balanco", "bank", "contabilidade.view_lancamento", 6),
+    ("Contabilidade", "Fechamento de períodos", "contabilidade:periodos", "lock", "contabilidade.add_periodofechado", 7),
     ("CRM", "Funil de vendas", "crm:funil", "kanban", "crm.view_oportunidade", 1),
     ("Fiscal", "Importar XML NF-e", "fiscal:importar_xml", "upload", "fiscal.add_notafiscal", 5),
     ("Fiscal", "Apuração de impostos", "fiscal:apuracao", "calculator", "fiscal.view_notafiscal", 6),

@@ -141,7 +141,8 @@ class Command(BaseCommand):
                 ("almoxarife", "Estoque", "Alan Almoxarife", "34567890175", "ADM"),
                 ("producao", "Produção", "Paulo Produção", "34567890256", "ADM"),
                 ("sesmt", "SESMT", "Sara Segurança", "34567890337", "RH"),
-                ("analista", "Service Desk", "Igor Infra", "45678901087", "ADM")):
+                ("analista", "Service Desk", "Igor Infra", "45678901087", "ADM"),
+                ("contador", "Contabilidade", "Caio Contador", "56789012060", "FIN")):
             u, criado = User.objects.get_or_create(username=username, defaults={
                 "first_name": nome.split()[0], "last_name": nome.split()[1], "email": f"{username}@exemplo.com.br"})
             if criado:
@@ -230,10 +231,17 @@ class Command(BaseCommand):
         self._compras(usuarios, forns)
         self._operacao(usuarios, clis)
         self._servicedesk(usuarios)
+        # Contabilidade: os lançamentos automáticos já nasceram com os dados acima; falta só o capital inicial.
+        from apps.contabilidade import servicos
+        from apps.contabilidade.models import ContaContabil
+
+        servicos.gravar(hoje.replace(month=1, day=1), "Integralização do capital social",
+                        ContaContabil.objects.get(codigo="1.1.1"), ContaContabil.objects.get(codigo="2.3.1"), 150000,
+                        manual=True)
 
         self.stdout.write(self.style.SUCCESS(
             "Dados de demonstração criados. Usuários: diretor, gerente, coordenador, financeiro, rh, fiscal, "
-            "juridico, compras, vendedor, almoxarife, producao, sesmt, analista "
+            "juridico, compras, vendedor, almoxarife, producao, sesmt, analista, contador "
             f"(senha: {senha})."))
 
     def _compras(self, usuarios, forns):

@@ -229,6 +229,7 @@ Use o CPF que está no seu cadastro de colaborador.
 | Executar a régua agora | `docker compose exec web python manage.py executar_regua` |
 | Gerar alertas de contratos agora | `docker compose exec web python manage.py alertar_contratos` |
 | Rodar agora as rotinas de manutenção e SST | `docker compose exec web python manage.py rotinas_diarias` |
+| Contabilizar o que já existia antes da atualização | `docker compose exec web python manage.py contabilizar_historico` |
 | Verificar agora os prazos do Service Desk | `docker compose exec web python manage.py verificar_sla` |
 
 ---
@@ -396,6 +397,10 @@ sudo systemctl restart erp-web erp-agendador
 clientes e fornecedores com o mesmo CPF/CNPJ (veja o Manual, seção 5.1), e o `setup_erp` cria o processo de
 aprovação de compras e as permissões do grupo *Compras*. Depois, cadastre ao menos a **alçada padrão** em
 Compras → Alçadas de aprovação. Sem ela, nenhum pedido pode ser enviado para aprovação. Faça o backup antes.
+
+**Ao atualizar para a versão com Contabilidade:** os eventos novos são contabilizados sozinhos. Para gerar os
+lançamentos dos títulos, baixas e movimentos de estoque **anteriores**, rode uma vez `contabilizar_historico`
+(pode repetir sem duplicar). Antes, revise o plano de contas e as regras em Contabilidade.
 
 > O `setup_erp` recria as permissões dos grupos padrão. Para personalizar permissões, crie
 > **grupos novos** em vez de alterar os padrão.

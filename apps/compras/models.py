@@ -386,21 +386,26 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
                                                data=data or timezone.localdate(), observacoes=observacoes,
                                                recebido_por=usuario)
         for item, q in linhas:
-            ItemRecebimento.objects.create(recebimento=rec, item_pedido=item, quantidade=q)
+            ir = ItemRecebimento.objects.create(recebimento=rec, item_pedido=item, quantidade=q)
             item.quantidade_recebida += q
             item.save(update_fields=["quantidade_recebida"])
-            self._dar_entrada(rec, item, q)
+            self._dar_entrada(rec, item, q, ir)
         self.atualizar_status_recebimento()
         rec.conferir()
         return rec
 
 
-    def _dar_entrada(self, rec, item, quantidade):
-        """Entrada no estoque pelo preço do pedido; produto com inspeção vai para a quarentena."""
+    def _dar_entrada(self, rec, item, quantidade, item_recebido=None):
+        """Entrada no estoque pelo preço do pedido; produto com inspeção vai para a quarentena.
+        Item sem estoque (serviço ou descrição livre) vai direto para despesa na contabilidade."""
         from apps.estoque import models as est
 
         produto = item.produto
         if produto is None or produto.tipo != "produto":
+            from apps.contabilidade.servicos import lancar
+
+            lancar("compra_despesa", quantidade * item.valor_unitario, rec.data,
+                   f"{self.numero}: {item} — {self.fornecedor}", item_recebido or rec, self.centro_custo)
             return
         destino = est.Armazem.quarentena() if produto.inspecionar_recebimento else est.Armazem.principal()
         est.entrada(produto, quantidade, item.valor_unitario, destino, "compra", self.numero,
@@ -519,6 +524,7 @@ class RecebimentoCompra(ModeloBase, PorEmpresaMixin):
         return self.conferencia
 
     def _liberar_pagamento(self, nota):
+        from apps.contabilidade.servicos import provisao_adiada
         from apps.financeiro.models import ContaPagar
 
         contas = ContaPagar.objects.filter(fornecedor_id=nota.fornecedor_id, documento=str(nota.numero or ""))
@@ -530,7 +536,8 @@ class RecebimentoCompra(ModeloBase, PorEmpresaMixin):
             base = (total / n).quantize(D2)
             ids = []
             for i, d in enumerate(dias, start=1):
-                t = nota.gerar_titulo(vencimento=nota.data_emissao + datetime.timedelta(days=d))
+                with provisao_adiada():
+                    t = nota.gerar_titulo(vencimento=nota.data_emissao + datetime.timedelta(days=d))
                 valor = base if i < n else total - base * (n - 1)
                 ContaPagar.objects.filter(pk=t.pk).update(
                     valor=valor, parcela=i, total_parcelas=n, centro_custo=self.pedido.centro_custo,
@@ -538,6 +545,13 @@ class RecebimentoCompra(ModeloBase, PorEmpresaMixin):
                 ids.append(t.pk)
             contas = ContaPagar.objects.filter(pk__in=ids).order_by("vencimento")
         contas.update(aprovado=self.conferencia == "ok")
+        from apps.contabilidade.servicos import sincronizar_titulo
+
+        for conta in contas:
+            if not (conta.observacoes or "").startswith("Pedido "):
+                conta.observacoes = f"Pedido {self.pedido.numero}. {conta.observacoes}".strip()
+                ContaPagar.objects.filter(pk=conta.pk).update(observacoes=conta.observacoes)
+            sincronizar_titulo(conta)
         self.conta_pagar = contas.first()
 
     def _abrir_tarefa_divergencia(self):

@@ -1,0 +1,5 @@
+<form method="get" class="row g-2 align-items-end mb-3 no-print">
+  {% for campo in form.visible_fields %}<div class="col-auto"><label class="form-label small mb-1">{{ campo.label }}</label>{{ campo }}{% for e in campo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>{% endfor %}
+  <div class="col-auto"><button class="btn btn-primary"><i class="bi bi-search"></i> Ver</button>
+    <button type="button" onclick="window.print()" class="btn btn-outline-secondary"><i class="bi bi-printer"></i></button></div>
+</form>

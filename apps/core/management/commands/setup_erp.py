@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -43,7 +43,8 @@ GRUPOS = {
                    "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "core.change_parceironegocio",
                    "fiscal.view_*", "compras.view_pedidocompra", "compras.view_itempedido",
                    "compras.view_recebimentocompra", "vendas.view_pedidovenda", "vendas.view_itempedidovenda",
-                   "vendas.liberar_credito_pedidovenda"],
+                   "vendas.liberar_credito_pedidovenda", "contabilidade.view_lancamento", "contabilidade.view_partida",
+                   "contabilidade.view_contacontabil"],
     "Fiscal": ["fiscal.*", "vendas.view_pedidovenda", "vendas.view_itempedidovenda", "vendas.change_pedidovenda", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
                "financeiro.add_contareceber"],
@@ -77,7 +78,38 @@ GRUPOS = {
     "SESMT": ["sst.*", "core.view_colaborador", "fiscal.view_produto", "estoque.view_saldo"],
     "Service Desk": ["servicedesk.*", "core.view_colaborador"],
     "CAB": ["servicedesk.view_mudanca", "servicedesk.view_chamado"],
+    "Contabilidade": ["contabilidade.*", "financeiro.view_*", "financeiro.change_planoconta", "fiscal.view_*",
+                      "estoque.view_saldo", "estoque.view_movimento", *CADASTROS_BASICOS],
     "Usuários": [],
+}
+
+# Plano de contas contábil inicial: (código, nome, natureza, sintética)
+PLANO_CONTABIL = [
+    ("1", "Ativo", "ativo", True), ("1.1", "Ativo circulante", "ativo", True),
+    ("1.1.1", "Caixa e bancos", "ativo", False), ("1.1.2", "Clientes", "ativo", False),
+    ("1.1.3", "Estoques", "ativo", False),
+    ("2", "Passivo e patrimônio líquido", "passivo", True), ("2.1", "Passivo circulante", "passivo", True),
+    ("2.1.1", "Fornecedores", "passivo", False), ("2.1.2", "Compras a faturar", "passivo", False),
+    ("2.1.3", "Impostos a recolher", "passivo", False),
+    ("2.3", "Patrimônio líquido", "pl", True), ("2.3.1", "Capital social", "pl", False),
+    ("2.3.2", "Lucros ou prejuízos acumulados", "pl", False),
+    ("3", "Receitas", "receita", True), ("3.1", "Receita de vendas e serviços", "receita", False),
+    ("3.2", "(-) Impostos sobre vendas", "deducao", False), ("3.3", "Receitas financeiras", "receita", False),
+    ("3.4", "Outras receitas", "receita", False),
+    ("4", "Custos e despesas", "despesa", True), ("4.1", "Custo das mercadorias vendidas", "custo", False),
+    ("4.2", "Despesas operacionais", "despesa", False), ("4.3", "Consumo de materiais", "despesa", False),
+    ("4.4", "Ajustes de inventário", "despesa", False), ("4.5", "Despesas financeiras", "despesa", False),
+    ("4.6", "Descontos concedidos", "despesa", False), ("4.7", "Outras despesas", "despesa", False),
+]
+# evento: (debitar, creditar)
+REGRAS_CONTABEIS = {
+    "titulo_pagar": ("4.2", "2.1.1"), "titulo_pagar_compra": ("2.1.2", "2.1.1"), "pagamento": ("2.1.1", "1.1.1"),
+    "juros_pagos": ("4.5", "2.1.1"), "desconto_obtido": ("2.1.1", "3.3"),
+    "titulo_receber": ("1.1.2", "3.1"), "recebimento": ("1.1.1", "1.1.2"), "juros_recebidos": ("1.1.2", "3.3"),
+    "desconto_concedido": ("4.6", "1.1.2"), "impostos_venda": ("3.2", "2.1.3"),
+    "compra_estoque": ("1.1.3", "2.1.2"), "compra_despesa": ("4.2", "2.1.2"), "cmv": ("4.1", "1.1.3"),
+    "consumo_estoque": ("4.3", "1.1.3"), "ajuste_estoque_entrada": ("1.1.3", "4.4"),
+    "ajuste_estoque_saida": ("4.4", "1.1.3"), "receita_avulsa": ("1.1.1", "3.4"), "despesa_avulsa": ("4.7", "1.1.1"),
 }
 
 PLANO = [
@@ -148,6 +180,18 @@ class Command(BaseCommand):
             g.permissions.set(perms)
             grupos[nome] = g
             self.stdout.write(f"Grupo {nome}: {g.permissions.count()} permissões")
+
+        from apps.contabilidade.models import ContaContabil, RegraContabil
+
+        if not ContaContabil.objects.exists():  # só na primeira vez: depois o plano é do contador
+            for codigo, nome, natureza, sintetica in PLANO_CONTABIL:
+                ContaContabil.objects.create(
+                    codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
+                    superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())
+        for evento, (deb, cred) in REGRAS_CONTABEIS.items():
+            d, c = (ContaContabil.objects.filter(codigo=x, sintetica=False).first() for x in (deb, cred))
+            if d and c:
+                RegraContabil.objects.get_or_create(evento=evento, defaults={"conta_debito": d, "conta_credito": c})
 
         por_codigo = {}
         for codigo, nome, tipo, sup in PLANO:

@@ -89,9 +89,11 @@ def transferencia(request):
         desc = d["descricao"] or f"Transferência {d['origem']} → {d['destino']}"
         with transaction.atomic():
             Movimentacao.objects.create(conta_bancaria=d["origem"], tipo="saida", valor=d["valor"],
-                                        data=d["data"], descricao=desc, empresa=d["origem"].empresa)
+                                        data=d["data"], descricao=desc, empresa=d["origem"].empresa,
+                                        transferencia=True)
             Movimentacao.objects.create(conta_bancaria=d["destino"], tipo="entrada", valor=d["valor"],
-                                        data=d["data"], descricao=desc, empresa=d["destino"].empresa)
+                                        data=d["data"], descricao=desc, empresa=d["destino"].empresa,
+                                        transferencia=True)
         messages.success(request, "Transferência registrada.")
         return redirect("financeiro:movimentacao_list")
     return render(request, "form_simples.html", {"form": form, "titulo": "Transferência entre contas",

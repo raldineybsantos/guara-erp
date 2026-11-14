@@ -21,14 +21,15 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 12. [SST / EHS — saúde, segurança e meio ambiente](#12-sst--ehs--saúde-segurança-e-meio-ambiente)
 13. [Service Desk](#13-service-desk)
 14. [Financeiro](#14-financeiro)
-15. [Cobrança](#15-cobrança)
-16. [Fiscal](#16-fiscal)
-17. [Minhas tarefas — quadro Kanban](#17-minhas-tarefas--quadro-kanban)
-18. [Workflow / BPM](#18-workflow--bpm)
-19. [Jurídico — contratos](#19-jurídico--contratos)
-20. [GED — documentos e assinatura digital](#20-ged--documentos-e-assinatura-digital)
-21. [Administração](#21-administração)
-22. [Perguntas frequentes](#22-perguntas-frequentes)
+15. [Contabilidade](#15-contabilidade)
+16. [Cobrança](#16-cobrança)
+17. [Fiscal](#17-fiscal)
+18. [Minhas tarefas — quadro Kanban](#18-minhas-tarefas--quadro-kanban)
+19. [Workflow / BPM](#19-workflow--bpm)
+20. [Jurídico — contratos](#20-jurídico--contratos)
+21. [GED — documentos e assinatura digital](#21-ged--documentos-e-assinatura-digital)
+22. [Administração](#22-administração)
+23. [Perguntas frequentes](#23-perguntas-frequentes)
 
 ---
 
@@ -106,6 +107,7 @@ Cada usuário pertence a um ou mais **grupos**. O grupo define quais menus e aç
 | **Manutenção** | Técnicos | Equipamentos, planos e ordens de serviço |
 | **Projetos** | Gerentes de projeto | Projetos, EAP e horas de todos |
 | **SESMT** | Segurança do trabalho | Todo o módulo SST/EHS |
+| **Contabilidade** | Contador | Lançamentos, plano de contas, regras, relatórios e fechamento; consulta financeiro, fiscal e estoque |
 | **Service Desk** | Equipe de TI / central de serviços | Atende os chamados da área TI, cadastra áreas, catálogo, biblioteca e mudanças |
 | **CAB** | Comitê de mudanças | Aprova as mudanças (RDM) |
 | **Compras** | Compradores | Módulo de Compras (cotação, pedido, recebimento, conferência); consulta as alçadas; fornecedores e produtos; notas de entrada |
@@ -504,8 +506,8 @@ Outras ações no título:
 - **Estornar pagamentos:** desfaz todas as baixas do título e apaga as movimentações. O título volta a *Em aberto*.
 - **Cancelar título:** só é possível sem pagamentos (estorne antes).
 - **Enviar para aprovação** (contas a pagar): abre uma solicitação no processo *Aprovação de pagamento*
-  (seção 18). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
-- **Gerar cobrança** (contas a receber): veja a seção 15.
+  (seção 19). Quando todas as etapas aprovam, a conta fica marcada como **Aprovado**.
+- **Gerar cobrança** (contas a receber): veja a seção 16.
 
 ### 14.2 Contas bancárias, extrato e transferências
 
@@ -533,7 +535,64 @@ Mostra, mês a mês:
 
 ---
 
-## 15. Cobrança
+## 15. Contabilidade
+
+A contabilidade do Guará é um **razão único**: ninguém "roda a contabilização" no fim do mês. Cada evento
+dos outros módulos grava o lançamento de débito e crédito **na hora em que acontece**.
+
+| Quando acontece | Debita | Credita |
+|---|---|---|
+| Conta a pagar lançada | Despesa (da categoria) | Fornecedores |
+| Compra recebida no estoque | Estoques | Compras a faturar |
+| Compra recebida sem estoque (serviço) | Despesas operacionais | Compras a faturar |
+| Conta a pagar de pedido de compra | Compras a faturar | Fornecedores |
+| Pagamento | Fornecedores | Caixa e bancos |
+| Faturamento de venda | Clientes | Receita de vendas |
+| Impostos da nota de venda | (−) Impostos sobre vendas | Impostos a recolher |
+| Saída do estoque pela venda | Custo das mercadorias vendidas | Estoques |
+| Recebimento do cliente | Caixa e bancos | Clientes |
+| Consumo interno, peça de manutenção, EPI | Consumo de materiais | Estoques |
+| Ajuste de inventário | Estoques ou Ajustes de inventário | o inverso |
+| Juros e descontos na quitação | Despesas ou receitas financeiras | Fornecedores ou Clientes |
+
+Produção e transferências entre armazéns ou entre contas bancárias não geram lançamento, porque o valor
+não sai da mesma conta contábil.
+
+**Compras a faturar** é uma conta de passagem: recebe o valor da mercadoria na entrada e é zerada pela
+nota do fornecedor. Saldo nela indica diferença entre o que foi recebido e o que foi faturado (preço
+divergente, frete, nota pendente) e deve ser analisado.
+
+### 15.1 Telas
+
+| Tela | Para que serve |
+|---|---|
+| **Lançamentos (diário)** | Todos os lançamentos, com a origem (evento automático ou manual) e o registro que o gerou |
+| **Novo lançamento** | Lançamento manual de uma conta a débito e outra a crédito (capital, provisões, ajustes) |
+| **Balancete** | Saldo anterior, débitos, créditos e saldo final de cada conta no período, somando nas contas sintéticas |
+| **Razão** | Extrato de uma conta com saldo corrido |
+| **DRE** | Receita bruta, deduções, custos, despesas e o resultado do período (regime de competência) |
+| **Balanço patrimonial** | Ativo, passivo e patrimônio líquido em uma data, com o resultado acumulado |
+| **Plano de contas contábil** | Contas *sintéticas* (somam) e *analíticas* (recebem lançamento) |
+| **Regras de contabilização** | Qual conta debitar e creditar em cada evento. Desmarque *ativo* para não contabilizar um evento |
+| **Fechamento de períodos** | Trava o mês para lançamentos manuais |
+
+### 15.2 Regras importantes
+
+- **Lançamento não se edita nem se apaga.** Para corrigir, use **Estornar**: o ERP grava o lançamento
+  inverso e mantém os dois no diário.
+- **Título alterado ou cancelado:** o ERP estorna a provisão e, se for alteração, lança de novo pelo valor
+  novo. Baixa estornada no financeiro também estorna o pagamento na contabilidade.
+- **Despesa por conta:** em *Financeiro → Plano de contas*, cada categoria pode apontar para uma **conta
+  contábil**. Títulos dessa categoria vão para essa conta; sem isso, vão para a conta padrão da regra.
+- **Período fechado:** lançamentos manuais são recusados. Eventos automáticos com data em mês fechado
+  entram no primeiro dia do mês aberto seguinte, com a competência original no histórico.
+- **Encerramento do exercício:** o balanço mostra o resultado acumulado em linha própria. A transferência
+  para *Lucros acumulados* é feita por lançamento manual do contador.
+
+O plano de contas inicial é enxuto e serve de ponto de partida. Peça ao seu contador para adequá-lo. Esta
+versão não gera ECD/ECF (SPED contábil).
+
+## 16. Cobrança
 
 ![Cobrança com PIX](img/cobranca.jpg)
 
@@ -563,14 +622,14 @@ Mostra, mês a mês:
 
 ---
 
-## 16. Fiscal
+## 17. Fiscal
 
-### 16.1 Produtos e serviços
+### 17.1 Produtos e serviços
 
 Cadastre código, descrição, unidade, **NCM**, **CFOP padrão**, preço e as alíquotas de ICMS, IPI,
 PIS, COFINS e ISS. Esses valores são sugeridos automaticamente nos itens das notas.
 
-### 16.2 Notas fiscais
+### 17.2 Notas fiscais
 
 ![Nova nota fiscal](img/nota-fiscal.jpg)
 
@@ -603,7 +662,7 @@ pela contabilidade.
 
 ---
 
-## 17. Minhas tarefas — quadro Kanban
+## 18. Minhas tarefas — quadro Kanban
 
 ![Quadro Kanban](img/kanban.jpg)
 
@@ -653,17 +712,17 @@ O gestor pode mover, reatribuir e comentar as atividades de quem ele gerencia.
 As atividades concluídas saem do quadro depois de 30 dias e continuam em **Lista de atividades**,
 que tem busca, filtros e exportação.
 
-O botão **Aprovações do workflow** leva às aprovações que aguardam você (seção 18). Os **alertas de
-contratos a vencer** chegam como cartões no quadro do responsável pelo contrato (seção 19).
+O botão **Aprovações do workflow** leva às aprovações que aguardam você (seção 19). Os **alertas de
+contratos a vencer** chegam como cartões no quadro do responsável pelo contrato (seção 20).
 
 ---
 
-## 18. Workflow / BPM
+## 19. Workflow / BPM
 
 O módulo organiza processos que passam por várias pessoas, como aprovações, admissões e solicitações
 internas.
 
-### 18.1 Modelar um processo (administrador)
+### 19.1 Modelar um processo (administrador)
 
 ![Diagrama do processo](img/processo.jpg)
 
@@ -680,10 +739,10 @@ Em **Modelar processos → Novo**, informe o nome e um código. Depois, na grade
 O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com três processos:
 
 - **Aprovação de pagamento:** conferência do Financeiro, depois aprovação da diretoria.
-- **Aprovação de contrato:** análise jurídica, depois aprovação da diretoria (seção 19).
+- **Aprovação de contrato:** análise jurídica, depois aprovação da diretoria (seção 20).
 - **Admissão de colaborador:** documentos (RH), depois acessos de TI, depois integração.
 
-### 18.2 Usar no dia a dia
+### 19.2 Usar no dia a dia
 
 ![Solicitação em andamento](img/solicitacao.jpg)
 
@@ -697,7 +756,7 @@ O detalhe do processo mostra o **diagrama do fluxo**. O sistema já vem com trê
 
 ---
 
-## 19. Jurídico — contratos
+## 20. Jurídico — contratos
 
 ![Painel jurídico](img/juridico-painel.jpg)
 
@@ -709,7 +768,7 @@ O **Painel jurídico** mostra:
 - os que aguardam aprovação ou assinatura;
 - a atividade recente.
 
-### 19.1 Cadastrar um contrato
+### 20.1 Cadastrar um contrato
 
 Em **Jurídico → Contratos → Novo**, preencha:
 
@@ -727,7 +786,7 @@ Em **Jurídico → Contratos → Novo**, preencha:
 
 O número é gerado sozinho, no formato `CT-2026-0001`.
 
-### 19.2 Ciclo de vida
+### 20.2 Ciclo de vida
 
 ```
 Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente → Encerrado / Rescindido
@@ -735,14 +794,14 @@ Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente →
 ```
 
 1. **Enviar para aprovação:** o contrato entra no processo *Aprovação de contrato*, com a análise
-   jurídica e depois a diretoria (seção 18).
+   jurídica e depois a diretoria (seção 19).
    - Quem aprova ou recusa faz isso na própria solicitação.
    - A **recusa** exige o motivo, que aparece no contrato. Corrija e envie de novo.
 2. **Aprovado:** com o contrato aprovado, os termos (partes, valores, vigência) ficam **travados**. A
    partir daqui, eles só mudam por aditivo.
 3. **Assinatura:**
    - **Digital** (recomendado): no quadro *Documento e assinaturas*, cada signatário clica em
-     **Assinar com certificado digital** (seção 20.2).
+     **Assinar com certificado digital** (seção 21.2).
    - A outra parte pode assinar pelo gov.br ou por outra plataforma. Envie o PDF assinado como nova
      versão (editando o contrato) e clique em **Conferir e ativar**.
    - Quando o PDF tiver o número de assinaturas válidas exigido, o contrato passa a **Vigente**
@@ -757,7 +816,7 @@ Rascunho → Em aprovação → Aprovado (aguardando assinatura) → Vigente →
 
 A **linha do tempo** registra cada mudança de situação, assinatura, alerta e renovação, com data e usuário.
 
-### 19.3 Vencimentos e renovação
+### 20.3 Vencimentos e renovação
 
 Todo dia às 08:00, o sistema verifica os contratos (no Docker, pelo serviço `agendador`):
 
@@ -774,11 +833,11 @@ Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou
 
 ---
 
-## 20. GED — documentos e assinatura digital
+## 21. GED — documentos e assinatura digital
 
 ![Documentos](img/ged.jpg)
 
-### 20.1 Pastas, documentos e versões
+### 21.1 Pastas, documentos e versões
 
 **Pastas:**
 
@@ -815,7 +874,7 @@ Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou
 - **Busca:** a busca procura no título, na descrição, nas palavras-chave e no nome do arquivo.
 
 
-### 20.2 Assinatura digital com certificado ICP-Brasil
+### 21.2 Assinatura digital com certificado ICP-Brasil
 
 ![Assinar digitalmente](img/assinar.jpg)
 
@@ -852,7 +911,7 @@ O tipo de assinatura depende do arquivo:
 
 O sistema reconhece e verifica as assinaturas embutidas.
 
-### 20.3 Verificar assinaturas
+### 21.3 Verificar assinaturas
 
 ![Verificar assinaturas](img/verificar-assinaturas.jpg)
 
@@ -870,7 +929,7 @@ Para a validação oficial de conformidade, use também o verificador do ITI: ht
 
 ---
 
-## 21. Administração
+## 22. Administração
 
 | Tela | Uso |
 |---|---|
@@ -893,7 +952,7 @@ A página **Banco de dados** mostra:
 
 ---
 
-## 22. Perguntas frequentes
+## 23. Perguntas frequentes
 
 **Não vejo um menu que meu colega vê.**
 O menu depende do grupo do usuário. Peça ao administrador para conferir seus grupos.
@@ -919,7 +978,7 @@ Peça ao administrador para definir uma senha temporária em *Usuários e grupos
 
 **Como faço para assinar com meu certificado digital?**
 Você precisa de um certificado ICP-Brasil **A1** (arquivo `.pfx`). Peça ao RH ou à TI para ligar seu
-usuário ao seu cadastro de colaborador, porque o CPF precisa conferir. Veja a seção 20.2.
+usuário ao seu cadastro de colaborador, porque o CPF precisa conferir. Veja a seção 21.2.
 
 **Assinei, mas aparece "Cadeia ICP-Brasil: não verificada".**
 A assinatura é íntegra. Só falta a TI instalar os certificados raiz da ICP-Brasil no servidor (guia de

@@ -68,6 +68,11 @@ class PlanoConta(ModeloBase):
     nome = models.CharField(max_length=120)
     tipo = models.CharField(max_length=10, choices=TIPOS)
     superior = models.ForeignKey("self", null=True, blank=True, on_delete=models.PROTECT, related_name="filhas")
+    conta_contabil = models.ForeignKey(
+        "contabilidade.ContaContabil", verbose_name="conta contábil", null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+", limit_choices_to={"sintetica": False},
+        help_text="Títulos desta categoria são contabilizados nesta conta de resultado. Em branco = conta "
+                  "padrão da regra de contabilização.")
     ativo = models.BooleanField(default=True)
 
     class Meta:
@@ -240,6 +245,7 @@ class Movimentacao(ModeloBase, PorEmpresaMixin):
     contareceber = models.ForeignKey(ContaReceber, verbose_name="conta a receber", null=True, blank=True,
                                      on_delete=models.CASCADE, related_name="movimentacoes", editable=False)
     conciliado = models.BooleanField(default=False)
+    transferencia = models.BooleanField("transferência entre contas", default=False, editable=False)
     observacoes = models.TextField("observações", blank=True)
 
     class Meta:

@@ -121,6 +121,7 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     @transaction.atomic
     def faturar(self):
         """Gera e numera a NF de saída, as contas a receber (uma por parcela) e baixa o estoque."""
+        from apps.contabilidade.servicos import lancar, provisao_adiada, sincronizar_titulo
         from apps.estoque import models as est
         from apps.financeiro.models import ContaReceber
         from apps.fiscal.models import ItemNota, NotaFiscal
@@ -143,10 +144,14 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         dias = self.parcelas_dias()
         n, base = len(dias), (nota.valor_total / len(dias)).quantize(D2)
         for k, d in enumerate(dias, start=1):
-            t = nota.gerar_titulo(vencimento=nota.data_emissao + datetime.timedelta(days=d))
+            with provisao_adiada():
+                t = nota.gerar_titulo(vencimento=nota.data_emissao + datetime.timedelta(days=d))
             ContaReceber.objects.filter(pk=t.pk).update(
                 valor=base if k < n else nota.valor_total - base * (n - 1), parcela=k, total_parcelas=n,
                 observacoes=f"Pedido {self.numero}")
+            sincronizar_titulo(ContaReceber.objects.get(pk=t.pk))
+        lancar("impostos_venda", nota.valor_icms + nota.valor_pis + nota.valor_cofins + nota.valor_iss,
+               nota.data_emissao, f"Impostos da {nota} — pedido {self.numero}", nota)
         for i in self.itens.select_related("produto"):
             if i.produto.tipo == "produto":
                 est.saida(i.produto, i.quantidade, self.armazem, "venda", f"NF {nota.numero}",

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row g-3"><div class="col-lg-5">
+<form method="post" class="card"><div class="card-body">{% csrf_token %}{% include "crud/_campos.html" %}
+  <p class="small text-secondary mt-3 mb-0">Depois de fechado, o mês não aceita lançamentos manuais. Eventos automáticos com data nesse mês são lançados no primeiro dia do mês aberto seguinte, com a competência no histórico.</p></div>
+  <div class="card-footer bg-body"><button class="btn btn-primary"><i class="bi bi-lock"></i> Fechar período</button></div></form>
+</div><div class="col-lg-7"><div class="card"><div class="card-header bg-body"><strong>Períodos fechados</strong></div>
+<table class="table table-sm mb-0">{% for p in periodos %}<tr><td>{{ p }}</td><td class="small text-secondary">{{ p.fechado_por.get_full_name|default:p.fechado_por }} em {{ p.fechado_em|date:"d/m/Y H:i" }}</td>
+  <td class="text-end">{% if perms.contabilidade.delete_periodofechado %}<form method="post">{% csrf_token %}<button name="reabrir" value="{{ p.pk }}" class="btn btn-sm btn-outline-danger py-0">Reabrir</button></form>{% endif %}</td></tr>
+{% empty %}<tr><td class="text-secondary">Nenhum período fechado.</td></tr>{% endfor %}</table></div></div></div>
+{% endblock %}

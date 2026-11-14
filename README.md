@@ -46,6 +46,7 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 | **Projetos** | EAP com horas e avanço, apontamento de horas com custo-hora, despesas pelo centro de custo e **realizado × orçamento**. |
 | **SST / EHS** | Incidentes e acidentes (CAT), inventário de riscos (PGR), entregas de EPI com CA, ASOs (só aptidão, LGPD) e treinamentos de NR com alerta de vencimento. |
 | **Financeiro** | Contas a pagar e a receber com parcelamento, juros/desconto, baixa total ou parcial, estorno e cancelamento. Contas bancárias com saldo, extrato, transferências, plano de contas e centros de custo. Fluxo de caixa realizado × previsto com saldo projetado. |
+| **Contabilidade** | **Razão único**: títulos, baixas, faturamento, impostos e movimentos de estoque geram lançamentos de partidas dobradas na hora, por regras configuráveis. Diário imutável com estorno, balancete, razão, **DRE**, **balanço patrimonial**, fechamento de períodos e lançamentos manuais. |
 | **Cobrança** | Cobranças por PIX (gera o **PIX copia-e-cola + QR Code** a partir da chave da empresa), boleto ou link. **Régua de cobrança** automática por e-mail (ex.: 3 dias antes, no dia, 3 e 10 dias após), com histórico de envios. Status sincronizado com o título. |
 | **Fiscal** | Produtos/serviços com NCM, CFOP e alíquotas. Notas fiscais (NF-e, NFC-e, NFS-e) com itens e cálculo de ICMS/IPI/PIS/COFINS/ISS. **Importação de XML de NF-e** de fornecedores (cadastra o fornecedor e gera a conta a pagar). Geração de títulos a partir da nota e resumo para apuração. |
 | **Minhas tarefas (Kanban)** | Quadro com arrastar e soltar (a fazer, em andamento, em revisão, concluída). Atividades individuais ou do grupo, prioridade, prazo, etiquetas e comentários. Visões **Minhas**, **Meus grupos** e **Minha equipe**: o gestor vê o resumo e o quadro das pessoas que gerencia, definidas pelo gestor direto e pelo responsável do departamento. |
@@ -116,7 +117,7 @@ serviços `erp-web` (gunicorn, porta 8000) e `erp-agendador` no systemd.
 4. Ajuste o plano de contas, a régua de cobrança e os processos de workflow conforme sua empresa.
 
 Dados de demonstração (empresa fictícia, colaboradores, títulos, notas, processos e usuários
-`financeiro`, `rh`, `fiscal`, `juridico`, `compras`, `coordenador`, `gerente`, `diretor`, `vendedor`, `almoxarife`, `producao`, `sesmt`, `analista` com senha `demo1234`). **Só para testes, nunca em produção:**
+`financeiro`, `rh`, `fiscal`, `juridico`, `compras`, `coordenador`, `gerente`, `diretor`, `vendedor`, `almoxarife`, `producao`, `sesmt`, `analista`, `contador` com senha `demo1234`). **Só para testes, nunca em produção:**
 
 ```bash
 python manage.py seed_demo          # Docker: docker compose exec web python manage.py seed_demo

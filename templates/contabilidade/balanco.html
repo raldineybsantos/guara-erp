@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<form method="get" class="row g-2 align-items-end mb-3 no-print"><div class="col-auto"><label class="form-label small mb-1">Posição em</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-auto"><button class="btn btn-primary">Ver</button></div></form>
+{% if not fecha %}<div class="alert alert-danger">Ativo e passivo não fecham. Avise o suporte.</div>{% endif %}
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-body"><strong>Ativo</strong></div><table class="table table-sm mb-0">
+    {% for c, v in lados.ativo %}<tr><td>{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+    <tr class="table-light fw-bold"><td>Total do ativo</td><td class="text-end">{{ t.ativo|moeda }}</td></tr></table></div></div>
+  <div class="col-lg-6"><div class="card h-100"><div class="card-header bg-body"><strong>Passivo e patrimônio líquido</strong></div><table class="table table-sm mb-0">
+    {% for c, v in lados.passivo %}<tr><td>{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+    <tr class="table-light fw-semibold"><td>Total do passivo</td><td class="text-end">{{ t.passivo|moeda }}</td></tr>
+    {% for c, v in lados.pl %}<tr><td>{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+    <tr><td>Resultado acumulado (receitas − custos − despesas)</td><td class="text-end">{{ resultado|moeda }}</td></tr>
+    <tr class="table-light fw-bold"><td>Total do passivo + PL</td><td class="text-end">{{ total_passivo|moeda }}</td></tr></table></div></div>
+</div>
+{% endblock %}

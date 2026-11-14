@@ -37,3 +37,11 @@ def badge_filter(texto):
     from apps.core.crud import badge
 
     return badge(texto)
+
+
+@register.filter
+def saldo_dc(valor):
+    """Saldo contábil com a letra: positivo = devedor (D), negativo = credor (C)."""
+    if not valor:
+        return "—"
+    return f"{_moeda(abs(valor))} {'D' if valor > 0 else 'C'}"

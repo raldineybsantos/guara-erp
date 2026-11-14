@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+{% include "contabilidade/_periodo.html" %}
+<div class="card" style="max-width:760px"><table class="table table-sm mb-0">
+  <tbody>
+  <tr class="table-light fw-semibold"><td>Receita bruta</td><td class="text-end">{{ t.receita|moeda }}</td></tr>
+  {% for c, v in grupos.receita %}<tr><td class="ps-4">{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+  <tr class="table-light fw-semibold"><td>(−) Deduções da receita</td><td class="text-end">{{ t.deducao|moeda }}</td></tr>
+  {% for c, v in grupos.deducao %}<tr><td class="ps-4">{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+  <tr class="fw-semibold"><td>= Receita líquida</td><td class="text-end">{{ liquida|moeda }}</td></tr>
+  <tr class="table-light fw-semibold"><td>(−) Custos</td><td class="text-end">{{ t.custo|moeda }}</td></tr>
+  {% for c, v in grupos.custo %}<tr><td class="ps-4">{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+  <tr class="fw-semibold"><td>= Lucro bruto</td><td class="text-end">{{ bruto|moeda }}</td></tr>
+  <tr class="table-light fw-semibold"><td>(−) Despesas</td><td class="text-end">{{ t.despesa|moeda }}</td></tr>
+  {% for c, v in grupos.despesa %}<tr><td class="ps-4">{{ c }}</td><td class="text-end">{{ v|moeda }}</td></tr>{% endfor %}
+  <tr class="fw-bold fs-6 {% if resultado < 0 %}text-danger{% else %}text-success{% endif %}"><td>= Resultado do período</td><td class="text-end">{{ resultado|moeda }}</td></tr>
+  </tbody>
+</table></div>
+<p class="small text-secondary mt-2">Regime de competência: a receita conta no faturamento e a despesa no lançamento da conta, não no pagamento.</p>
+{% endblock %}
