@@ -1,16 +1,18 @@
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.core.files.uploadhandler import MemoryFileUploadHandler
 from django.db.models import Count, Sum
 from django.db.models.functions import TruncMonth
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 
 from apps.core.crud import BootstrapMixin
 
 from .importador import importar_nfe
-from .models import NotaFiscal
+from .models import ConfiguracaoFiscal, NotaFiscal
 
 
 class ImportarXmlForm(BootstrapMixin, forms.Form):
@@ -75,6 +77,8 @@ def emitir_nota(request, pk):
 @permission_required("fiscal.emitir_notafiscal", raise_exception=True)
 def cancelar_nota(request, pk):
     def f(nota):
+        if nota.situacao_fiscal == "autorizada":
+            raise ValueError("Nota autorizada no fisco: use “Cancelar no fisco”, com a justificativa.")
         nota.status = "cancelada"
         nota.save()
         return "Nota cancelada."
@@ -104,3 +108,76 @@ def apuracao(request):
               .order_by("-mes", "tipo"))
     return render(request, "fiscal/apuracao.html", {"titulo": "Apuração de impostos", "icone": "calculator",
                                                     "linhas": linhas})
+
+
+# --------------------------------------------------------------------------- transmissão ao fisco
+@login_required
+@permission_required("fiscal.emitir_notafiscal", raise_exception=True)
+def transmitir_nota(request, pk):
+    from . import transmissao
+
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {
+            "titulo": "Transmitir ao fisco", "voltar": nota.get_absolute_url(),
+            "mensagem": f"Assinar com o certificado da empresa e transmitir {nota}?"})
+    try:
+        t = transmissao.transmitir(nota, request.user)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    else:
+        (messages.success if t.resultado == "autorizado" else messages.error)(request, f"{t.codigo} {t.mensagem}")
+    return redirect(nota.get_absolute_url())
+
+
+class JustificativaForm(BootstrapMixin, forms.Form):
+    justificativa = forms.CharField(min_length=15, max_length=255, widget=forms.Textarea,
+                                    help_text="Mínimo de 15 caracteres. Vai para o fisco.")
+
+
+@login_required
+@permission_required("fiscal.emitir_notafiscal", raise_exception=True)
+def cancelar_fiscal(request, pk):
+    from apps.core import acoes
+
+    from . import transmissao
+
+    nota = get_object_or_404(NotaFiscal, pk=pk)
+    return acoes.formulario(request, nota, JustificativaForm, f"Cancelar {nota} no fisco",
+                            lambda d: transmissao.cancelar(nota, d["justificativa"], request.user),
+                            lambda t: f"{t.codigo} {t.mensagem}", "cloud-slash")
+
+
+class CertificadoForm(BootstrapMixin, forms.Form):
+    arquivo = forms.FileField(label="certificado A1 (.pfx ou .p12)")
+    senha = forms.CharField(widget=forms.PasswordInput(render_value=False))
+
+
+@csrf_exempt
+@login_required
+def enviar_certificado(request, pk):
+    # Como na assinatura do GED: o .pfx é lido só em memória, nunca vira arquivo temporário em disco.
+    request.upload_handlers = [MemoryFileUploadHandler(request)]
+    return _enviar_certificado(request, pk)
+
+
+@csrf_protect
+def _enviar_certificado(request, pk):
+    if not request.user.has_perm("fiscal.change_configuracaofiscal"):
+        raise PermissionDenied
+    config = get_object_or_404(ConfiguracaoFiscal, pk=pk)
+    form = CertificadoForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        arq = form.cleaned_data["arquivo"]
+        try:
+            if arq.size > 100 * 1024:
+                raise ValidationError("Arquivo grande demais para ser um certificado A1.")
+            dados = config.guardar_certificado(arq.read(), form.cleaned_data["senha"])
+        except ValidationError as e:
+            form.add_error("arquivo", e)
+        else:
+            messages.success(request, f"Certificado de {dados.titular} guardado no cofre, válido até "
+                                      f"{dados.valido_ate:%d/%m/%Y}.")
+            return redirect(config.get_absolute_url())
+    return render(request, "form_simples.html", {
+        "form": form, "titulo": f"Certificado A1 — {config.empresa}", "icone": "shield-lock", "multipart": True})

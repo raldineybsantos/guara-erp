@@ -5,7 +5,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 AUDITADOS = {"core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico"}
-IGNORAR = {"criado_em", "atualizado_em"}
+IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "xml_enviado", "xml_retorno"}
 
 
 def _auditado(sender):

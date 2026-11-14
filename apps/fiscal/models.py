@@ -72,6 +72,11 @@ class NotaFiscal(ModeloBase, PorEmpresaMixin):
     valor_iss = models.DecimalField("ISS", max_digits=14, decimal_places=2, default=0, editable=False)
     valor_total = models.DecimalField("valor total", max_digits=14, decimal_places=2, default=0, editable=False)
 
+    SITUACOES = [("", "Não transmitida"), ("autorizada", "Autorizada"), ("rejeitada", "Rejeitada"),
+                 ("cancelada", "Cancelada no fisco")]
+    situacao_fiscal = models.CharField("situação no fisco", max_length=10, choices=SITUACOES, blank=True,
+                                       editable=False)
+
     class Meta:
         verbose_name = "nota fiscal"
         verbose_name_plural = "notas fiscais"
@@ -194,3 +199,107 @@ class ItemNota(models.Model):
     valor_pis = property(lambda self: self._imposto("pis"))
     valor_cofins = property(lambda self: self._imposto("cofins"))
     valor_iss = property(lambda self: self._imposto("iss"))
+
+
+# --------------------------------------------------------------------------- transmissão
+class ConfiguracaoFiscal(ModeloBase):
+    """Por empresa: ambiente, por onde cada tipo de nota é transmitido e o certificado A1 (cifrado)."""
+
+    AMBIENTES = [("homologacao", "Homologação (testes, sem valor fiscal)"), ("producao", "Produção")]
+    EMISSORES_NFE = [("simulacao", "Simulação interna (não envia a ninguém)"), ("sefaz", "SEFAZ do estado")]
+    EMISSORES_NFSE = [("simulacao", "Simulação interna (não envia a ninguém)"),
+                      ("nacional", "Emissor Nacional da NFS-e"), ("sao_paulo", "Prefeitura de São Paulo")]
+    empresa = models.OneToOneField("core.Empresa", on_delete=models.CASCADE, related_name="config_fiscal")
+    ambiente = models.CharField(max_length=12, choices=AMBIENTES, default="homologacao")
+    emissor_nfe = models.CharField("NF-e/NFC-e (mercadoria) vai por", max_length=10, choices=EMISSORES_NFE,
+                                   default="simulacao")
+    emissor_nfse = models.CharField("NFS-e (serviço) vai por", max_length=10, choices=EMISSORES_NFSE,
+                                    default="simulacao")
+    certificado = models.BinaryField(null=True, blank=True, editable=False)
+    senha = models.BinaryField(null=True, blank=True, editable=False)
+    certificado_titular = models.CharField("titular do certificado", max_length=200, blank=True, editable=False)
+    certificado_validade = models.DateTimeField("certificado válido até", null=True, blank=True, editable=False)
+
+    class Meta:
+        verbose_name = "configuração fiscal"
+        verbose_name_plural = "configuração fiscal (transmissão)"
+
+    def __str__(self):
+        return f"Fiscal de {self.empresa}"
+
+    @property
+    def status(self):
+        if not self.certificado:
+            return "Pendente: sem certificado"
+        dias = (self.certificado_validade - timezone.now()).days
+        if dias < 0:
+            return "Vencido"
+        return f"Atenção: vence em {dias} dias" if dias <= 30 else "Vigente"
+
+    def guardar_certificado(self, pfx: bytes, senha: str):
+        """Valida o A1 (senha, validade, CNPJ igual ao da empresa) e guarda cifrado."""
+        from django.core.exceptions import ValidationError
+
+        from apps.core.validators import somente_digitos
+        from apps.ged.assinatura import ErroAssinatura, carregar_pfx
+
+        from . import cofre
+
+        try:
+            _, _, _, dados = carregar_pfx(pfx, senha)
+        except ErroAssinatura as e:
+            raise ValidationError(str(e)) from None
+        cnpj = somente_digitos(self.empresa.cnpj)
+        if not dados.cnpj:
+            raise ValidationError("O certificado não é um e-CNPJ: a transmissão fiscal exige o certificado da empresa.")
+        if dados.cnpj[:8] != cnpj[:8]:
+            raise ValidationError(f"O certificado é de outro CNPJ ({dados.cnpj}), não o da empresa ({cnpj}).")
+        self.certificado, self.senha = cofre.cifrar(pfx), cofre.cifrar(senha.encode())
+        self.certificado_titular, self.certificado_validade = dados.titular[:200], dados.valido_ate
+        self.save()
+        return dados
+
+    def abrir_certificado(self):
+        """(chave, certificado) em memória. Revalida a validade a cada uso."""
+        from django.core.exceptions import ValidationError
+
+        from apps.ged.assinatura import ErroAssinatura, carregar_pfx
+
+        from . import cofre
+
+        if not self.certificado:
+            raise ValidationError("Envie o certificado A1 da empresa em Fiscal → Configuração fiscal.")
+        try:
+            chave, cert, _, _ = carregar_pfx(cofre.decifrar(self.certificado), cofre.decifrar(self.senha).decode())
+        except ErroAssinatura as e:
+            raise ValidationError(str(e)) from None
+        return chave, cert
+
+
+class Transmissao(models.Model):
+    """Cada tentativa de falar com o fisco fica registrada, com o que foi enviado e o que voltou."""
+
+    OPERACOES = [("autorizacao", "Autorização"), ("cancelamento", "Cancelamento")]
+    RESULTADOS = [("autorizado", "Autorizado"), ("rejeitado", "Rejeitado"), ("erro", "Erro de comunicação")]
+    nota = models.ForeignKey(NotaFiscal, on_delete=models.PROTECT, related_name="transmissoes")
+    operacao = models.CharField("operação", max_length=12, choices=OPERACOES)
+    emissor = models.CharField(max_length=10)
+    ambiente = models.CharField(max_length=12)
+    resultado = models.CharField(max_length=10, choices=RESULTADOS)
+    codigo = models.CharField("código", max_length=10, blank=True)
+    mensagem = models.CharField(max_length=500, blank=True)
+    protocolo = models.CharField(max_length=30, blank=True)
+    xml_enviado = models.TextField(blank=True)
+    xml_retorno = models.TextField(blank=True)
+    data = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey("auth.User", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        verbose_name = "transmissão"
+        verbose_name_plural = "transmissões"
+        ordering = ["-data", "-id"]
+
+    @property
+    def status(self):
+        return self.get_resultado_display()
+

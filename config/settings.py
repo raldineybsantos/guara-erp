@@ -185,6 +185,9 @@ PROJETOS_HORAS_MES = os.getenv("PROJETOS_HORAS_MES", "220")
 PROJETOS_ENCARGOS_FATOR = os.getenv("PROJETOS_ENCARGOS_FATOR", "1.0")
 # SST: antecedência do alerta de ASO e reciclagem de NR vencendo (dias).
 SST_ALERTA_DIAS = int(os.getenv("SST_ALERTA_DIAS", "30"))
+# Chave que cifra o certificado A1 guardado no banco. Sem ela, usa-se a SECRET_KEY (trocar qualquer uma
+# das duas obriga a reenviar o certificado).
+FISCAL_CHAVE_COFRE = os.getenv("FISCAL_CHAVE_COFRE", "")
 # Conciliação bancária: diferença máxima de dias entre a data do banco e a do ERP para casar sozinho.
 CONCILIACAO_TOLERANCIA_DIAS = int(os.getenv("CONCILIACAO_TOLERANCIA_DIAS", "3"))
 # Service Desk: horário em que o SLA corre (seg a sex) ou "24x7"; dias para fechar sozinho o chamado

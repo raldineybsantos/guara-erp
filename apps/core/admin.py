@@ -17,7 +17,7 @@ def admin_generico(model):
 
 
 SOMENTE_LEITURA = {"core.logauditoria", "workflow.historico", "cobranca.historicocobranca", "ged.assinatura",
-                   "juridico.evento", "contabilidade.lancamento", "contabilidade.partida", "estoque.movimento"}
+                   "juridico.evento", "contabilidade.lancamento", "contabilidade.partida", "estoque.movimento", "fiscal.transmissao", "fiscal.configuracaofiscal"}
 
 
 class SomenteLeituraAdmin(admin.ModelAdmin):

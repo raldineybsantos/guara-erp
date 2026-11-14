@@ -232,6 +232,15 @@ class Command(BaseCommand):
         self._operacao(usuarios, clis)
         self._servicedesk(usuarios)
         self._bancos(usuarios, forns)
+        # Fiscal: simulação interna com um certificado de TESTE (não é ICP-Brasil, sem valor fiscal).
+        from apps.core.models import Empresa
+        from apps.fiscal.models import ConfiguracaoFiscal
+        from apps.ged.cert_teste import gerar_pfx
+
+        emp_demo = Empresa.padrao()
+        if emp_demo:
+            cfg = ConfiguracaoFiscal.objects.create(empresa=emp_demo)
+            cfg.guardar_certificado(gerar_pfx(emp_demo.razao_social, cnpj=emp_demo.cnpj, senha="demo"), "demo")
         # Contabilidade: os lançamentos automáticos já nasceram com os dados acima; falta só o capital inicial.
         from apps.contabilidade import servicos
         from apps.contabilidade.models import ContaContabil

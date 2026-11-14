@@ -124,3 +124,15 @@ Os instaladores ajudam nisso:
 - Antivírus nos uploads do GED (ex.: ClamAV).
 - Backup automático agendado com retenção e cópia externa.
 - Teste de invasão por terceiro antes de expor o sistema à internet.
+
+## Certificado A1 da empresa (transmissão fiscal)
+
+- O `.pfx` e a senha são guardados **cifrados** (Fernet: AES-128-CBC com HMAC) no banco. A chave vem de
+  `FISCAL_CHAVE_COFRE` (ou, na falta, da `DJANGO_SECRET_KEY`) e fica fora do banco: um backup do banco
+  sozinho não expõe o certificado.
+- O upload é lido só em memória (sem arquivo temporário), limitado a 100 KB, e exige a permissão
+  `fiscal.change_configuracaofiscal` (grupos Fiscal e Administradores).
+- Não há tela nem URL que devolva o certificado ou a senha. A auditoria não registra esses campos.
+- O ERP recusa certificado vencido, com senha errada, que não seja e-CNPJ ou de outro CNPJ.
+- Quem tem acesso ao servidor **e** à chave do cofre consegue assinar pela empresa. Restrinja o acesso
+  ao `.env` e troque o certificado se houver suspeita de vazamento.

@@ -9,3 +9,4 @@ tzdata>=2024.1
 defusedxml>=0.7
 pyHanko>=0.25,<0.40
 cryptography>=42
+lxml>=5.0

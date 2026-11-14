@@ -698,6 +698,33 @@ pela contabilidade.
 
 ---
 
+### 17.3 Transmissão ao fisco
+
+O ERP assina a nota com o **certificado A1 da empresa** e a transmite por um *emissor*, que é o canal de
+cada tipo de nota:
+
+| Nota | Emissores previstos | Situação nesta versão |
+|---|---|---|
+| NF-e / NFC-e (mercadoria) | SEFAZ do estado | Em construção |
+| NFS-e (serviço) | Emissor Nacional da NFS-e | Em construção |
+| NFS-e (serviço) | Prefeitura de São Paulo | Em construção |
+| Qualquer uma | **Simulação interna** | Disponível |
+
+A **simulação interna** percorre o fluxo completo (validação dos cadastros, XML assinado com o certificado,
+chave de acesso, protocolo e cancelamento) **sem enviar nada a ninguém e sem valor fiscal**. Serve para
+treinar a equipe e conferir cadastros (NCM, CFOP, CPF/CNPJ do cliente). Enquanto os emissores reais não
+são liberados, continue transmitindo pelo seu emissor atual e informe a chave e o protocolo na nota.
+
+**Configurar (uma vez):** em **Fiscal → Configuração fiscal**, crie a configuração da empresa (ambiente e
+emissor de cada tipo de nota) e clique em **Enviar certificado A1**. O ERP confere a senha, a validade e
+se o CNPJ do certificado é o da empresa. O arquivo e a senha ficam **cifrados** no banco, não podem ser
+baixados e só são abertos em memória na hora de assinar. A lista mostra quando o certificado vence.
+
+**Usar:** na nota emitida, **Transmitir ao fisco**. A ficha passa a mostrar a *situação no fisco*
+(autorizada ou rejeitada, com o motivo) e o histórico de **Transmissões**. Nota rejeitada pode ser
+corrigida e transmitida de novo. Nota autorizada só é cancelada por **Cancelar no fisco**, com
+justificativa de pelo menos 15 caracteres.
+
 ## 18. Minhas tarefas — quadro Kanban
 
 ![Quadro Kanban](img/kanban.jpg)
