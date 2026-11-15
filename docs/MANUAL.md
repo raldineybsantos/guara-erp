@@ -757,7 +757,7 @@ cada tipo de nota:
 | Nota | Emissores previstos | Situação nesta versão |
 |---|---|---|
 | NF-e / NFC-e (mercadoria) | SEFAZ do estado | Em construção |
-| NFS-e (serviço) | Emissor Nacional da NFS-e | Em construção |
+| NFS-e (serviço) | Emissor Nacional da NFS-e | **Pronto para homologação** (veja 17.4) |
 | NFS-e (serviço) | Prefeitura de São Paulo | Em construção |
 | Qualquer uma | **Simulação interna** | Disponível |
 
@@ -775,6 +775,50 @@ baixados e só são abertos em memória na hora de assinar. A lista mostra quand
 (autorizada ou rejeitada, com o motivo) e o histórico de **Transmissões**. Nota rejeitada pode ser
 corrigida e transmitida de novo. Nota autorizada só é cancelada por **Cancelar no fisco**, com
 justificativa de pelo menos 15 caracteres.
+
+### 17.4 NFS-e pelo Emissor Nacional
+
+O Emissor Nacional (Sefin Nacional) recebe a **DPS** (declaração de prestação de serviço), gera a NFS-e na
+hora e devolve a chave de acesso de 50 dígitos e o XML. O ERP monta a DPS, assina com o A1 da empresa e envia
+por conexão segura com **autenticação pelo próprio certificado**. Nada é enviado antes de você clicar em
+**Transmitir ao fisco**.
+
+**Antes da primeira nota (uma vez por empresa):**
+
+1. **Certificado A1 do próprio CNPJ** enviado em Fiscal → Configuração fiscal. A filial **não** pode usar o
+   certificado da matriz neste emissor.
+2. Em **Cadastros → Empresas**: CNPJ, **código IBGE do município**, **inscrição municipal** e **regime
+   tributário** (Simples, MEI, Presumido ou Real). O município precisa ter a empresa no Cadastro Nacional
+   NFS-e; sem isso o fisco recusa.
+3. Em **Fiscal → Produtos e serviços**, para cada serviço: o **código de tributação nacional** (6 dígitos:
+   item, subitem e desdobro da lista da LC 116, por exemplo `01.07.01`; pode digitar com pontos). Código de
+   tributação municipal e NBS só se o município exigir. Para o ISS fora do Simples, a **alíquota de ISS**.
+4. Na **Configuração fiscal**: *NFS-e vai por* **Emissor Nacional**, ambiente **Homologação** e série entre
+   **1 e 49999** (faixa dos sistemas próprios; o Emissor Web do portal usa outra e não colide).
+5. No **cliente**: CPF/CNPJ e nome. Com CEP, logradouro, número, bairro e **código IBGE do município**
+   preenchidos, o endereço também vai na nota.
+
+**Conferir sem emitir nada:** no servidor, `python manage.py nfse_nacional_diagnostico` lista o que falta e
+`--conectar` testa a conexão com o certificado na Sefin sem gerar nota.
+
+**Regras da nota:** a NFS-e nacional tem **um serviço por nota**. Itens do mesmo serviço (mesmo código e mesma
+alíquota) são somados; serviços diferentes pedem uma nota para cada. O desconto da nota vai como desconto
+incondicionado. No Simples e no MEI a alíquota não é informada (o município usa a do DAS).
+
+**Resultados:** *Autorizada* guarda chave, número da NFS-e (no campo protocolo) e o XML da nota. *Rejeitada*
+mostra o código e o texto do próprio fisco (ex.: `E0160`); corrija e transmita de novo. *Erro de comunicação*
+significa que o fisco não respondeu: a nota continua como estava, e ao tentar de novo o ERP consulta a DPS
+antes, para nunca duplicar a nota. O **cancelamento** é pelo evento 101101 e o município define o prazo.
+
+**Produção:** fica **travada** até você definir `FISCAL_NFSE_NACIONAL_PRODUCAO=1` no `.env`. Emita primeiro
+várias notas em **Homologação** (as notas de teste não têm valor jurídico) e só então libere.
+
+> **Estado desta integração.** O leiaute da DPS (1.01) e o fluxo foram montados a partir da documentação
+> pública do Emissor Nacional e testados com respostas simuladas. **Ainda não foram validados contra a Sefin
+> real**: isso depende do certificado de teste e pode pedir pequenos ajustes (a Sefin devolve o código exato
+> de qualquer divergência). O leiaute 1.02 da reforma tributária (NT 009) ainda é preliminar e não está
+> implementado. Se tiver o XSD oficial da DPS, aponte `FISCAL_NFSE_NACIONAL_XSD` para ele e o ERP confere o XML
+> antes de enviar.
 
 ## 18. Minhas tarefas — quadro Kanban
 

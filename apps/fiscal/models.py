@@ -6,7 +6,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.core.models import Cliente, Fornecedor, ModeloBase, PorEmpresaMixin
-from apps.core.validators import validar_xml
+from apps.core.validators import somente_digitos, validar_xml
 
 D2 = Decimal("0.01")
 
@@ -20,6 +20,15 @@ class Produto(ModeloBase):
     ncm = models.CharField("NCM", max_length=10, blank=True)
     cest = models.CharField("CEST", max_length=10, blank=True)
     codigo_servico = models.CharField("código de serviço (LC 116)", max_length=10, blank=True)
+    codigo_tributacao_nacional = models.CharField(
+        "código de tributação nacional (NFS-e)", max_length=8, blank=True,
+        help_text="6 dígitos: item, subitem e desdobro da lista da LC 116 (ex.: 01.07.01 = 010701). "
+                  "Exigido na NFS-e do Emissor Nacional.")
+    codigo_tributacao_municipal = models.CharField("código de tributação municipal (NFS-e)", max_length=3,
+                                                   blank=True, help_text="Só se o município exigir.")
+    codigo_nbs = models.CharField("código NBS", max_length=14, blank=True,
+                                  help_text="Nomenclatura Brasileira de Serviços, 9 dígitos. Informe quando o "
+                                            "município ou o serviço exigir.")
     cfop_padrao = models.CharField("CFOP padrão", max_length=4, blank=True)
     preco = models.DecimalField("preço", max_digits=14, decimal_places=2, default=0)
     aliquota_icms = models.DecimalField("alíquota ICMS %", max_digits=5, decimal_places=2, default=0)
@@ -42,6 +51,25 @@ class Produto(ModeloBase):
     def __str__(self):
         return f"{self.codigo} - {self.descricao}"
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        erros = {}
+        for campo, tamanhos, nome in (("codigo_tributacao_nacional", (6,), "6 dígitos"),
+                                      ("codigo_tributacao_municipal", (3,), "3 dígitos"),
+                                      ("codigo_nbs", (9,), "9 dígitos")):
+            valor = somente_digitos(getattr(self, campo))
+            if valor and len(valor) not in tamanhos:
+                erros[campo] = f"Informe {nome} (pode digitar com pontos)."
+            setattr(self, campo, valor)
+        if erros:
+            raise ValidationError(erros)
+
+    def save(self, *args, **kwargs):
+        for campo in ("codigo_tributacao_nacional", "codigo_tributacao_municipal", "codigo_nbs"):
+            setattr(self, campo, somente_digitos(getattr(self, campo)))
+        super().save(*args, **kwargs)
+
 
 class NotaFiscal(ModeloBase, PorEmpresaMixin):
     TIPOS = [("saida", "Saída (venda/prestação)"), ("entrada", "Entrada (compra)")]
@@ -56,7 +84,7 @@ class NotaFiscal(ModeloBase, PorEmpresaMixin):
     natureza_operacao = models.CharField("natureza da operação", max_length=100, default="Venda de mercadoria")
     cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.PROTECT, related_name="notas")
     fornecedor = models.ForeignKey(Fornecedor, null=True, blank=True, on_delete=models.PROTECT, related_name="notas")
-    chave_acesso = models.CharField("chave de acesso", max_length=44, blank=True, db_index=True)
+    chave_acesso = models.CharField("chave de acesso", max_length=50, blank=True, db_index=True)
     protocolo = models.CharField("protocolo de autorização", max_length=30, blank=True)
     status = models.CharField(max_length=10, choices=STATUS, default="rascunho")
     valor_frete = models.DecimalField("frete", max_digits=14, decimal_places=2, default=0)
@@ -281,8 +309,9 @@ class ConfiguracaoFiscal(ModeloBase):
         self.save()
         return dados
 
-    def abrir_certificado(self):
-        """(chave, certificado) em memória. Revalida a validade a cada uso."""
+    def abrir_certificado(self, com_cadeia=False):
+        """(chave, certificado) em memória; com `com_cadeia`, (chave, certificado, cadeia). Revalida a validade
+        a cada uso."""
         from django.core.exceptions import ValidationError
 
         from apps.ged.assinatura import ErroAssinatura, carregar_pfx
@@ -294,9 +323,11 @@ class ConfiguracaoFiscal(ModeloBase):
             raise ValidationError(f"Envie o certificado A1 de {self.empresa} (ou da matriz) em Fiscal → "
                                   "Configuração fiscal.")
         try:
-            chave, cert, _, _ = carregar_pfx(cofre.decifrar(dono.certificado), cofre.decifrar(dono.senha).decode())
+            chave, cert, cadeia, _ = carregar_pfx(cofre.decifrar(dono.certificado), cofre.decifrar(dono.senha).decode())
         except ErroAssinatura as e:
             raise ValidationError(str(e)) from None
+        if com_cadeia:
+            return chave, cert, cadeia
         return chave, cert
 
 

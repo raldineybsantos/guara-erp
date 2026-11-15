@@ -134,6 +134,12 @@ Os instaladores ajudam nisso:
   `fiscal.change_configuracaofiscal` (grupos Fiscal e Administradores).
 - Não há tela nem URL que devolva o certificado ou a senha. A auditoria não registra esses campos.
 - O ERP recusa certificado vencido, com senha errada, que não seja e-CNPJ ou de outro CNPJ.
+- **Conexão com o Emissor Nacional (TLS mútuo):** a biblioteca HTTP só aceita a chave privada em arquivo. O ERP a
+  grava numa pasta temporária com permissão `0600` (em `/dev/shm`, memória, quando existe), usa durante a chamada
+  e apaga em seguida, mesmo se houver erro. A verificação do servidor (HTTPS) fica sempre ligada. Há teste
+  automatizado que confere permissão e remoção.
+- A transmissão em **produção** é travada por `FISCAL_NFSE_NACIONAL_PRODUCAO`: ninguém emite nota real por engano
+  durante os testes.
 - Quem tem acesso ao servidor **e** à chave do cofre consegue assinar pela empresa. Restrinja o acesso
   ao `.env` e troque o certificado se houver suspeita de vazamento.
 

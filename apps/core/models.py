@@ -230,6 +230,8 @@ class ParceiroNegocio(ModeloBase, EnderecoMixin):
     nome_fantasia = models.CharField("nome fantasia", max_length=200, blank=True)
     documento = models.CharField("CPF/CNPJ", max_length=18, validators=[validar_cpf_cnpj], blank=True)
     inscricao_estadual = models.CharField("inscrição estadual", max_length=30, blank=True)
+    codigo_municipio = models.CharField("código do município (IBGE)", max_length=7, blank=True,
+                                        help_text="7 dígitos. Usado no endereço do tomador da NFS-e nacional.")
     email = models.EmailField("e-mail", blank=True)
     telefone = models.CharField(max_length=30, blank=True)
     contato = models.CharField("pessoa de contato", max_length=120, blank=True)

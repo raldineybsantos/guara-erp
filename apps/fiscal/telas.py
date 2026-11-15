@@ -5,7 +5,8 @@ from .models import ConfiguracaoFiscal, ItemNota, NotaFiscal, Produto
 
 class ProdutoCrud(Crud):
     model = Produto
-    fields = ["codigo", "descricao", "tipo", "unidade", "ncm", "cest", "codigo_servico", "cfop_padrao", "preco",
+    fields = ["codigo", "descricao", "tipo", "unidade", "ncm", "cest", "codigo_servico", "codigo_tributacao_nacional",
+              "codigo_tributacao_municipal", "codigo_nbs", "cfop_padrao", "preco",
               "aliquota_icms", "aliquota_ipi", "aliquota_pis", "aliquota_cofins", "aliquota_iss", "estoque_minimo",
               "inspecionar_recebimento", "ativo"]
     list_display = ("codigo", "descricao", "tipo", "unidade", "ncm", "preco", "ativo")

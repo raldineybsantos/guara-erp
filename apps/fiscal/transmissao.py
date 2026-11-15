@@ -1,6 +1,7 @@
 """Serviço de transmissão: escolhe o emissor, registra cada tentativa e atualiza a nota."""
 
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import transaction
 
 from apps.core.models import Empresa
@@ -30,7 +31,7 @@ def _emissor(nota, config):
 def _registrar(nota, operacao, emissor, config, r, usuario):
     return Transmissao.objects.create(
         nota=nota, operacao=operacao, emissor=emissor.codigo, ambiente=config.ambiente,
-        resultado="autorizado" if r.ok else "rejeitado", codigo=r.codigo, mensagem=r.mensagem[:500],
+        resultado="autorizado" if r.ok else ("erro" if r.erro else "rejeitado"), codigo=r.codigo, mensagem=r.mensagem[:500],
         protocolo=r.protocolo, xml_enviado=r.xml_enviado, xml_retorno=r.xml_retorno, usuario=usuario)
 
 
@@ -46,9 +47,14 @@ def transmitir(nota, usuario=None):
     emissor = _emissor(nota, config)
     r = emissor.autorizar(nota, config)
     t = _registrar(nota, "autorizacao", emissor, config, r, usuario)
+    if r.erro:   # o fisco não respondeu: a nota continua como estava e pode ser transmitida de novo
+        return t
     nota.situacao_fiscal = "autorizada" if r.ok else "rejeitada"
     if r.ok:
         nota.protocolo, nota.chave_acesso = r.protocolo, r.chave or nota.chave_acesso
+        if r.xml_retorno and emissor.codigo != "simulacao":
+            nota.xml.save(f"{emissor.codigo}-{nota.chave_acesso or nota.pk}.xml",
+                          ContentFile(r.xml_retorno.encode("utf-8")), save=False)
     nota.save()
     return t
 

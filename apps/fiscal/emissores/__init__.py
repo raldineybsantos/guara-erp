@@ -15,6 +15,7 @@ class Resultado:
     chave: str = ""
     xml_enviado: str = ""
     xml_retorno: str = ""
+    erro: bool = False          # falha de comunicação: o fisco não respondeu, nada foi decidido
 
 
 class Emissor:
@@ -49,15 +50,12 @@ class Sefaz(EmConstrucao):
     codigo, nome = "sefaz", "SEFAZ do estado (NF-e)"
 
 
-class NfseNacional(EmConstrucao):
-    codigo, nome = "nacional", "Emissor Nacional da NFS-e"
-
-
 class NfseSaoPaulo(EmConstrucao):
     codigo, nome = "sao_paulo", "Prefeitura de São Paulo (NFS-e)"
 
 
 def obter(codigo):
+    from .nfse_nacional import NfseNacional
     from .simulacao import Simulacao
 
     registro = {c.codigo: c for c in (Simulacao, Sefaz, NfseNacional, NfseSaoPaulo)}

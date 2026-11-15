@@ -3,6 +3,7 @@ from .crud import Crud
 from .models import Cargo, Cliente, Colaborador, Departamento, Empresa, Fornecedor, LogAuditoria, ParceiroNegocio
 
 ENDERECO = ["cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"]
+ENDERECO_PARCEIRO = [*ENDERECO, "codigo_municipio"]
 
 
 class EmpresaCrud(Crud):
@@ -65,7 +66,7 @@ class FornecedorCrud(Crud):
     model = Fornecedor
     fields = ["tipo_pessoa", "nome", "nome_fantasia", "documento", "inscricao_estadual", "categoria",
               "email", "telefone", "contato", "prazo_pagamento_dias", "banco", "agencia", "conta",
-              "chave_pix", *ENDERECO, "ativo", "observacoes"]
+              "chave_pix", *ENDERECO_PARCEIRO, "ativo", "observacoes"]
     list_display = ("nome", "nome_fantasia", "documento_formatado", "categoria", "telefone", "ativo")
     search_fields = ("nome", "nome_fantasia", "documento", "email")
     filter_fields = ("categoria", "ativo", "tipo_pessoa")
@@ -79,7 +80,7 @@ class FornecedorCrud(Crud):
 class ClienteCrud(Crud):
     model = Cliente
     fields = ["tipo_pessoa", "nome", "nome_fantasia", "documento", "inscricao_estadual", "email",
-              "email_cobranca", "telefone", "contato", "limite_credito", *ENDERECO, "ativo", "observacoes"]
+              "email_cobranca", "telefone", "contato", "limite_credito", *ENDERECO_PARCEIRO, "ativo", "observacoes"]
     list_display = ("nome", "nome_fantasia", "documento_formatado", "email", "telefone", "ativo")
     search_fields = ("nome", "nome_fantasia", "documento", "email")
     filter_fields = ("ativo", "tipo_pessoa", "uf")
@@ -95,7 +96,7 @@ class ParceiroNegocioCrud(Crud):
 
     model = ParceiroNegocio
     fields = ["tipo_pessoa", "nome", "nome_fantasia", "documento", "inscricao_estadual", "email", "telefone",
-              "contato", *ENDERECO, "ativo", "observacoes"]
+              "contato", *ENDERECO_PARCEIRO, "ativo", "observacoes"]
     list_display = ("nome", "nome_fantasia", "documento_formatado", "papeis_texto", "cidade", "ativo")
     search_fields = ("nome", "nome_fantasia", "documento", "email")
     filter_fields = ("ativo", "tipo_pessoa", "uf")

@@ -190,6 +190,12 @@ SST_ALERTA_DIAS = int(os.getenv("SST_ALERTA_DIAS", "30"))
 # Chave que cifra o certificado A1 guardado no banco. Sem ela, usa-se a SECRET_KEY (trocar qualquer uma
 # das duas obriga a reenviar o certificado).
 FISCAL_CHAVE_COFRE = os.getenv("FISCAL_CHAVE_COFRE", "")
+# Emissor Nacional da NFS-e. Em produção só transmite com FISCAL_NFSE_NACIONAL_PRODUCAO=1: libere depois de emitir
+# notas de teste em homologação (produção restrita). O XSD oficial da DPS (opcional) confere o XML antes do envio.
+FISCAL_NFSE_NACIONAL_PRODUCAO = env_bool("FISCAL_NFSE_NACIONAL_PRODUCAO", False)
+FISCAL_NFSE_NACIONAL_XSD = os.getenv("FISCAL_NFSE_NACIONAL_XSD", "")
+FISCAL_NFSE_NACIONAL_TIMEOUT = int(os.getenv("FISCAL_NFSE_NACIONAL_TIMEOUT", "60"))
+FISCAL_NFSE_NACIONAL_CA_BUNDLE = os.getenv("FISCAL_NFSE_NACIONAL_CA_BUNDLE", "")
 # Conciliação bancária: diferença máxima de dias entre a data do banco e a do ERP para casar sozinho.
 CONCILIACAO_TOLERANCIA_DIAS = int(os.getenv("CONCILIACAO_TOLERANCIA_DIAS", "3"))
 # Service Desk: horário em que o SLA corre (seg a sex) ou "24x7"; dias para fechar sozinho o chamado
