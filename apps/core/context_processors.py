@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Relatórios", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"Relatórios": "bar-chart-line", "Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Relatórios", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "RH", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"Relatórios": "bar-chart-line", "Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "RH": "people", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
@@ -14,6 +14,13 @@ LINKS_EXTRAS = [
     ("Principal", "Painel", "dashboard", "speedometer2", None, 1),
     ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
     ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
+    ("RH", "Bater ponto", "rh:bater_ponto", "fingerprint", None, 0),
+    ("RH", "Meu espelho de ponto", "rh:meu_espelho", "calendar3", None, 1),
+    ("RH", "Minhas férias", "rh:minhas_ferias", "umbrella", None, 2),
+    ("RH", "Meus holerites", "rh:meus_holerites", "receipt", None, 3),
+    ("RH", "Banco de horas", "rh:banco_horas", "hourglass-split", "rh.gerir_ponto", 24),
+    ("RH", "Gerar evento eSocial", "rh:esocial_gerar", "cloud-plus", "rh.add_eventoesocial", 58),
+    ("RH", "Montar lote do eSocial", "rh:esocial_montar_lote", "box-arrow-down", "rh.view_eventoesocial", 61),
     ("Principal", "Minhas tarefas", "tarefas:quadro", "kanban", None, 2),
     ("Relatórios", "Visão executiva", "relatorios:executivo", "speedometer", None, 0),
     ("Relatórios", "Financeiro", "relatorios:financeiro", "cash-stack",

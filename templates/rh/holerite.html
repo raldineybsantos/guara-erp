@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="no-print mb-3"><button onclick="window.print()" class="btn btn-sm btn-outline-secondary"><i class="bi bi-printer"></i> Imprimir</button></div>
+<div class="card"><div class="card-body">
+  <div class="d-flex justify-content-between flex-wrap">
+    <div><h5 class="mb-0">{{ h.folha.empresa.razao_social }}</h5><div class="text-secondary small">CNPJ {{ h.folha.empresa.cnpj }}</div></div>
+    <div class="text-end"><strong>Recibo de pagamento</strong><div class="text-capitalize">{{ h.folha.get_tipo_display }} — {{ rotulo }}</div></div>
+  </div><hr>
+  <div class="row mb-3">
+    <div class="col-md-6"><div class="text-secondary small">Colaborador</div><strong>{{ h.colaborador.nome }}</strong>
+      <div class="small">Matrícula {{ h.colaborador.matricula|default:"—" }} · {{ h.colaborador.cargo|default:"" }}</div></div>
+    <div class="col-md-3"><div class="text-secondary small">Admissão</div>{{ h.colaborador.data_admissao|date:"d/m/Y" }}</div>
+    <div class="col-md-3"><div class="text-secondary small">Salário base</div>R$ {{ h.salario_base }}</div>
+  </div>
+  <table class="table table-sm">
+    <thead class="table-light"><tr><th>Cód.</th><th>Descrição</th><th>Ref.</th><th class="text-end">Proventos</th><th class="text-end">Descontos</th></tr></thead>
+    <tbody>{% for i in itens %}<tr><td>{{ i.codigo }}</td><td>{{ i.descricao }}</td><td>{{ i.referencia }}</td>
+      <td class="text-end">{% if i.tipo == "provento" %}{{ i.valor }}{% endif %}</td>
+      <td class="text-end">{% if i.tipo == "desconto" %}{{ i.valor }}{% endif %}</td></tr>{% endfor %}</tbody>
+    <tfoot><tr class="fw-semibold"><td colspan="3" class="text-end">Totais</td><td class="text-end">{{ h.bruto }}</td><td class="text-end">{{ h.descontos }}</td></tr>
+      <tr class="table-light fs-5"><td colspan="3" class="text-end">Líquido a receber</td><td colspan="2" class="text-end">R$ {{ h.liquido }}</td></tr></tfoot>
+  </table>
+  <div class="row small text-secondary">
+    <div class="col-6 col-md-3">Base INSS: {{ h.base_inss }}</div><div class="col-6 col-md-3">Base IRRF: {{ h.base_irrf }}</div>
+    {% for i in informativos %}<div class="col-6 col-md-3">{{ i.descricao }}: {{ i.valor }}</div>{% endfor %}
+  </div>
+</div></div>
+{% endblock %}

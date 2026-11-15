@@ -17,6 +17,10 @@ class Command(BaseCommand):
         os_ = gerar_preventivas()
         sst = alertar_vencimentos()
         self.stdout.write(f"Manutenção: {os_} OS preventiva(s) aberta(s). SST: {sst} alerta(s).")
+        from apps.rh import rotinas as rotinas_rh
+
+        rh = rotinas_rh.executar()
+        self.stdout.write(f"RH: {rh['periodos']} período(s) aquisitivo(s) criado(s), {rh['avisos']} aviso(s) de férias.")
         m = auditoria.manutencao()
         self.stdout.write(f"Auditoria: {'trilha selada' if m['selo'] else 'nada novo a selar'}; "
                           f"{m['erros_apagados']} erro(s) antigo(s) removido(s).")

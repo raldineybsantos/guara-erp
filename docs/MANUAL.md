@@ -1267,3 +1267,81 @@ Falhas inesperadas (página de erro 500 e erros gravados pelo código) vão para
 - fluxo de tratamento: *novo → em análise → resolvido/ignorado*, com observação;
 - erros encerrados são apagados após `LOG_ERRO_RETENCAO_DIAS` (padrão 180 dias); erros em aberto nunca são apagados.
 
+---
+
+## 26. Recursos Humanos
+
+O RH fica no menu **RH**. O cadastro básico do colaborador continua em *Cadastros → Colaboradores*; o RH acrescenta os
+dados trabalhistas, ponto, férias, benefícios, folha, rescisão e eSocial.
+
+> **Importante.** Os cálculos seguem as regras e as tabelas de 2026, mas são **gerenciais até a contabilidade
+> validar**: confira a primeira folha com o contador antes de pagar ou transmitir. Convenções coletivas, médias de
+> variáveis em férias/13º, insalubridade, pensão em casos especiais etc. podem exigir ajuste manual.
+
+### 26.1 Antes de começar
+1. **Tabelas legais** (*RH → Tabelas legais*): o sistema já traz a de 2026 (INSS, IRRF com a redução da Lei 15.270,
+   salário-família, FGTS, encargos patronais). A cada virada de ano, crie uma nova com "vigente desde" 01/01 —
+   as folhas usam a tabela vigente na competência. As faixas do INSS são editadas dentro da tabela; as do IRRF em
+   *Faixas do IRRF*.
+2. **Jornadas** (horas por dia, dias da semana, intervalo, tolerância, divisor de horas, adicional de hora extra, banco
+   de horas), **feriados**, **benefícios** e **rubricas** (proventos/descontos com as incidências de INSS, IRRF e FGTS).
+3. **Dados trabalhistas** de cada colaborador: jornada, PIS, CTPS, sexo, estado civil, instrução, categoria eSocial,
+   CBO, vale-transporte, pensão. **Dependentes** alimentam o IRRF e o salário-família.
+4. Vincule o **usuário do sistema** ao colaborador (cadastro do colaborador): é isso que libera ponto, férias e holerite
+   pessoais.
+
+### 26.2 Ponto
+- **Bater ponto** (menu RH): cada colaborador registra as próprias marcações (hora do servidor + IP). É um controle
+  **gerencial**: não substitui REP homologado nem sistema com certificação exigidos pela Portaria MTP 671/2021.
+- O **espelho de ponto** mostra o mês, com horas trabalhadas, saldo, faltas e marcações incompletas, e exporta CSV. O RH
+  vê o de qualquer colaborador; cada um vê só o seu.
+- Marcações **não são editadas nem apagadas**: o RH inclui uma marcação manual com justificativa, e o **abono** (atestado,
+  falta justificada, folga) zera a jornada esperada do dia. A tolerância diária e o desconto do intervalo seguem a jornada.
+- **Banco de horas**: o saldo soma as apurações e os **ajustes** (compensação/pagamento) lançados pelo RH.
+
+### 26.3 Férias
+- O sistema cria os **períodos aquisitivos** a cada aniversário da admissão (rotina diária ou *Gerar períodos de todos*).
+  Os dias de direito caem conforme as faltas injustificadas (art. 130 da CLT: 30, 24, 18, 12 ou 0).
+- O colaborador pede em **Minhas férias → Solicitar**. O sistema confere: só após o período aquisitivo, dentro do
+  período concessivo, saldo suficiente, **no máximo 3 períodos** (um com 14 dias ou mais, nenhum com menos de 5),
+  abono de até 1/3 e sem sobreposição. O **gestor** do colaborador (campo "gestor") ou o RH aprova ou recusa (com
+  motivo); o colaborador é avisado.
+- O sistema avisa RH e colaborador quando o período concessivo está acabando (60, 30, 15, 7 e 1 dia).
+- Férias aprovadas entram na folha do mês do pagamento (2 dias antes do gozo): férias, 1/3, abono e 1/3 do abono, e o
+  salário do mês é reduzido pelos dias de gozo.
+
+### 26.4 Folha de pagamento
+1. *Folhas de pagamento → Novo*: empresa, competência (dia 1) e tipo (**mensal**, **13º — 1ª parcela**, **13º — 2ª parcela**).
+2. Lance o que varia em **Lançamentos da folha** (comissão, gratificação, adiantamento…) ou use **Importar ponto** para
+   gerar horas extras (jornadas sem banco de horas) e faltas.
+3. **Calcular**: salário proporcional (admissão/desligamento), férias, salário-família, INSS progressivo, IRRF (escolhe
+   o mais vantajoso entre deduções legais e desconto simplificado e aplica a redução de 2026), pensão, VT (6%), benefícios,
+   FGTS e, fora do Simples/MEI, os encargos patronais. Estagiário não tem INSS/IRRF/FGTS; sócio recebe pró-labore com INSS
+   de 11%; PJ não entra na folha.
+4. **Fechar**: gera as **contas a pagar** (salários líquidos, INSS, FGTS e IRRF, com os vencimentos da tabela legal) e
+   trava a folha. **Reabrir** cancela as contas ainda em aberto; se alguma já foi paga, estorne antes.
+5. **Holerite**: o colaborador vê o seu em *Meus holerites* **depois do fechamento**; o RH vê todos. Cada consulta fica
+   na auditoria. A tela imprime o recibo.
+
+Premissas a confirmar com a contabilidade: a redução do IRRF de 2026 é calculada sobre os rendimentos tributáveis
+(antes do INSS) e **não** é aplicada ao 13º; o FGTS do 13º é calculado no total da 2ª parcela.
+
+### 26.5 Rescisão
+*Rescisões → Novo*: colaborador, data, motivo (sem justa causa, pedido, justa causa, acordo do art. 484-A, término de
+contrato), aviso (indenizado, trabalhado, dispensado, não cumprido) e o **saldo do FGTS** do extrato da Caixa. *Calcular*
+gera a memória de cálculo: saldo de salário, aviso (30 dias + 3 por ano, até 90), 13º e férias proporcionais com a
+projeção do aviso, férias vencidas, descontos e a multa do FGTS (40% ou 20% no acordo). *Efetivar* desliga o colaborador
+e gera a conta a pagar com vencimento em 10 dias (art. 477). É uma **estimativa para conferência**, não o TRCT oficial.
+
+### 26.6 eSocial
+O sistema gera os eventos **S-1000, S-1010, S-2200, S-1200, S-1210, S-1299 e S-2299** no leiaute **S-1.3**, assina com o
+certificado A1 da empresa (XMLDSig, SHA-256) e monta o **lote** (`envioLoteEventos`).
+
+**O que ainda não está feito:** os XMLs **não foram validados contra os XSD oficiais** nem testados no ambiente de produção
+restrita, e o sistema **não transmite** ao governo (falta o certificado da empresa para validar). O caminho seguro é:
+1. *Configuração do eSocial*: contato (nome e CPF) do empregador. Em *Rubricas*, preencha a **natureza (Tabela 3)** de cada uma.
+2. Gere os eventos (*Gerar evento eSocial*, ou pelas telas da folha e da rescisão), **assine** e baixe o **lote**.
+3. Valide/transmita pelo portal ou pelo programa oficial do eSocial e registre o **retorno** (recibo e erros) em cada evento.
+4. Ao validar com o certificado real, ajuste o que o XSD apontar — os pontos mais prováveis são campos opcionais
+   dependentes de cada empresa e o evento de cargos/lotações.
+

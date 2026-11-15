@@ -233,6 +233,7 @@ Use o CPF que está no seu cadastro de colaborador.
 | Rodar agora as rotinas de manutenção e SST | `docker compose exec web python manage.py rotinas_diarias` |
 | Selar e conferir a trilha de auditoria | `docker compose exec web python manage.py auditoria_verificar` |
 | Exportar a trilha para auditoria externa | `docker compose exec web python manage.py auditoria_exportar /tmp/trilha.csv --de 2026-01-01` |
+| Rotina do RH (períodos de férias e avisos de vencimento) | roda junto com `rotinas_diarias` |
 | Contabilizar o que já existia antes da atualização | `docker compose exec web python manage.py contabilizar_historico` |
 | Verificar agora os prazos do Service Desk | `docker compose exec web python manage.py verificar_sla` |
 

@@ -125,6 +125,17 @@ Os instaladores ajudam nisso:
 - **Perfil Auditor:** grupo *Auditoria*, somente leitura.
 - **Logs de erro:** agrupados, com código de requisição exibido ao usuário, notificação ao administrador e retenção `LOG_ERRO_RETENCAO_DIAS`.
 
+## RH e folha de pagamento
+
+- **Salários e holerites são dados pessoais sensíveis:** só quem tem `rh.view_folha` (RH, Administradores, Auditoria) vê todos;
+  cada colaborador vê apenas o próprio holerite e só depois de a folha ser fechada. Cada consulta fica na trilha.
+- **Ponto:** as marcações não são editadas nem apagadas (correções entram como lançamento manual justificado) e cada
+  colaborador só vê o próprio espelho (quem tem `rh.gerir_ponto` vê todos).
+- **Segregação:** quem fecha a folha (`rh.fechar_folha`) e quem efetiva rescisões (`rh.efetivar_rescisao`) são permissões
+  separadas; o gestor aprova férias só dos seus liderados.
+- **Certificado do eSocial:** é o mesmo A1 da configuração fiscal, guardado cifrado; o XML assinado fica no banco, mas
+  o certificado e a senha nunca entram na trilha de auditoria.
+
 ## 5. Pendências recomendadas (fora do escopo desta versão)
 
 - Autenticação em dois fatores (ex.: `django-otp`) para Administradores e Financeiro.

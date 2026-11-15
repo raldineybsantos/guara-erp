@@ -1,0 +1,11 @@
+{% extends "crud/detail.html" %}
+{% block depois_detalhe %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>Holerites</strong> <span class="badge text-bg-light">{{ holerites|length }}</span></div>
+  {% if holerites %}<div class="table-responsive"><table class="table table-sm table-hover mb-0">
+    <thead class="table-light"><tr><th>Colaborador</th><th class="text-end">Bruto</th><th class="text-end">INSS</th><th class="text-end">IRRF</th><th class="text-end">Descontos</th><th class="text-end">Líquido</th><th class="text-end">FGTS</th></tr></thead>
+    <tbody>{% for h in holerites %}<tr><td><a href="{{ h.get_absolute_url }}">{{ h.colaborador.nome }}</a></td>
+      <td class="text-end">{{ h.bruto }}</td><td class="text-end">{{ h.inss }}</td><td class="text-end">{{ h.irrf }}</td>
+      <td class="text-end">{{ h.descontos }}</td><td class="text-end fw-semibold">{{ h.liquido }}</td><td class="text-end">{{ h.fgts }}</td></tr>{% endfor %}</tbody>
+  </table></div>{% else %}<div class="card-body text-secondary small">Calcule a folha para gerar os holerites.</div>{% endif %}
+</div>
+{% endblock %}

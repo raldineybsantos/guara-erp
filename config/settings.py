@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "apps.contabilidade",
     "apps.servicedesk",
     "apps.sst",
+    "apps.rh",
     "apps.crm",
     "apps.projetos",
     "apps.manutencao",

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap align-items-center gap-2 mb-3 no-print">
+  <a class="btn btn-sm btn-outline-secondary" href="?mes={{ mes_anterior }}"><i class="bi bi-chevron-left"></i></a>
+  <h5 class="mb-0 mx-2 text-capitalize">{{ rotulo }}</h5>
+  <a class="btn btn-sm btn-outline-secondary" href="?mes={{ mes_seguinte }}"><i class="bi bi-chevron-right"></i></a>
+  <a class="btn btn-sm btn-outline-primary ms-3" href="?mes={{ ano }}-{{ mes }}&export=csv"><i class="bi bi-filetype-csv"></i> CSV</a>
+  <button onclick="window.print()" class="btn btn-sm btn-outline-secondary ms-auto"><i class="bi bi-printer"></i></button>
+</div>
+<div class="card mb-3"><div class="card-body d-flex flex-wrap gap-4">
+  <div><div class="text-secondary small">Colaborador</div><strong>{{ colaborador.nome }}</strong></div>
+  <div><div class="text-secondary small">Trabalhado no mês</div><strong>{{ total_trabalhado }}</strong></div>
+  <div><div class="text-secondary small">Saldo do mês</div><strong>{{ total_saldo }}</strong></div>
+  <div><div class="text-secondary small">Faltas</div><strong>{{ faltas }}</strong></div>
+  <div><div class="text-secondary small">Banco de horas (total)</div><strong>{{ saldo_banco }}</strong></div>
+</div></div>
+<div class="table-responsive"><table class="table table-sm table-hover align-middle">
+  <thead class="table-light"><tr><th>Dia</th><th>Marcações</th><th class="text-end">Trabalhado</th><th class="text-end">Saldo</th><th>Observação</th></tr></thead>
+  <tbody>{% for x in linhas %}
+    <tr class="{% if x.data.weekday > 4 %}table-secondary{% endif %}">
+      <td>{{ x.data|date:"d/m D" }}</td>
+      <td>{{ x.marcacoes|join:"  ·  " }}</td>
+      <td class="text-end">{{ x.trabalhado }}</td>
+      <td class="text-end {% if x.apuracao and x.apuracao.saldo_min < 0 %}text-danger{% elif x.apuracao and x.apuracao.saldo_min > 0 %}text-success{% endif %}">{{ x.saldo }}</td>
+      <td>{% if x.feriado %}<span class="badge text-bg-info">{{ x.feriado }}</span>{% endif %}
+          {% if x.abono %}<span class="badge text-bg-success">{{ x.abono.get_tipo_display }}</span>{% endif %}
+          {% if x.apuracao.falta %}<span class="badge text-bg-danger">Falta</span>{% endif %}
+          {% if x.apuracao.inconsistente %}<span class="badge text-bg-warning">Marcações incompletas</span>{% endif %}</td>
+    </tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

@@ -9,9 +9,11 @@ from django.dispatch import receiver
 # própria trilha. Segredos nunca entram (ver IGNORAR); a senha aparece só como impressão digital, para provar
 # que mudou sem revelar nada.
 EXTRAS = {"auth.user", "auth.group"}
-EXCLUIR = {"core.logauditoria", "core.seloauditoria", "core.logerro", "core.notificacao"}
+EXCLUIR = {"core.logauditoria", "core.seloauditoria", "core.logerro", "core.notificacao",
+           # derivados e recalculáveis; as entradas (marcações, lançamentos, folha) continuam auditadas
+           "rh.apuracaodia", "rh.holerite", "rh.itemholerite"}
 IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "chave_api", "telegram_token", "telegram_segredo",
-           "xml_enviado", "xml_retorno", "last_login", "detalhe"}
+           "xml_enviado", "xml_retorno", "xml", "xml_assinado", "last_login", "detalhe"}
 MASCARAR = {"password"}
 _cache_apps = {}
 

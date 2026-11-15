@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="table-responsive"><table class="table table-sm table-hover">
+  <thead class="table-light"><tr><th>Colaborador</th><th>Jornada</th><th class="text-end">Saldo (h:min)</th><th></th></tr></thead>
+  <tbody>{% for l in linhas %}<tr><td>{{ l.colaborador.nome }}</td><td>{{ l.jornada }}</td>
+    <td class="text-end {% if l.saldo.0 == '-' %}text-danger{% endif %}">{{ l.saldo }}</td>
+    <td><a href="{% url 'rh:espelho' l.colaborador.pk %}">espelho</a></td></tr>
+  {% empty %}<tr><td colspan="4" class="text-secondary">Nenhum colaborador com jornada cadastrada (RH → Dados trabalhistas).</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

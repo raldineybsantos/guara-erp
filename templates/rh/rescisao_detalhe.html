@@ -1,0 +1,11 @@
+{% extends "crud/detail.html" %}
+{% block depois_detalhe %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>Memória de cálculo</strong></div>
+  {% if object.memoria %}<div class="table-responsive"><table class="table table-sm mb-0">
+    <tbody>{% for l in object.memoria %}<tr><td>{{ l.descricao }}</td>
+      <td class="text-end {% if l.tipo == 'desconto' %}text-danger{% endif %}">{% if l.tipo == 'desconto' %}-{% endif %}R$ {{ l.valor }}</td>
+      <td class="text-secondary small">{{ l.tipo }}</td></tr>{% endfor %}</tbody></table></div>
+  {% else %}<div class="card-body text-secondary small">Use “Calcular” para gerar as verbas.</div>{% endif %}
+  <div class="card-footer small text-secondary">Estimativa gerencial: confira com a contabilidade e o sindicato antes de pagar (convenção coletiva, médias de variáveis, férias em dobro e outros casos não estão incluídos).</div>
+</div>
+{% endblock %}

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-md-6 col-lg-5">
+  <div class="card text-center mb-3">
+    <div class="card-body py-4">
+      <div class="text-secondary">{{ colaborador.nome }}</div>
+      <div class="display-4 fw-semibold" id="relogio">{{ agora|date:"H:i:s" }}</div>
+      <div class="text-secondary mb-3">{{ agora|date:"l, d \d\e F \d\e Y" }}</div>
+      <form method="post">{% csrf_token %}
+        <button class="btn btn-primary btn-lg px-5"><i class="bi bi-fingerprint me-2"></i>Registrar ponto</button>
+      </form>
+      <div class="form-text mt-3">Registro gerencial feito pelo sistema, com seu IP. Ele não substitui um REP homologado
+        quando a empresa é obrigada a usar um.</div>
+    </div>
+  </div>
+  <div class="card"><div class="card-header bg-body"><strong>Hoje</strong></div>
+    <ul class="list-group list-group-flush">
+      {% for m in marcas %}<li class="list-group-item d-flex justify-content-between">
+        <span>{% cycle "Entrada" "Saída" %}</span><strong>{{ m|date:"H:i:s" }}</strong></li>
+      {% empty %}<li class="list-group-item text-secondary">Nenhuma marcação hoje.</li>{% endfor %}
+    </ul>
+  </div>
+  <a class="btn btn-link mt-2" href="{% url 'rh:meu_espelho' %}">Ver meu espelho de ponto</a>
+</div></div>
+<script>
+(function(){var el=document.getElementById('relogio');var t=new Date();var base=t.getTime();
+var partes="{{ agora|date:'H:i:s' }}".split(':');var ini=new Date();ini.setHours(+partes[0],+partes[1],+partes[2]);
+setInterval(function(){var d=new Date(ini.getTime()+(Date.now()-base));
+el.textContent=[d.getHours(),d.getMinutes(),d.getSeconds()].map(function(n){return String(n).padStart(2,'0')}).join(':');},1000);})();
+</script>
+{% endblock %}

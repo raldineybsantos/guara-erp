@@ -44,6 +44,7 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 | **Produção e Qualidade** | Estrutura de produto (lista de materiais com perda), ordem de produção com apontamento que consome componentes e custeia o acabado, MRP simples (falta vira solicitação de compra). Inspeção de recebimento e **não conformidades** com causa raiz, ação corretiva e eficácia. |
 | **Manutenção** | Equipamentos, planos preventivos que abrem OS sozinhos, OS corretivas abertas por qualquer usuário, peças baixadas do estoque e custo por equipamento. |
 | **Projetos** | EAP com horas e avanço, apontamento de horas com custo-hora, despesas pelo centro de custo e **realizado × orçamento**. |
+| **RH** | Dados trabalhistas e dependentes, **ponto** com espelho e banco de horas, **férias** (períodos aquisitivos, regras da CLT, aprovação pelo gestor), benefícios, **folha mensal e 13º** (INSS, IRRF 2026, FGTS, salário-família) com contas a pagar e holerite, **rescisão** (TRCT estimado) e **eventos do eSocial S-1.3** (geração, assinatura e lote; sem envio ao governo). |
 | **SST / EHS** | Incidentes e acidentes (CAT), inventário de riscos (PGR), entregas de EPI com CA, ASOs (só aptidão, LGPD) e treinamentos de NR com alerta de vencimento. |
 | **Financeiro** | Contas a pagar e a receber com parcelamento, juros/desconto, baixa total ou parcial, estorno e cancelamento. Contas bancárias com saldo, extrato, transferências, plano de contas e centros de custo. Fluxo de caixa realizado × previsto com saldo projetado. **Conciliação bancária** por extrato OFX (casamento automático, baixa de título ou lançamento de tarifa pela própria linha) e **pagamento a fornecedores por CNAB 240** (borderô só com títulos aprovados, remessa e retorno com baixa automática). |
 | **Contabilidade** | **Razão único**: títulos, baixas, faturamento, impostos e movimentos de estoque geram lançamentos de partidas dobradas na hora, por regras configuráveis. Diário imutável com estorno, balancete, razão, **DRE**, **balanço patrimonial**, fechamento de períodos e lançamentos manuais. |
@@ -205,7 +206,7 @@ formulário, detalhe, exclusão, menu e permissões são gerados automaticamente
   (ex.: Focus NFe, PlugNotas, NFE.io) em `apps/fiscal`.
 - **Boleto registrado / PIX dinâmico**: o PIX gerado é o copia-e-cola **estático** (sem confirmação automática).
   Boleto e PIX com baixa automática exigem integração com o banco ou um gateway (Asaas, Iugu, Gerencianet etc.).
-- **Folha de pagamento** e **estoque** não fazem parte desta versão.
+- **RH:** os cálculos de folha, férias e rescisão seguem as tabelas de 2026, mas devem ser **validados pela contabilidade** antes do uso real. O eSocial gera, assina e monta o lote, mas **não transmite** e ainda não foi validado contra os XSD oficiais. O ponto é gerencial (não é REP homologado).
 - **Certificado A3** (token ou cartão) não assina direto pelo navegador. Assine no computador (Assinador
   SERPRO, gov.br, Adobe) e envie o PDF: o sistema verifica as assinaturas e ativa o contrato.
 - Os cálculos de impostos são gerenciais; a apuração oficial deve ser validada pela contabilidade.
