@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Relatórios", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"Relatórios": "bar-chart-line", "Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
@@ -15,6 +15,17 @@ LINKS_EXTRAS = [
     ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
     ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
     ("Principal", "Minhas tarefas", "tarefas:quadro", "kanban", None, 2),
+    ("Relatórios", "Visão executiva", "relatorios:executivo", "speedometer", None, 0),
+    ("Relatórios", "Financeiro", "relatorios:financeiro", "cash-stack",
+     ("financeiro.view_contapagar", "financeiro.view_contareceber"), 1),
+    ("Relatórios", "Comercial", "relatorios:comercial", "graph-up-arrow",
+     ("vendas.view_pedidovenda", "crm.view_oportunidade"), 2),
+    ("Relatórios", "Suprimentos", "relatorios:suprimentos", "truck",
+     ("compras.view_pedidocompra", "estoque.view_saldo"), 3),
+    ("Relatórios", "Operação", "relatorios:operacao", "gear-wide-connected",
+     ("producao.view_ordemproducao", "manutencao.view_ordemservico", "qualidade.view_naoconformidade",
+      "sst.ver_todos_incidente"), 4),
+    ("Relatórios", "Service Desk", "relatorios:servicedesk", "headset", "servicedesk.change_chamado", 5),
     ("Financeiro", "Fluxo de caixa", "financeiro:fluxo_caixa", "graph-up", "financeiro.view_movimentacao", 4),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),
     ("Cobrança", "Executar régua agora", "cobranca:executar_regua", "send", "cobranca.change_cobranca", 9),
@@ -47,6 +58,8 @@ LINKS_EXTRAS = [
 def _tem_perm(user, perm):
     if perm is None:
         return True
+    if isinstance(perm, (tuple, list)):   # basta uma das permissões
+        return any(_tem_perm(user, p) for p in perm)
     if perm in ("is_superuser", "is_staff"):
         return getattr(user, perm)
     return user.has_perm(perm)

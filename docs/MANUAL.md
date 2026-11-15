@@ -30,6 +30,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 21. [GED — documentos e assinatura digital](#21-ged--documentos-e-assinatura-digital)
 22. [Administração](#22-administração)
 23. [Perguntas frequentes](#23-perguntas-frequentes)
+24. [Relatórios e dashboards](#24-relatórios-e-dashboards)
 
 ---
 
@@ -1146,3 +1147,39 @@ precisa que o seu usuário esteja ligado ao seu cadastro de colaborador.
 
 **Fiquei bloqueado no login.**
 Aguarde 15 minutos. O bloqueio acontece após 5 tentativas erradas.
+
+---
+
+## 24. Relatórios e dashboards
+
+O menu **Relatórios** reúne seis painéis analíticos. Cada pessoa vê só os painéis e os quadros que as suas
+permissões liberam: quem não consulta o financeiro não vê números financeiros nem no painel executivo.
+
+| Painel | O que mostra |
+|---|---|
+| **Visão executiva** | Resumo de tudo o que o seu perfil enxerga: saldo, entradas e saídas de caixa, a receber e a pagar, faturamento, compras, pipeline e chamados. Os cartões levam ao painel de cada área |
+| **Financeiro** | Fluxo de caixa realizado por mês, despesas por categoria e por centro de custo, contas em aberto por faixa de atraso, vencimentos dos próximos meses, inadimplência, prazo médio de recebimento e maiores saldos a receber e a pagar |
+| **Comercial** | Faturamento por mês, ticket médio, maiores clientes, produtos mais vendidos, vendas por vendedor, funil e pipeline ponderado, taxa de conversão e motivos de perda |
+| **Suprimentos** | Compras por mês, pedidos por situação, maiores fornecedores, pedidos aguardando aprovação e recebimento, valor em estoque e produtos abaixo do mínimo |
+| **Operação** | Ordens de produção (situação e atrasos), manutenção (OS por tipo e custo), não conformidades por gravidade e incidentes de SST |
+| **Service Desk** | Chamados abertos e resolvidos, % dentro do SLA, tempo médio de solução, satisfação, % resolvido pela IA, backlog, resultado por área e serviços mais pedidos. A equipe vê as áreas dos seus grupos |
+
+### 24.1 Filtros
+
+- **Empresa / filial:** *Todas que eu acesso* soma as empresas a que você tem acesso. Escolher uma
+  empresa recorta os números só dela. Quem não tem acesso a uma empresa nunca vê os números dela, nem
+  digitando o endereço.
+- **Período:** este mês, mês anterior, trimestre, ano, últimos 12 meses ou **personalizado**.
+- **Comparação:** as setas ▲▼ nos cartões comparam com o **período anterior de mesmo tamanho**, que aparece
+  no alto da tela. Verde é melhora e vermelho é piora, e o sentido muda conforme o indicador (despesa
+  menor é melhor, receita maior é melhor).
+- Os filtros ficam no endereço da página: copie o link para mostrar a mesma visão a um colega.
+
+### 24.2 Exportação
+
+As tabelas têm o botão **CSV**, que baixa o que está na tela (com o filtro aplicado) para abrir no Excel.
+
+> **Separação por empresa.** Financeiro, vendas, compras, notas e produção são separados por empresa. CRM,
+> estoque, manutenção, qualidade, SST e Service Desk ainda somam todas as empresas, e a tela avisa quando
+> isso acontece. Os relatórios contábeis (balancete, DRE, balanço) também ainda não separam por empresa.
+

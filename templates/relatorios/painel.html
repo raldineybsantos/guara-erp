@@ -1,0 +1,109 @@
+{% extends "base.html" %}{% load static %}
+{% block content %}
+<ul class="nav nav-pills mb-3 flex-wrap">
+  {% for k, nome, ico, url in abas %}
+  <li class="nav-item"><a class="nav-link py-1 {% if k == chave %}active{% endif %}" href="{{ url }}?{{ qs }}"><i class="bi bi-{{ ico }} me-1"></i>{{ nome }}</a></li>
+  {% endfor %}
+</ul>
+
+<form method="get" class="card card-body py-2 mb-3">
+  <div class="row g-2 align-items-end">
+    <div class="col-6 col-md-3">
+      <label class="form-label small mb-0 text-secondary">Empresa / filial</label>
+      <select name="empresa" class="form-select form-select-sm">
+        <option value="">Todas que eu acesso</option>
+        {% for e in empresas %}<option value="{{ e.pk }}" {% if filtro.empresa.pk == e.pk %}selected{% endif %}>{{ e }}{% if e.matriz_de_id %} (filial){% endif %}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2">
+      <label class="form-label small mb-0 text-secondary">Período</label>
+      <select name="periodo" class="form-select form-select-sm" id="periodo">
+        {% for cod, nome in periodos %}<option value="{{ cod }}" {% if filtro.periodo == cod %}selected{% endif %}>{{ nome }}</option>{% endfor %}
+      </select>
+    </div>
+    <div class="col-6 col-md-2 campo-custom"><label class="form-label small mb-0 text-secondary">De</label>
+      <input type="date" name="de" value="{{ filtro.ini|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+    <div class="col-6 col-md-2 campo-custom"><label class="form-label small mb-0 text-secondary">Até</label>
+      <input type="date" name="ate" value="{{ filtro.fim|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+    <div class="col-auto"><button class="btn btn-sm btn-primary"><i class="bi bi-funnel"></i> Aplicar</button></div>
+    <div class="col-auto ms-auto small text-secondary">
+      {{ filtro.ini|date:"d/m/Y" }} a {{ filtro.fim|date:"d/m/Y" }}, comparado a {{ filtro.ant_ini|date:"d/m/Y" }} a {{ filtro.ant_fim|date:"d/m/Y" }}
+    </div>
+  </div>
+</form>
+
+{% if not blocos %}<div class="alert alert-secondary">Não há dados que o seu perfil possa ver neste painel.</div>{% endif %}
+
+<div class="row g-3">
+{% for b in blocos %}
+  {% if b.tipo == "aviso" %}
+  <div class="col-12"><div class="alert alert-{{ b.tom }} py-2 mb-0 small"><i class="bi bi-info-circle me-1"></i>{{ b.texto }}</div></div>
+
+  {% elif b.tipo == "kpi" %}
+  <div class="col-6 col-md-4 col-xl-3"><div class="card kpi h-100"><div class="card-body">
+    <div class="rotulo">{% if b.url %}<a href="{{ b.url }}" class="text-reset text-decoration-none">{{ b.rotulo }} <i class="bi bi-arrow-right-short"></i></a>{% else %}{{ b.rotulo }}{% endif %}</div>
+    <div class="valor {% if b.tom == 'danger' %}text-danger{% elif b.tom == 'info' %}text-primary{% endif %}">{{ b.texto }}</div>
+    {% if b.delta_txt %}<small class="{{ b.delta_cor }}">{% if b.delta > 0 %}▲{% else %}▼{% endif %} {{ b.delta_txt }}</small> <small class="text-secondary">vs. anterior</small>{% endif %}
+    {% if b.dica %}<div><small class="text-secondary">{{ b.dica }}</small></div>{% endif %}
+  </div></div></div>
+
+  {% elif b.tipo == "grafico" %}
+  <div class="col-12 col-lg-{{ b.largura }}"><div class="card h-100">
+    <div class="card-header bg-body"><strong>{{ b.titulo }}</strong></div>
+    <div class="card-body">
+      {% if b.vazio %}<div class="text-secondary small py-4 text-center">Sem dados no período.</div>
+      {% else %}<div style="position:relative;height:{% if b.grafico == 'doughnut' %}260{% else %}280{% endif %}px"><canvas id="g{{ forloop.counter0 }}"></canvas></div>{% endif %}
+      {% if b.nota %}<small class="text-secondary">{{ b.nota }}</small>{% endif %}
+    </div></div></div>
+
+  {% elif b.tipo == "tabela" %}
+  <div class="col-12 col-lg-{{ b.largura }}"><div class="card h-100">
+    <div class="card-header bg-body d-flex align-items-center"><strong>{{ b.titulo }}</strong>
+      {% if b.csv and b.linhas %}<a class="ms-auto btn btn-sm btn-outline-success py-0" href="?{{ qs }}&csv={{ b.indice }}"><i class="bi bi-filetype-csv"></i> CSV</a>{% endif %}</div>
+    <div class="table-responsive"><table class="table table-sm table-hover mb-0">
+      <thead><tr>{% for c in b.colunas %}<th {% if not forloop.first %}class="text-end"{% endif %}>{{ c }}</th>{% endfor %}</tr></thead>
+      <tbody>{% for l in b.formatadas %}<tr>{% for v in l %}<td {% if not forloop.first %}class="text-end"{% endif %}>{{ v }}</td>{% endfor %}</tr>
+      {% empty %}<tr><td colspan="{{ b.colunas|length }}" class="text-secondary p-3">Sem dados no período.</td></tr>{% endfor %}</tbody>
+    </table></div></div></div>
+  {% endif %}
+{% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const campos = document.querySelectorAll(".campo-custom"), per = document.getElementById("periodo");
+function mostra() { campos.forEach(c => c.classList.toggle("d-none", per.value !== "custom")); }
+per.addEventListener("change", mostra); mostra();
+</script>
+{% if tem_graficos %}
+<script src="{% static 'vendor/chartjs/chart.umd.js' %}"></script>
+{% for b in blocos %}{% if b.tipo == "grafico" and not b.vazio %}{{ b|json_script:b.json_id }}{% endif %}{% endfor %}
+<script>
+const CORES = ["#3c7a4f", "#c35f23", "#2f6f9f", "#b5902a", "#7a5aa6", "#4d9a9a", "#a14a4a", "#8a8a8a"];
+const FMT = {
+  moeda: v => Number(v).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }),
+  int: v => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 }),
+  num: v => Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 1 }),
+};
+document.querySelectorAll("script[type='application/json'][id^='dados-g']").forEach(el => {
+  const b = JSON.parse(el.textContent), cv = document.getElementById(el.id.replace("dados-", ""));
+  if (!cv) return;
+  const f = FMT[b.fmt] || FMT.num, rosca = b.grafico === "doughnut", horiz = b.grafico === "hbar";
+  new Chart(cv, {
+    type: rosca ? "doughnut" : (b.grafico === "line" ? "line" : "bar"),
+    data: { labels: b.labels, datasets: b.series.map((s, i) => ({
+      label: s.nome, data: s.dados,
+      backgroundColor: rosca ? CORES : CORES[i % CORES.length], borderColor: CORES[i % CORES.length],
+      tension: .25, fill: false })) },
+    options: { responsive: true, maintainAspectRatio: false, indexAxis: horiz ? "y" : "x",
+      scales: rosca ? {} : (horiz
+        ? { x: { stacked: b.empilhado, ticks: { callback: v => f(v) } }, y: { stacked: b.empilhado } }
+        : { x: { stacked: b.empilhado }, y: { stacked: b.empilhado, ticks: { callback: v => f(v) } } }),
+      plugins: { legend: { display: rosca || b.series.length > 1, position: rosca ? "right" : "top" },
+        tooltip: { callbacks: { label: c => (rosca ? c.label : c.dataset.label) + ": " + f(rosca ? c.raw : (horiz ? c.parsed.x : c.parsed.y)) } } } }
+  });
+});
+</script>
+{% endif %}
+{% endblock %}

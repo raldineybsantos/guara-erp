@@ -137,6 +137,15 @@ Os instaladores ajudam nisso:
 - Quem tem acesso ao servidor **e** à chave do cofre consegue assinar pela empresa. Restrinja o acesso
   ao `.env` e troque o certificado se houver suspeita de vazamento.
 
+## Relatórios e dashboards
+
+- Cada painel exige as permissões de leitura dos dados que mostra (as mesmas das telas de lista). Quadro
+  sem permissão não é calculado nem enviado ao navegador, e o painel executivo traz só o que o perfil vê.
+- **Filtro por empresa:** o parâmetro `empresa` só vale para empresas a que o usuário tem acesso. Um número
+  de empresa alheio volta para "todas que eu acesso", e os números continuam recortados pelo acesso do usuário.
+- No Service Desk, a equipe vê só as áreas dos seus grupos; em SST, só quem tem a permissão de ver todos os
+  incidentes. A exportação CSV passa pela mesma proteção contra fórmulas das listas.
+
 ## Assistente de IA e canal Telegram
 
 - **A IA não tem acesso de escrita nem de leitura ao banco.** Ela recebe o pedido do usuário e a lista de

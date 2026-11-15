@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario", "assistente"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "servicedesk", "contabilidade", "bancario", "assistente", "relatorios"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
