@@ -117,6 +117,14 @@ Os instaladores ajudam nisso:
 - **Após a instalação:** troque a senha do administrador pela tela, apague `DJANGO_SUPERUSER_PASSWORD`
   do `.env` e **nunca** use `CARREGAR_DEMO=1` em produção (ele cria usuários com senha conhecida).
 
+## Auditoria e logs de erro
+
+- **Trilha imutável:** toda inclusão/alteração/exclusão, login, exportação, leitura de dados sensíveis, acesso negado e mudança de permissões é gravada com usuário, IP, requisição e valores antes/depois. O ORM e gatilhos do PostgreSQL bloqueiam `UPDATE`/`DELETE`; o sistema nunca apaga a trilha.
+- **Evidência de adulteração:** hash SHA-256 por registro e selos encadeados; `python manage.py auditoria_verificar` (ou a tela *Auditoria → Integridade*) detecta alteração ou remoção. Quem tem acesso de dono ao banco pode derrubar os gatilhos, mas não consegue esconder: a cadeia quebra. Mantenha cópias externas (`auditoria_exportar`, com `.sha256`).
+- **Senhas e segredos** nunca entram na trilha nem nos logs de erro (mascarados).
+- **Perfil Auditor:** grupo *Auditoria*, somente leitura.
+- **Logs de erro:** agrupados, com código de requisição exibido ao usuário, notificação ao administrador e retenção `LOG_ERRO_RETENCAO_DIAS`.
+
 ## 5. Pendências recomendadas (fora do escopo desta versão)
 
 - Autenticação em dois fatores (ex.: `django-otp`) para Administradores e Financeiro.

@@ -10,6 +10,8 @@ from django.views.generic import RedirectView
 
 from apps.core import views as core_views
 
+handler500 = "apps.core.views_auditoria.erro_500"
+
 admin.site.site_header = "Guará ERP - Administração"
 admin.site.site_title = "Guará ERP"
 admin.site.index_title = "Administração do sistema"

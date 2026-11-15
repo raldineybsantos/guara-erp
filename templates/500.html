@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><title>Erro no sistema</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>body{font-family:system-ui,sans-serif;background:#f4f6f8;color:#222;display:grid;place-items:center;min-height:100vh;margin:0}
+.c{background:#fff;border-radius:12px;padding:2rem 2.5rem;max-width:520px;box-shadow:0 2px 12px #0001}
+code{background:#eef;padding:.15rem .5rem;border-radius:6px;font-size:1.1rem}h1{margin-top:0}</style></head>
+<body><div class="c"><h1>Algo deu errado</h1>
+<p>O sistema encontrou um erro ao processar o seu pedido. O problema já foi registrado para a equipe técnica.</p>
+{% if codigo %}<p>Se precisar falar com o suporte, informe o código: <code>{{ codigo }}</code></p>{% endif %}
+<p><a href="/">Voltar ao início</a></p></div></body></html>

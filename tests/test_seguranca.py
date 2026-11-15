@@ -1,5 +1,6 @@
 """Testes de segurança: cada teste corresponde a um item da auditoria (ver SEGURANCA.md)."""
 import datetime
+from unittest import mock
 import io
 from decimal import Decimal
 
@@ -141,8 +142,10 @@ class LoginTest(Base):
         self.assertNotIn("_auth_user_id", self.client.session)
         self.assertEqual(LogAuditoria.objects.filter(modelo="auth.login", descricao__startswith="FALHA").count(), 5)
         # depois do período de bloqueio volta a funcionar
-        LogAuditoria.objects.filter(modelo="auth.login").update(data=timezone.now() - datetime.timedelta(hours=1))
-        r = self.client.post("/login/", {"username": "joao", "password": "SenhaForte#2026"})
+        # a trilha é imutável: em vez de "envelhecer" os registros, passa-se o tempo para frente
+        daqui_1h = timezone.now() + datetime.timedelta(hours=1)
+        with mock.patch("apps.core.views.timezone.now", return_value=daqui_1h):
+            r = self.client.post("/login/", {"username": "joao", "password": "SenhaForte#2026"})
         self.assertEqual(r.status_code, 302)
         self.assertEqual(int(self.client.session["_auth_user_id"]), u.pk)
 

@@ -49,6 +49,8 @@ LINKS_EXTRAS = [
     ("Fiscal", "Apuração de impostos", "fiscal:apuracao", "calculator", "fiscal.view_notafiscal", 6),
     ("Workflow / BPM", "Aprovações pendentes", "workflow:minhas_tarefas", "check2-square", None, 0),
     ("Workflow / BPM", "Nova solicitação", "workflow:nova_solicitacao", "plus-circle", "workflow.add_instancia", 1),
+    ("Administração", "Integridade da auditoria", "core:auditoria_integridade", "shield-lock",
+     "core.view_logauditoria", 91),
     ("Administração", "Usuários e grupos", "admin:auth_user_changelist", "person-gear", "auth.view_user", 1),
     ("Administração", "Banco de dados", "banco_dados", "database", "is_superuser", 2),
     ("Administração", "Admin completo", "admin:index", "tools", "is_staff", 99),

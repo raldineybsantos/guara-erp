@@ -25,6 +25,10 @@ def _exportar(blocos, indice, nome):
     w.writerow([celula_csv(c) for c in t["colunas"]])
     for linha in t["linhas"]:
         w.writerow([celula_csv(v) for v in linha])
+    from apps.core.models import LogAuditoria
+
+    LogAuditoria.objects.create(acao="exportar", modelo="relatorios.painel", objeto_id=nome[:50],
+                                descricao=f"Exportou CSV do painel {nome} ({len(t['linhas'])} linha(s))")
     return resp
 
 

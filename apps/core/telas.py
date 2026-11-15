@@ -1,6 +1,7 @@
 """Telas de cadastro: empresa, departamentos, cargos, colaboradores, fornecedores e clientes."""
 from .crud import Crud
-from .models import Cargo, Cliente, Colaborador, Departamento, Empresa, Fornecedor, LogAuditoria, ParceiroNegocio
+from .models import (Cargo, Cliente, Colaborador, Departamento, Empresa, Fornecedor, LogAuditoria, LogErro,
+                     ParceiroNegocio)
 
 ENDERECO = ["cep", "logradouro", "numero", "complemento", "bairro", "cidade", "uf"]
 ENDERECO_PARCEIRO = [*ENDERECO, "codigo_municipio"]
@@ -110,11 +111,34 @@ class ParceiroNegocioCrud(Crud):
 
 class LogAuditoriaCrud(Crud):
     model = LogAuditoria
-    list_display = ("data", "usuario", "acao", "modelo", "objeto_id", "descricao")
-    search_fields = ("descricao", "modelo", "usuario__username")
-    filter_fields = ("acao", "usuario")
+    list_display = ("data", "usuario_nome", "acao", "modelo", "objeto_id", "descricao", "ip")
+    search_fields = ("descricao", "modelo", "usuario_nome", "objeto_id", "requisicao", "ip")
+    filter_fields = {"acao": ["exact"], "usuario": ["exact"], "empresa": ["exact"], "data": ["gte", "lte"]}
+    detail_fields = ["data", "usuario_nome", "empresa", "acao", "modelo", "objeto_id", "descricao", "ip", "caminho",
+                     "requisicao", "agente", "hash"]
+    detail_template = "core/log_detalhe.html"
     icon = "shield-check"
     menu = "Administração"
     menu_label = "Auditoria"
     menu_order = 90
+    can_create = can_edit = can_delete = False
+
+
+class LogErroCrud(Crud):
+    model = LogErro
+    list_display = ("ultima_em", "situacao", "tipo", "mensagem", "caminho", "ocorrencias", "usuario_nome")
+    search_fields = ("tipo", "mensagem", "caminho", "requisicao", "usuario_nome")
+    filter_fields = {"situacao": ["exact"], "origem": ["exact"], "reincidente": ["exact"],
+                     "ultima_em": ["gte", "lte"]}
+    detail_fields = ["situacao", "tipo", "mensagem", "ocorrencias", "criado_em", "ultima_em", "reincidente",
+                     "origem", "nivel", "metodo", "caminho", "status_http", "usuario_nome", "empresa", "ip",
+                     "requisicao", "tratado_por", "tratado_em"]
+    detail_template = "core/log_detalhe.html"
+    actions = (("core:erro_analisar", "Em análise", "search", "core.change_logerro"),
+               ("core:erro_resolver", "Resolvido", "check2-circle", "core.change_logerro"),
+               ("core:erro_ignorar", "Ignorar", "eye-slash", "core.change_logerro"))
+    icon = "bug"
+    menu = "Administração"
+    menu_label = "Logs de erro"
+    menu_order = 92
     can_create = can_edit = can_delete = False

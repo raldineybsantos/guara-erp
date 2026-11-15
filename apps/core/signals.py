@@ -1,16 +1,38 @@
 """Auditoria automática: registra criação, alteração e exclusão nos módulos do ERP."""
+import hashlib
 from decimal import Decimal
 
 from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
-AUDITADOS = {"core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico"}
-IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "chave_api", "telegram_token", "telegram_segredo", "xml_enviado", "xml_retorno"}
+# Auditado: tudo o que é do ERP (apps.*) e as contas de acesso (usuários e grupos), menos o que é ruído ou é a
+# própria trilha. Segredos nunca entram (ver IGNORAR); a senha aparece só como impressão digital, para provar
+# que mudou sem revelar nada.
+EXTRAS = {"auth.user", "auth.group"}
+EXCLUIR = {"core.logauditoria", "core.seloauditoria", "core.logerro", "core.notificacao"}
+IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "chave_api", "telegram_token", "telegram_segredo",
+           "xml_enviado", "xml_retorno", "last_login", "detalhe"}
+MASCARAR = {"password"}
+_cache_apps = {}
+
+
+def _app_do_erp(label):
+    if label not in _cache_apps:
+        from django.apps import apps
+
+        try:
+            _cache_apps[label] = apps.get_app_config(label).name.startswith("apps.")
+        except LookupError:
+            _cache_apps[label] = False
+    return _cache_apps[label]
 
 
 def _auditado(sender):
     meta = sender._meta
-    return meta.app_label in AUDITADOS and meta.model_name != "logauditoria"
+    rotulo = meta.label_lower
+    if rotulo in EXCLUIR or meta.auto_created:
+        return False
+    return rotulo in EXTRAS or _app_do_erp(meta.app_label)
 
 
 def _valores(obj):
@@ -19,7 +41,9 @@ def _valores(obj):
         if f.name in IGNORAR:
             continue
         v = getattr(obj, f.attname)
-        if isinstance(v, Decimal):
+        if f.name in MASCARAR:
+            v = "***" + hashlib.sha256(str(v).encode()).hexdigest()[:8] if v else ""
+        elif isinstance(v, Decimal):
             v = f"{v:.{f.decimal_places}f}"
         elif hasattr(v, "isoformat"):
             v = v.isoformat()
@@ -101,3 +125,30 @@ def registrar_logout(sender, request, user, **kwargs):
 def registrar_falha(sender, credentials, request=None, **kwargs):
     username = (credentials or {}).get("username", "") or ""
     _log_login("acao", f"FALHA de login: {username}", None, request, username)
+
+
+# --------------------------------------------------------------------------- acessos e permissões
+from django.db.models.signals import m2m_changed  # noqa: E402
+
+
+def _registrar_m2m(sender, instance, action, reverse, model, pk_set, **kwargs):
+    if action not in ("post_add", "post_remove", "post_clear"):
+        return
+    rotulo = instance._meta.label_lower
+    campo = sender._meta.model_name
+    if not (rotulo in EXTRAS or _app_do_erp(instance._meta.app_label)):
+        return
+    from .models import LogAuditoria
+
+    nomes = sorted(str(o) for o in model.objects.filter(pk__in=pk_set or [])) if pk_set else []
+    if action == "post_clear":
+        verbo, nomes = "removeu todos", []
+    else:
+        verbo = "adicionou" if action == "post_add" else "removeu"
+    LogAuditoria.objects.create(
+        usuario=None, acao="seguranca", modelo=rotulo, objeto_id=str(instance.pk),
+        descricao=f"{verbo.capitalize()} em {campo}: {', '.join(nomes)[:200] if nomes else '(todos)'} — {instance}"[:300],
+        alteracoes={campo: {"acao": action.replace("post_", ""), "itens": nomes}})
+
+
+m2m_changed.connect(_registrar_m2m, dispatch_uid="auditoria_m2m")

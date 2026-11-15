@@ -1230,3 +1230,40 @@ As tabelas têm o botão **CSV**, que baixa o que está na tela (com o filtro ap
 > **Separação por empresa.** Todos os quadros respeitam o filtro de empresa (e as empresas a que você tem
 > acesso). Clientes, fornecedores, produtos e plano de contas são compartilhados entre as empresas.
 
+---
+
+## 25. Auditoria e logs de erro
+
+### 25.1 O que fica registrado
+A **trilha de auditoria** (menu *Administração → Auditoria*) registra, de forma automática em todos os módulos:
+
+- **Inclusão, alteração e exclusão** de qualquer cadastro ou documento, com o valor antes e depois de cada campo;
+- **Ações** (aprovar, cancelar, transmitir, baixar etc.), logins e falhas de login;
+- **Exportações** de CSV e relatórios, e a **leitura** de dados sensíveis (ficha do colaborador);
+- **Acessos negados** (tentou abrir uma tela sem permissão);
+- **Segurança**: mudança de grupos e permissões de usuários e de acesso às empresas;
+- **Senhas** nunca aparecem: só uma marca (`***ab12`) que mostra *que* mudou.
+
+Cada linha traz **usuário, data/hora, empresa, IP, navegador, a requisição (método e endereço)** e um **código de requisição** que liga o evento aos logs do servidor (cabeçalho `X-Request-ID`).
+
+No cadastro de qualquer registro, o botão **Histórico** mostra tudo o que aconteceu com aquele item.
+
+### 25.2 A trilha não pode ser adulterada
+- Nenhuma tela, nem o administrador, altera ou apaga registros de auditoria; o próprio banco bloqueia `UPDATE` e `DELETE`.
+- Cada registro tem uma **impressão digital (SHA-256)** e, a cada poucos minutos, a rotina grava um **selo** encadeado ao anterior. Alterar ou remover um registro quebra a cadeia.
+- Em *Auditoria → Integridade* (ou `python manage.py auditoria_verificar`) o sistema confere tudo e aponta o primeiro ponto adulterado.
+- O sistema **nunca apaga** a trilha. Guarde cópias externas com `auditoria_exportar` (gera o CSV e um arquivo `.sha256`) para uma auditoria independente.
+
+### 25.3 Perfil de auditor
+O grupo **Auditoria** só consulta (todos os módulos, auditoria e logs de erro) e não altera nada. Atribua-o ao auditor interno ou externo em *Administração → Usuários*.
+
+### 25.4 Logs de erro
+Falhas inesperadas (página de erro 500 e erros gravados pelo código) vão para *Administração → Logs de erro*:
+
+- o usuário vê na tela de erro um **código**; informe-o ao suporte e ele localiza o registro técnico;
+- erros iguais são **agrupados** (contador de ocorrências); se um erro resolvido voltar, ele reabre como **reincidente**;
+- senhas, tokens e chaves são **mascarados** antes de gravar;
+- o administrador é **notificado** na primeira ocorrência;
+- fluxo de tratamento: *novo → em análise → resolvido/ignorado*, com observação;
+- erros encerrados são apagados após `LOG_ERRO_RETENCAO_DIAS` (padrão 180 dias); erros em aberto nunca são apagados.
+

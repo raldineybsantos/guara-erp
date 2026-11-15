@@ -12,6 +12,11 @@ class Command(BaseCommand):
         from apps.manutencao.models import gerar_preventivas
         from apps.sst.models import alertar_vencimentos
 
+        from apps.core import auditoria
+
         os_ = gerar_preventivas()
         sst = alertar_vencimentos()
         self.stdout.write(f"Manutenção: {os_} OS preventiva(s) aberta(s). SST: {sst} alerta(s).")
+        m = auditoria.manutencao()
+        self.stdout.write(f"Auditoria: {'trilha selada' if m['selo'] else 'nada novo a selar'}; "
+                          f"{m['erros_apagados']} erro(s) antigo(s) removido(s).")

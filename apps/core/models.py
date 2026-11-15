@@ -1,5 +1,5 @@
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import models
 from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
@@ -347,24 +347,74 @@ class Cliente(PapelParceiro, ParceiroNegocio):
 
 
 # --------------------------------------------------------------------------- auditoria
+class _ProtegidoQuerySet(models.QuerySet):
+    """A trilha de auditoria só cresce: nem pelo ORM se altera ou apaga um registro."""
+
+    def update(self, **kwargs):
+        raise PermissionDenied("A trilha de auditoria não pode ser alterada.")
+
+    def delete(self):
+        raise PermissionDenied("A trilha de auditoria não pode ser apagada.")
+
+    def bulk_update(self, *args, **kwargs):
+        raise PermissionDenied("A trilha de auditoria não pode ser alterada.")
+
+
 class LogAuditoria(models.Model):
-    ACOES = [("criar", "Criou"), ("alterar", "Alterou"), ("excluir", "Excluiu"), ("acao", "Ação")]
-    data = models.DateTimeField(auto_now_add=True, db_index=True)
+    ACOES = [("criar", "Criou"), ("alterar", "Alterou"), ("excluir", "Excluiu"), ("acao", "Ação"),
+             ("ler", "Consultou"), ("exportar", "Exportou"), ("negado", "Acesso negado"),
+             ("seguranca", "Segurança")]
+    data = models.DateTimeField(default=timezone.now, db_index=True, editable=False)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    usuario_nome = models.CharField("usuário", max_length=150, blank=True,
+                                    help_text="Guardado à parte: continua legível se o usuário for excluído.")
+    empresa = models.ForeignKey("core.Empresa", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     acao = models.CharField("ação", max_length=10, choices=ACOES)
     modelo = models.CharField(max_length=100, db_index=True)
-    objeto_id = models.CharField("ID do objeto", max_length=50, blank=True)
+    objeto_id = models.CharField("ID do objeto", max_length=50, blank=True, db_index=True)
     descricao = models.CharField("descrição", max_length=300)
     alteracoes = models.JSONField("alterações", default=dict, blank=True)
     ip = models.GenericIPAddressField("IP", null=True, blank=True)
+    caminho = models.CharField("requisição", max_length=300, blank=True)
+    requisicao = models.CharField("código da requisição", max_length=36, blank=True, db_index=True)
+    agente = models.CharField("navegador", max_length=200, blank=True)
+    hash = models.CharField(max_length=64, blank=True, editable=False)
+
+    objects = _ProtegidoQuerySet.as_manager()
 
     class Meta:
         verbose_name = "log de auditoria"
         verbose_name_plural = "logs de auditoria"
-        ordering = ["-data"]
+        ordering = ["-data", "-id"]
 
     def __str__(self):
-        return f"{timezone.localtime(self.data):%d/%m/%Y %H:%M} {self.usuario} {self.get_acao_display()} {self.modelo}"
+        return f"{timezone.localtime(self.data):%d/%m/%Y %H:%M} {self.usuario_nome or self.usuario} " \
+               f"{self.get_acao_display()} {self.modelo}"
+
+    def save(self, *args, **kwargs):
+        if self.pk and not kwargs.get("force_insert"):
+            if LogAuditoria.objects.filter(pk=self.pk).exists():
+                raise PermissionDenied("A trilha de auditoria não pode ser alterada.")
+        from . import auditoria
+        from .middleware import contexto_requisicao
+
+        ctx = contexto_requisicao()
+        if self.usuario_id is None and not self.usuario_nome:
+            self.usuario = usuario_atual()
+        self.usuario_nome = self.usuario_nome or (self.usuario.get_username() if self.usuario_id else "sistema")
+        self.ip = self.ip or ctx.get("ip")
+        self.caminho = self.caminho or ctx.get("caminho", "")
+        self.requisicao = self.requisicao or ctx.get("id", "")
+        self.agente = self.agente or ctx.get("agente", "")
+        if self.empresa_id is None and ctx.get("empresa_id"):
+            self.empresa_id = ctx["empresa_id"]
+        self.descricao = (self.descricao or "")[:300]
+        self.data = self.data or timezone.now()
+        self.hash = auditoria.hash_do_log(self)
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("A trilha de auditoria não pode ser apagada.")
 
     @classmethod
     def registrar(cls, acao, obj, descricao=None, alteracoes=None, usuario=None):
@@ -374,6 +424,100 @@ class LogAuditoria(models.Model):
             objeto_id=str(obj.pk or ""), descricao=(descricao or str(obj))[:300],
             alteracoes=alteracoes or {},
         )
+
+    @property
+    def resumo_alteracoes(self):
+        """Uma linha por campo: 'campo: antes → depois'."""
+        linhas = []
+        for campo, v in (self.alteracoes or {}).items():
+            if isinstance(v, (list, tuple)) and len(v) == 2:
+                linhas.append(f"{campo}: {'—' if v[0] in (None, '') else v[0]} → {'—' if v[1] in (None, '') else v[1]}")
+            else:
+                linhas.append(f"{campo}: {v}")
+        return "\n".join(linhas)
+    resumo_alteracoes.fget.short_description = "alterações"
+
+
+class SeloAuditoria(models.Model):
+    """Fecha uma faixa de registros da auditoria e a encadeia à faixa anterior (veja apps/core/auditoria.py)."""
+
+    criado_em = models.DateTimeField(default=timezone.now, editable=False)
+    de_id = models.BigIntegerField("do registro")
+    ate_id = models.BigIntegerField("até o registro", unique=True)
+    quantidade = models.PositiveIntegerField()
+    anterior = models.CharField(max_length=64, blank=True)
+    hash = models.CharField(max_length=64)
+
+    objects = _ProtegidoQuerySet.as_manager()
+
+    class Meta:
+        verbose_name = "selo da auditoria"
+        verbose_name_plural = "selos da auditoria"
+        ordering = ["-ate_id"]
+
+    def __str__(self):
+        return f"Selo {self.de_id}–{self.ate_id} ({self.quantidade})"
+
+    def save(self, *args, **kwargs):
+        if self.pk and SeloAuditoria.objects.filter(pk=self.pk).exists():
+            raise PermissionDenied("Um selo de auditoria não pode ser alterado.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("Um selo de auditoria não pode ser apagado.")
+
+
+class LogErro(models.Model):
+    """Erros do sistema (exceções não tratadas e erros registrados no log), agrupados por causa."""
+
+    SITUACOES = [("novo", "Novo"), ("investigando", "Em análise"), ("resolvido", "Resolvido"),
+                 ("ignorado", "Ignorado")]
+    ORIGENS = [("web", "Tela / requisição"), ("log", "Registro interno (log)"), ("comando", "Comando / tarefa")]
+    criado_em = models.DateTimeField("primeira vez", default=timezone.now, editable=False)
+    ultima_em = models.DateTimeField("última vez", default=timezone.now, db_index=True)
+    ocorrencias = models.PositiveIntegerField("ocorrências", default=1)
+    impressao = models.CharField("assinatura do erro", max_length=40, db_index=True)
+    tipo = models.CharField("tipo", max_length=150)
+    mensagem = models.CharField(max_length=500)
+    detalhe = models.TextField("detalhe técnico (traceback)", blank=True)
+    origem = models.CharField(max_length=8, choices=ORIGENS, default="web")
+    nivel = models.CharField("nível", max_length=10, default="ERROR")
+    metodo = models.CharField("método", max_length=8, blank=True)
+    caminho = models.CharField(max_length=300, blank=True)
+    status_http = models.PositiveSmallIntegerField("HTTP", null=True, blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                related_name="+")
+    usuario_nome = models.CharField("usuário", max_length=150, blank=True)
+    empresa = models.ForeignKey("core.Empresa", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    ip = models.GenericIPAddressField("IP", null=True, blank=True)
+    requisicao = models.CharField("código do erro", max_length=36, blank=True, db_index=True,
+                                  help_text="O mesmo código aparece na página de erro mostrada ao usuário.")
+    reincidente = models.BooleanField("voltou depois de resolvido", default=False)
+    situacao = models.CharField("situação", max_length=12, choices=SITUACOES, default="novo", db_index=True)
+    tratado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name="+")
+    tratado_em = models.DateTimeField(null=True, blank=True)
+    observacao = models.TextField("observação do tratamento", blank=True)
+
+    class Meta:
+        verbose_name = "log de erro"
+        verbose_name_plural = "logs de erro"
+        ordering = ["-ultima_em"]
+
+    def __str__(self):
+        return f"{self.tipo}: {self.mensagem[:80]}"
+
+    def get_absolute_url(self):
+        from django.urls import reverse
+
+        return reverse("core:logerro_detail", args=[self.pk])
+
+    def tratar(self, situacao, usuario, observacao=""):
+        if situacao not in {s for s, _ in self.SITUACOES}:
+            raise ValidationError("Situação inválida.")
+        self.situacao, self.tratado_por, self.tratado_em = situacao, usuario, timezone.now()
+        self.observacao = observacao or self.observacao
+        self.save()
 
 
 # --------------------------------------------------------------------------- avisos

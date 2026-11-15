@@ -83,6 +83,8 @@ GRUPOS = {
     "Contabilidade": ["contabilidade.*", "bancario.view_extrato", "bancario.view_linhaextrato",
                       "bancario.view_bordero", "bancario.view_itembordero", "financeiro.view_*", "financeiro.change_planoconta", "fiscal.view_*",
                       "estoque.view_saldo", "estoque.view_movimento", *CADASTROS_BASICOS],
+    # Auditor: lê tudo (inclusive a trilha e os logs de erro) e não altera nada.
+    "Auditoria": [f"{app}.view_*" for app in APPS_ERP] + ["auth.view_user", "auth.view_group"],
     "Usuários": [],
 }
 
@@ -174,6 +176,8 @@ class Command(BaseCommand):
                 perms = [p for p in perms if not (p.content_type.app_label == "compras"
                                                   and p.codename.endswith("_alcadacompra")
                                                   and not p.codename.startswith("view_"))]
+            if nome == "Auditoria":
+                perms = [p for p in perms if p.codename.startswith(("view_", "ver_todos"))]
             if nome != "Administradores":
                 # Chamados de RH, Financeiro etc. podem ser sensíveis: cada equipe vê só os da sua área.
                 perms = [p for p in perms if p.codename != "ver_todos_chamado"]

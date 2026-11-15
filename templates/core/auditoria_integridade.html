@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-3" style="max-width:760px"><div class="card-body">
+  <p>A trilha de auditoria é <strong>só de inclusão</strong>: o banco recusa alterar ou apagar registros. Cada
+  registro tem o seu <em>hash</em> e, periodicamente, os registros são <em>selados</em> em cadeia. A verificação
+  recalcula tudo e aponta qualquer registro alterado, apagado ou inserido no meio do histórico.</p>
+  <ul class="small text-secondary">
+    <li>{{ total }} registro(s) na trilha, {{ selos }} selo(s). {{ sem_selo }} registro(s) recente(s) ainda sem selo (o selo fecha o que tem mais de 5 minutos).</li>
+    {% if ultimo %}<li>Último selo: {{ ultimo.criado_em|date:"d/m/Y H:i" }}, registros {{ ultimo.de_id }} a {{ ultimo.ate_id }}.</li>{% endif %}
+  </ul>
+  <form method="post">{% csrf_token %}<button class="btn btn-primary"><i class="bi bi-shield-check"></i> Verificar agora</button></form>
+</div></div>
+{% if resultado %}
+  {% if resultado.ok %}
+  <div class="alert alert-success" style="max-width:760px"><i class="bi bi-check-circle"></i> <strong>Trilha íntegra.</strong>
+    {{ resultado.registros }} registro(s) e {{ resultado.selos }} selo(s) conferidos.</div>
+  {% else %}
+  <div class="alert alert-danger" style="max-width:760px"><i class="bi bi-exclamation-octagon"></i> <strong>Inconsistências encontradas.</strong>
+    <ul class="mb-0">{% for p in resultado.problemas %}<li>{{ p }}</li>{% endfor %}</ul></div>
+  {% endif %}
+{% endif %}
+{% endblock %}

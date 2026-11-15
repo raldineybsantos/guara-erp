@@ -12,6 +12,7 @@ from decimal import Decimal
 
 import django_filters
 from django import forms
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.db import models, transaction
@@ -414,9 +415,17 @@ class ListaView(CrudMixin, generic.ListView):
         w = csv.writer(resp, delimiter=";")
         cols = self.colunas()
         w.writerow([c[1] for c in cols])
+        n = 0
         for obj in self.get_queryset():
+            n += 1
             w.writerow([celula_csv(str(obj) if c[0] == "__str__" else valor_exibicao(obj, c[0], html=False))
                         for c in cols])
+        from .models import LogAuditoria
+
+        LogAuditoria.objects.create(
+            acao="exportar", modelo=self.crud.model._meta.label_lower,
+            descricao=f"Exportou CSV de {self.crud.nome()} ({n} linha(s))",
+            alteracoes={"filtros": sorted(k for k in self.request.GET if k != "export")})
         return resp
 
     def get_context_data(self, **kwargs):
@@ -450,6 +459,10 @@ class DetalheView(CrudMixin, generic.DetailView):
             f.name for f in c.meta().fields if f.name not in ("id",) and not f.name.endswith("_ptr")
         ]
         ctx["campos"] = [(rotulo(c.model, n), valor_exibicao(obj, n)) for n in nomes]
+        if c.model._meta.label_lower in getattr(settings, "AUDITORIA_LEITURA", ()):
+            from .models import LogAuditoria
+
+            LogAuditoria.registrar("ler", obj, descricao=f"Consultou {c.model._meta.verbose_name}: {obj}")
         relacionados = []
         for rel_name, titulo, campos in c.related:
             mgr = getattr(obj, rel_name)
@@ -476,6 +489,11 @@ class DetalheView(CrudMixin, generic.DetailView):
             for nome, rot, ico, perm in c.actions if not perm or u.has_perm(perm)
         ]
         ctx.update(c.extra_detalhe(self.request, obj))
+        from .signals import _auditado
+
+        if _auditado(c.model) and u.has_perm("core.view_logauditoria"):
+            ctx["acoes"].append({"url": reverse("core:historico", args=[c.app(), c.nome(), obj.pk]),
+                                 "rotulo": "Histórico", "icone": "clock-history"})
         ctx["url_update"] = reverse(c.url_name("update"), args=[obj.pk])
         ctx["url_delete"] = reverse(c.url_name("delete"), args=[obj.pk])
         return ctx

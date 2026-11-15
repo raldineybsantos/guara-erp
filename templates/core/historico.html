@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="d-flex gap-2 mb-3 no-print">
+  {% if voltar %}<a href="{{ voltar }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left"></i> Voltar ao registro</a>{% endif %}
+</div>
+{% for l in logs %}
+<div class="card mb-2">
+  <div class="card-header bg-body d-flex flex-wrap gap-3 small">
+    <strong>{{ l.data|date:"d/m/Y H:i:s" }}</strong>
+    <span class="badge text-bg-{% if l.acao == 'excluir' %}danger{% elif l.acao == 'criar' %}success{% else %}secondary{% endif %}">{{ l.get_acao_display }}</span>
+    <span>por <strong>{{ l.usuario_nome|default:"sistema" }}</strong></span>
+    {% if l.ip %}<span class="text-secondary">IP {{ l.ip }}</span>{% endif %}
+    {% if l.requisicao %}<span class="text-secondary">requisição {{ l.requisicao }}</span>{% endif %}
+  </div>
+  {% if l.resumo_alteracoes %}<div class="card-body py-2"><pre class="mb-0 small" style="white-space:pre-wrap">{{ l.resumo_alteracoes }}</pre></div>{% endif %}
+</div>
+{% empty %}<div class="alert alert-secondary">Nenhum registro na trilha para este item.</div>{% endfor %}
+{% endblock %}

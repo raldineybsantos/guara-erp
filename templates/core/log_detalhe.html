@@ -1,0 +1,15 @@
+{% extends "crud/detail.html" %}
+{% block depois_detalhe %}
+{% if object.resumo_alteracoes %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>Alterações</strong></div>
+  <div class="card-body"><pre class="mb-0 small" style="white-space:pre-wrap">{{ object.resumo_alteracoes }}</pre></div></div>
+{% endif %}
+{% if object.detalhe %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>Detalhe técnico</strong></div>
+  <div class="card-body"><pre class="mb-0 small" style="white-space:pre-wrap;max-height:480px;overflow:auto">{{ object.detalhe }}</pre></div></div>
+{% endif %}
+{% if object.observacao %}
+<div class="card mb-3"><div class="card-header bg-body"><strong>Tratamento</strong></div>
+  <div class="card-body">{{ object.observacao|linebreaksbr }}</div></div>
+{% endif %}
+{% endblock %}

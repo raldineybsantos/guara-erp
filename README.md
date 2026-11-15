@@ -135,6 +135,8 @@ python manage.py seed_demo          # Docker: docker compose exec web python man
 | `python manage.py agendador --hora 08:00` | Fica rodando e executa, todo dia no horário, a régua e as rotinas de contratos. |
 | `python manage.py alertar_contratos` | Cria os alertas de vencimento e renova os contratos automáticos. |
 | `python manage.py gerar_certificado_teste --nome N --cpf C` | Gera um certificado A1 de **teste** (sem validade jurídica) para experimentar a assinatura. |
+| `python manage.py auditoria_verificar` | Sela e confere a integridade da trilha de auditoria. |
+| `python manage.py auditoria_exportar arq.csv --de AAAA-MM-DD` | Exporta a trilha (com `.sha256`) para auditoria externa. |
 | `python manage.py test tests` | Roda a suíte de testes automatizados. |
 | `docker compose exec db pg_dump -U postgres erp > backup.sql` | Backup pelo terminal. |
 

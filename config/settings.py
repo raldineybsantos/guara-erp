@@ -172,6 +172,12 @@ CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 ICP_BRASIL_CAS_DIR = os.getenv("ICP_BRASIL_CAS_DIR", str(BASE_DIR / "certificados" / "icp-brasil"))
 ASSINATURA_TSA_URL = os.getenv("ASSINATURA_TSA_URL", "")
 
+# Auditoria e logs de erro. Erros já tratados (resolvidos/ignorados) são apagados depois de N dias;
+# a trilha de auditoria nunca é apagada pelo sistema (exporte e arquive conforme a sua política).
+LOG_ERRO_RETENCAO_DIAS = int(os.getenv("LOG_ERRO_RETENCAO_DIAS", "180"))
+# Telas de dados pessoais cuja consulta (não só a alteração) fica na trilha.
+AUDITORIA_LEITURA = ["core.colaborador"]
+
 # Compras: tolerância de preço na conferência em três vias (%). As alçadas de aprovação
 # (coordenador, gerente, diretor) ficam na tela Compras → Alçadas de aprovação.
 COMPRAS_TOLERANCIA_PRECO_PCT = os.getenv("COMPRAS_TOLERANCIA_PRECO_PCT", "2")
@@ -233,8 +239,10 @@ ERP_URL_BASE = os.getenv("ERP_URL_BASE", "").rstrip("/")
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "root": {"handlers": ["console"], "level": os.getenv("LOG_LEVEL", "INFO")},
+    "handlers": {"console": {"class": "logging.StreamHandler"},
+                 # erros gravados no banco (Administração → Logs de erro)
+                 "erros_banco": {"class": "apps.core.logs.LogErroHandler", "level": "ERROR"}},
+    "root": {"handlers": ["console", "erros_banco"], "level": os.getenv("LOG_LEVEL", "INFO")},
     # a validação de cadeia sem as raízes ICP-Brasil gera avisos longos e esperados
     "loggers": {"pyhanko": {"level": "ERROR"}, "pyhanko_certvalidator": {"level": "CRITICAL"}},
 }
