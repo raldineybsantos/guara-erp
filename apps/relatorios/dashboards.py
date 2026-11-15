@@ -45,13 +45,6 @@ def total(qs, campo, filtro, valor, anterior=False):
     return _periodo(qs, campo, ini, fim).aggregate(t=Coalesce(Sum(valor), ZERO))["t"]
 
 
-def _nota_empresa(filtro, itens):
-    """Avisa quais quadros não são separados por empresa quando uma empresa específica foi escolhida."""
-    if filtro.empresa:
-        return aviso(f"Os quadros de {itens} somam todas as empresas: esses cadastros ainda não são separados "
-                     f"por empresa.", "secondary")
-
-
 def _resto(pares, topo):
     pares = sorted(pares, key=lambda p: -p[1])
     if len(pares) > topo:
@@ -177,10 +170,10 @@ def comercial(filtro):
                    kpi("Bloqueados por crédito", filtro.escopo(PedidoVenda.objects.filter(status="bloqueado")).count(),
                        "int", bom="baixo")]
     if u.has_perm("crm.view_oportunidade"):
-        abertas = Oportunidade.objects.filter(estagio__in=ABERTOS)
+        abertas = filtro.escopo(Oportunidade.objects.filter(estagio__in=ABERTOS))
         tot = abertas.aggregate(t=Coalesce(Sum("valor"), ZERO))["t"]
         pond = sum((o.valor * PROBABILIDADE.get(o.estagio, 0) / 100 for o in abertas), ZERO)
-        fech = _periodo(Oportunidade.objects.all(), "fechada_em", filtro.ini, filtro.fim)
+        fech = _periodo(filtro.escopo(Oportunidade.objects.all()), "fechada_em", filtro.ini, filtro.fim)
         g, p = fech.filter(estagio="ganha").count(), fech.filter(estagio="perdida").count()
         blocos += [kpi("Pipeline em aberto", tot), kpi("Pipeline ponderado", pond),
                    kpi("Taxa de conversão", g / (g + p) * 100 if g + p else None, "pct",
@@ -209,14 +202,11 @@ def comercial(filtro):
         nomes = dict(ESTAGIOS)
         blocos.append(grafico("Funil de vendas (em aberto)", "hbar", [nomes[e] for e in por],
                               [("Valor", list(por.values()))]))
-        motivos = (_periodo(Oportunidade.objects.filter(estagio="perdida"), "fechada_em", filtro.ini, filtro.fim)
+        motivos = (_periodo(filtro.escopo(Oportunidade.objects.filter(estagio="perdida")), "fechada_em", filtro.ini, filtro.fim)
                    .values("motivo_perda").annotate(n=Count("pk")))
         pares = _resto([(m["motivo_perda"] or "Não informado", m["n"]) for m in motivos], 6)
         blocos.append(grafico("Motivos de perda", "doughnut", [p[0] for p in pares], [("Perdidas", [p[1] for p in pares])],
                               fmt="int"))
-    nota = _nota_empresa(filtro, "oportunidades (CRM)")
-    if nota and u.has_perm("crm.view_oportunidade"):
-        blocos.insert(0, nota)
     return blocos
 
 
@@ -241,7 +231,7 @@ def suprimentos(filtro):
                    kpi("Recebimento pendente", filtro.escopo(PedidoCompra.objects.filter(status__in=("aprovado", "parcial")))
                        .count(), "int", bom="baixo")]
     if u.has_perm("estoque.view_saldo"):
-        saldos = Saldo.objects.select_related("produto")
+        saldos = filtro.escopo(Saldo.objects.select_related("produto"), "armazem__empresa")
         valor = sum((s.quantidade * s.custo_medio for s in saldos), ZERO)
         por_prod = defaultdict(lambda: ZERO)
         for s in saldos:
@@ -268,9 +258,6 @@ def suprimentos(filtro):
                        if s.quantidade > 0), key=lambda r: -r[2])[:10]
         blocos.append(tabela("Maior valor em estoque", ["Produto", "Quantidade", "Valor"], topo,
                              [None, "num", "moeda"]))
-        nota = _nota_empresa(filtro, "estoque")
-        if nota:
-            blocos.insert(0, nota)
     return blocos
 
 
@@ -282,7 +269,6 @@ def operacao(filtro):
     from apps.sst.models import Incidente
 
     u, blocos = filtro.user, []
-    sem_empresa = []
     if u.has_perm("producao.view_ordemproducao"):
         ops = filtro.escopo(OrdemProducao.objects.all())
         ativas = ops.filter(status__in=("planejada", "liberada"))
@@ -296,8 +282,7 @@ def operacao(filtro):
         blocos.append(grafico("Ordens de produção por situação", "doughnut", [nomes[s["status"]] for s in st],
                               [("Ordens", [s["n"] for s in st])], fmt="int"))
     if u.has_perm("manutencao.view_ordemservico"):
-        sem_empresa.append("manutenção")
-        os_ = OrdemServico.objects.all()
+        os_ = filtro.escopo(OrdemServico.objects.all())
         per = os_.filter(abertura__date__gte=filtro.ini, abertura__date__lte=filtro.fim)
         corr = per.filter(tipo="corretiva").count()
         custo = sum((o.custo_total for o in per.filter(status="concluida")), ZERO)
@@ -310,8 +295,7 @@ def operacao(filtro):
         blocos.append(grafico("OS por tipo (período)", "bar", [nomes[t["tipo"]] for t in tp],
                               [("OS", [t["n"] for t in tp])], fmt="int"))
     if u.has_perm("qualidade.view_naoconformidade"):
-        sem_empresa.append("qualidade")
-        nc = NaoConformidade.objects.exclude(status="encerrada")
+        nc = filtro.escopo(NaoConformidade.objects.exclude(status="encerrada"))
         graves = nc.filter(gravidade__in=("alta", "critica")).count()
         blocos.append(kpi("Não conformidades abertas", nc.count(), "int", bom="baixo"))
         blocos.append(kpi("NCs alta ou crítica", graves, "int", bom="baixo", tom="danger" if graves else ""))
@@ -320,16 +304,12 @@ def operacao(filtro):
         blocos.append(grafico("NCs abertas por gravidade", "bar", [nomes[g["gravidade"]] for g in gv],
                               [("NCs", [g["n"] for g in gv])], fmt="int"))
     if u.has_perm("sst.ver_todos_incidente"):
-        sem_empresa.append("SST")
-        inc = Incidente.objects.filter(data_hora__date__gte=filtro.ini, data_hora__date__lte=filtro.fim)
+        inc = filtro.escopo(Incidente.objects.all()).filter(data_hora__date__gte=filtro.ini, data_hora__date__lte=filtro.fim)
         nomes = dict(Incidente.TIPOS)
         tp = inc.values("tipo").annotate(n=Count("pk"))
         blocos.append(kpi("Incidentes no período", inc.count(), "int", bom="baixo"))
         blocos.append(grafico("Incidentes por tipo", "bar", [nomes[t["tipo"]] for t in tp],
                               [("Incidentes", [t["n"] for t in tp])], fmt="int"))
-    nota = _nota_empresa(filtro, ", ".join(sem_empresa)) if sem_empresa else None
-    if nota:
-        blocos.insert(0, nota)
     return blocos
 
 
@@ -339,7 +319,7 @@ def servicedesk(filtro):
 
     u = filtro.user
     areas = Area.objects.all() if u.is_superuser else Area.objects.filter(grupo__in=u.groups.all())
-    base = Chamado.objects.filter(area__in=areas)
+    base = filtro.escopo(Chamado.objects.filter(area__in=areas))
     per = base.filter(criado_em__date__gte=filtro.ini, criado_em__date__lte=filtro.fim)
     res = base.filter(resolvido_em__date__gte=filtro.ini, resolvido_em__date__lte=filtro.fim)
     no_prazo = res.filter(prazo_solucao__isnull=False, resolvido_em__lte=F("prazo_solucao")).count()
@@ -426,7 +406,7 @@ def executivo(filtro):
         blocos.append(kpi("Comprado", v, delta=variacao(v, v_a), bom="baixo", url="relatorios:suprimentos"))
     if u.has_perm("crm.view_oportunidade"):
         from apps.crm.models import ABERTOS, Oportunidade
-        blocos.append(kpi("Pipeline em aberto", Oportunidade.objects.filter(estagio__in=ABERTOS)
+        blocos.append(kpi("Pipeline em aberto", filtro.escopo(Oportunidade.objects.filter(estagio__in=ABERTOS))
                           .aggregate(t=Coalesce(Sum("valor"), ZERO))["t"], url="relatorios:comercial"))
     if u.has_perm("servicedesk.change_chamado"):
         from apps.servicedesk.models import Area, Chamado

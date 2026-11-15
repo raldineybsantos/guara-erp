@@ -9,11 +9,11 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import Departamento, ModeloBase
+from apps.core.models import Departamento, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 
 
-class Equipamento(ModeloBase):
+class Equipamento(ModeloBase, PorEmpresaMixin):
     codigo = models.CharField("código / patrimônio", max_length=30, unique=True)
     nome = models.CharField(max_length=150)
     tipo = models.CharField(max_length=80, blank=True, help_text="Ex.: compressor, empilhadeira, ar-condicionado")
@@ -82,7 +82,7 @@ def gerar_preventivas(antecedencia_dias=None, hoje=None):
     return criadas
 
 
-class OrdemServico(NumeradoMixin, ModeloBase):
+class OrdemServico(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "OS"
     TIPOS = [("corretiva", "Corretiva")] + PlanoManutencao.TIPOS + [("melhoria", "Melhoria")]
     PRIORIDADES = [("baixa", "Baixa"), ("media", "Média"), ("alta", "Alta"), ("emergencia", "Emergência")]
@@ -117,6 +117,8 @@ class OrdemServico(NumeradoMixin, ModeloBase):
     def save(self, *args, **kwargs):
         if not self.pk and not self.solicitante_id:
             self.solicitante = usuario_atual()
+        if not self.empresa_id and self.equipamento_id:
+            self.empresa_id = self.equipamento.empresa_id     # a OS é da empresa do equipamento
         super().save(*args, **kwargs)
 
     @property

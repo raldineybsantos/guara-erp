@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 
-from apps.core.crud import BootstrapMixin
+from apps.core.crud import BootstrapMixin, restringir_por_empresa
 from apps.fiscal.models import Produto
 
 from . import models as est
@@ -25,6 +25,13 @@ class MovimentarForm(BootstrapMixin, forms.Form):
     documento = forms.CharField(required=False, max_length=60)
     motivo = forms.CharField(max_length=200)
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if user is not None:
+            qs = restringir_por_empresa(Armazem.objects.filter(ativo=True), Armazem, user)
+            self.fields["armazem"].queryset = qs
+            self.fields["destino"].queryset = qs
+
     def clean(self):
         d = super().clean()
         if d.get("operacao") == "transferencia" and not d.get("destino"):
@@ -35,7 +42,8 @@ class MovimentarForm(BootstrapMixin, forms.Form):
 @login_required
 @permission_required("estoque.add_movimento", raise_exception=True)
 def movimentar(request):
-    form = MovimentarForm(request.POST or None, initial={"armazem": Armazem.principal()})
+    form = MovimentarForm(request.POST or None, user=request.user,
+                         initial={"armazem": Armazem.principal(getattr(request, "empresa", None))})
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:

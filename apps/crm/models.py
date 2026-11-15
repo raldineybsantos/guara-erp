@@ -8,7 +8,7 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import ModeloBase
+from apps.core.models import ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 
 ESTAGIOS = [("prospeccao", "Prospecção"), ("qualificacao", "Qualificação"), ("proposta", "Proposta"),
@@ -17,7 +17,7 @@ ABERTOS = ["prospeccao", "qualificacao", "proposta", "negociacao"]
 PROBABILIDADE = {"prospeccao": 10, "qualificacao": 25, "proposta": 50, "negociacao": 75, "ganha": 100, "perdida": 0}
 
 
-class Oportunidade(NumeradoMixin, ModeloBase):
+class Oportunidade(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "OPT"
     ORIGENS = [("indicacao", "Indicação"), ("site", "Site / formulário"), ("evento", "Evento"),
                ("prospeccao", "Prospecção ativa"), ("cliente", "Cliente da base"), ("outro", "Outro")]

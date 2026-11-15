@@ -212,8 +212,12 @@ independentes (por exemplo, um escritório que cuida de vários clientes).
   NFS-e exige o certificado do próprio CNPJ.
 - **Desativar:** desmarque **Ativa** para tirar uma empresa de uso sem apagar o histórico.
 
-> A separação por empresa vale para as telas de cadastro e de lista. Os painéis e relatórios consolidados
-> (fluxo de caixa, balancete, DRE, fila do Service Desk) ainda somam todas as empresas.
+> **O que é separado por empresa:** financeiro, vendas, compras, produção, notas fiscais, contabilidade
+> (razão, balancete, DRE e balanço), CRM, estoque (armazéns, saldos, kardex e inventários), Service Desk,
+> manutenção, qualidade, SST e projetos. Cada registro pertence a uma empresa e só aparece para quem tem
+> acesso a ela. Armazéns podem repetir o código entre empresas (cada empresa tem o seu armazém padrão).
+> **Compartilhados:** clientes, fornecedores, produtos, plano de contas e períodos contábeis fechados.
+> Os painéis de Relatórios respeitam o filtro de empresa em todos os quadros.
 
 ## 6. Compras
 
@@ -1179,7 +1183,6 @@ permissões liberam: quem não consulta o financeiro não vê números financeir
 
 As tabelas têm o botão **CSV**, que baixa o que está na tela (com o filtro aplicado) para abrir no Excel.
 
-> **Separação por empresa.** Financeiro, vendas, compras, notas e produção são separados por empresa. CRM,
-> estoque, manutenção, qualidade, SST e Service Desk ainda somam todas as empresas, e a tela avisa quando
-> isso acontece. Os relatórios contábeis (balancete, DRE, balanço) também ainda não separam por empresa.
+> **Separação por empresa.** Todos os quadros respeitam o filtro de empresa (e as empresas a que você tem
+> acesso). Clientes, fornecedores, produtos e plano de contas são compartilhados entre as empresas.
 

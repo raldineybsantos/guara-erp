@@ -35,8 +35,23 @@ def adiando():
 EVENTOS_TITULO = ("titulo_pagar", "titulo_pagar_compra", "titulo_receber")
 
 
+def empresa_da(referencia):
+    """Empresa do documento que originou o lançamento (a do próprio registro ou a do pedido/recebimento ligado)."""
+    for caminho in (("empresa",), ("recebimento", "empresa"), ("pedido", "empresa"), ("nota_fiscal", "empresa"),
+                    ("armazem", "empresa")):
+        obj = referencia
+        for atributo in caminho:
+            obj = getattr(obj, atributo, None)
+            if obj is None:
+                break
+        else:
+            return obj
+    return None
+
+
 @transaction.atomic
-def gravar(data, historico, debito, credito, valor, evento="", referencia=None, centro_custo=None, manual=False):
+def gravar(data, historico, debito, credito, valor, evento="", referencia=None, centro_custo=None, manual=False,
+           empresa=None):
     valor = Decimal(valor).quantize(D2)
     if valor <= 0:
         raise ValidationError("O valor do lançamento deve ser maior que zero.")
@@ -50,7 +65,15 @@ def gravar(data, historico, debito, credito, valor, evento="", referencia=None, 
             raise ValidationError(f"O período {data:%m/%Y} está fechado.")
         original, data = data, PeriodoFechado.proxima_data_aberta(data)
         historico = f"{historico} (competência {original:%d/%m/%Y}; período fechado)"
-    lanc = Lancamento(data=data, historico=historico[:250], evento=evento, criado_por=usuario_atual())
+    if empresa is None and referencia is not None:
+        empresa = empresa_da(referencia)
+    if empresa is None:
+        from apps.core.middleware import empresa_atual
+        from apps.core.models import Empresa
+
+        empresa = empresa_atual() or Empresa.padrao()
+    lanc = Lancamento(data=data, historico=historico[:250], evento=evento, criado_por=usuario_atual(),
+                      empresa=empresa)
     if referencia is not None:
         lanc.content_type = ContentType.objects.get_for_model(referencia)
         lanc.object_id = referencia.pk
@@ -66,7 +89,7 @@ def ativos_de(referencia, eventos=None):
     return qs.filter(evento__in=eventos) if eventos else qs
 
 
-def lancar(evento, valor, data, historico, referencia, centro_custo=None, debito=None, credito=None):
+def lancar(evento, valor, data, historico, referencia, centro_custo=None, debito=None, credito=None, empresa=None):
     """Lançamento automático pela regra do evento. Não repete se já existe um ativo para a referência."""
     valor = Decimal(valor or 0).quantize(D2)
     regra = RegraContabil.objects.filter(evento=evento, ativo=True).select_related("conta_debito",
@@ -74,7 +97,7 @@ def lancar(evento, valor, data, historico, referencia, centro_custo=None, debito
     if regra is None or valor <= 0 or ativos_de(referencia, [evento]).exists():
         return None
     return gravar(data, historico, debito or regra.conta_debito, credito or regra.conta_credito, valor, evento,
-                  referencia, centro_custo)
+                  referencia, centro_custo, empresa=empresa)
 
 
 def estornar_de(referencia, eventos=None, motivo=""):
@@ -152,11 +175,22 @@ def movimento_estoque(mov):
                f"{mov.get_origem_display()}: {mov.produto} {mov.documento}".strip(), mov)
 
 
-def saldos(ate=None, de=None):
+def escopo_lancamentos(qs, empresa=None, user=None, caminho="lancamento__empresa"):
+    """Recorta partidas/lançamentos por empresa. Sem empresa escolhida, vale o acesso do usuário."""
+    from apps.core.crud import restringir_por_empresa
+
+    if empresa is not None:
+        return qs.filter(**{caminho: empresa})
+    if user is not None:
+        return restringir_por_empresa(qs, qs.model, user, caminho)
+    return qs
+
+
+def saldos(ate=None, de=None, empresa=None, user=None):
     """{conta_id: (débitos, créditos)} das partidas no intervalo [de, ate]."""
     from django.db.models import Q, Sum
 
-    qs = Partida.objects.all()
+    qs = escopo_lancamentos(Partida.objects.all(), empresa, user)
     if de:
         qs = qs.filter(lancamento__data__gte=de)
     if ate:

@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% load erp %}
 {% block content %}
 <form method="get" class="row g-2 align-items-end mb-3 no-print"><div class="col-auto"><label class="form-label small mb-1">Posição em</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control"></div>
+  <div class="col-auto"><label class="form-label small mb-1">Empresa / filial</label><select name="empresa" class="form-select"><option value="">Todas que eu acesso</option>{% for e in empresas %}<option value="{{ e.pk }}" {% if empresa.pk == e.pk %}selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>
   <div class="col-auto"><button class="btn btn-primary">Ver</button></div></form>
 {% if not fecha %}<div class="alert alert-danger">Ativo e passivo não fecham. Avise o suporte.</div>{% endif %}
 <div class="row g-3">

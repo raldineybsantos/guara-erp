@@ -179,19 +179,22 @@ def form_para(model, fields, base=FormBase, exclude=None):
     return type(f"{model.__name__}Form", (base,), {"Meta": Meta})
 
 
-def restringir_por_empresa(qs, model, user):
-    """Registros com campo `empresa` só aparecem para quem tem acesso àquela empresa (sem empresa: todos)."""
+def restringir_por_empresa(qs, model, user, caminho="empresa"):
+    """Registros com campo `empresa` (ou um `caminho` até ela, ex.: armazem__empresa) só aparecem para quem tem
+    acesso àquela empresa (sem empresa: todos)."""
     from .models import Empresa
 
     try:
-        campo = model._meta.get_field("empresa")
+        campo = model._meta.get_field(caminho.split("__")[0])
     except Exception:
         return qs
-    if getattr(campo, "related_model", None) is not Empresa or user.is_superuser:
+    if caminho == "empresa" and getattr(campo, "related_model", None) is not Empresa:
+        return qs
+    if user.is_superuser:
         return qs
     if not Empresa.objects.filter(usuarios__isnull=False).exists():   # ninguém restringiu nada
         return qs
-    return qs.filter(models.Q(empresa__in=Empresa.acessiveis(user)) | models.Q(empresa__isnull=True))
+    return qs.filter(models.Q(**{f"{caminho}__in": Empresa.acessiveis(user)}) | models.Q(**{f"{caminho}__isnull": True}))
 
 
 # --------------------------------------------------------------------------- Crud
@@ -212,6 +215,7 @@ class Crud:
     detail_template = "crud/detail.html"
     form_template = "crud/form.html"
     icon = "table"
+    empresa_campo = "empresa"      # caminho até a empresa, para recortar a lista (ex.: "armazem__empresa")
     menu = None                    # grupo do menu lateral
     menu_label = None
     menu_order = 50
@@ -253,7 +257,7 @@ class Crud:
     @classmethod
     def get_queryset(cls, request):
         qs = cls.model._default_manager.all()
-        qs = restringir_por_empresa(qs, cls.model, request.user)
+        qs = restringir_por_empresa(qs, cls.model, request.user, cls.empresa_campo)
         rel = [f.name for f in cls.meta().fields if f.is_relation and f.many_to_one]
         if rel:
             qs = qs.select_related(*rel)

@@ -11,7 +11,7 @@ from django.core.exceptions import ValidationError
 from django.db import models, transaction
 from django.utils import timezone
 
-from apps.core.models import Colaborador, Departamento, ModeloBase
+from apps.core.models import Colaborador, Departamento, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 
 
@@ -30,7 +30,7 @@ def _tarefa_sesmt(obj, titulo, descricao, prioridade, prazo):
                                     content_type=ct, object_id=obj.pk)
 
 
-class Incidente(NumeradoMixin, ModeloBase):
+class Incidente(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "INC"
     TIPOS = [("quase", "Quase acidente / condição insegura"), ("sem_afastamento", "Acidente sem afastamento"),
              ("com_afastamento", "Acidente com afastamento"), ("trajeto", "Acidente de trajeto"),

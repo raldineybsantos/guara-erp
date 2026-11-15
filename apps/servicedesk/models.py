@@ -14,7 +14,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import ModeloBase, notificar
+from apps.core.models import ModeloBase, PorEmpresaMixin, notificar
 from apps.core.numeracao import NumeradoMixin
 
 from . import sla
@@ -92,7 +92,7 @@ class ChamadoQuerySet(models.QuerySet):
         return self.filter(status__in=("aberto", "atendimento", "aguardando_usuario"))
 
 
-class Chamado(NumeradoMixin, ModeloBase):
+class Chamado(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "SD"
     STATUS = [("aguardando_aprovacao", "Aguardando aprovação"), ("aberto", "Aberto"),
               ("atendimento", "Em atendimento"), ("aguardando_usuario", "Aguardando usuário"),

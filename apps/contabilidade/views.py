@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.core import acoes
 from apps.core.crud import BootstrapMixin
+from apps.core.models import Empresa
 from apps.financeiro.models import CentroCusto
 
 from . import servicos
@@ -19,17 +20,32 @@ ZERO = Decimal("0")
 VER = "contabilidade.view_lancamento"
 
 
-class PeriodoForm(BootstrapMixin, forms.Form):
+class EmpresaFiltroMixin:
+    """Campo opcional "empresa": vazio soma as empresas a que o usuário tem acesso."""
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["empresa"] = forms.ModelChoiceField(
+            label="empresa / filial", required=False, empty_label="Todas que eu acesso",
+            queryset=Empresa.acessiveis(user).order_by("-matriz", "razao_social"))
+        self.order_fields(["empresa"] + [f for f in self.fields if f != "empresa"])
+
+    def empresa(self):
+        return self.cleaned_data.get("empresa") if self.is_bound and self.is_valid() else None
+
+
+class PeriodoForm(EmpresaFiltroMixin, BootstrapMixin, forms.Form):
     inicio = forms.DateField(label="de")
     fim = forms.DateField(label="até")
 
 
 def _periodo(request):
+    """(formulário, início, fim, empresa escolhida ou None)."""
     hoje = timezone.localdate()
-    form = PeriodoForm(request.GET or None, initial={"inicio": hoje.replace(day=1), "fim": hoje})
+    form = PeriodoForm(request.GET or None, initial={"inicio": hoje.replace(day=1), "fim": hoje}, user=request.user)
     if form.is_bound and form.is_valid():
-        return form, form.cleaned_data["inicio"], form.cleaned_data["fim"]
-    return form, hoje.replace(day=1), hoje
+        return form, form.cleaned_data["inicio"], form.cleaned_data["fim"], form.empresa()
+    return form, hoje.replace(day=1), hoje, None
 
 
 def _arvore(valores):
@@ -49,9 +65,9 @@ def _arvore(valores):
 @login_required
 @permission_required(VER, raise_exception=True)
 def balancete(request):
-    form, ini, fim = _periodo(request)
-    antes = servicos.saldos(ate=ini - datetime.timedelta(days=1))
-    mov = servicos.saldos(de=ini, ate=fim)
+    form, ini, fim, empresa = _periodo(request)
+    antes = servicos.saldos(ate=ini - datetime.timedelta(days=1), empresa=empresa, user=request.user)
+    mov = servicos.saldos(de=ini, ate=fim, empresa=empresa, user=request.user)
     contas = {c.pk: c for c in ContaContabil.objects.all()}
     valores = {}
     for pk in set(antes) | set(mov):
@@ -68,9 +84,9 @@ def balancete(request):
         "fim": fim, "tot_d": tot_d, "tot_c": tot_c, "fecha": tot_d == tot_c})
 
 
-def resultado(ini, fim):
+def resultado(ini, fim, empresa=None, user=None):
     """Linhas da DRE e o resultado do intervalo."""
-    mov = servicos.saldos(de=ini, ate=fim)
+    mov = servicos.saldos(de=ini, ate=fim, empresa=empresa, user=user)
     grupos = {n: [] for n in ("receita", "deducao", "custo", "despesa")}
     for c in ContaContabil.objects.filter(natureza__in=grupos, sintetica=False):
         d, cr = mov.get(c.pk, (ZERO, ZERO))
@@ -86,10 +102,10 @@ def resultado(ini, fim):
 @login_required
 @permission_required(VER, raise_exception=True)
 def dre(request):
-    form, ini, fim = _periodo(request)
+    form, ini, fim, empresa = _periodo(request)
     return render(request, "contabilidade/dre.html", {"titulo": "DRE — demonstração do resultado",
                                                       "icone": "graph-up-arrow", "form": form, "ini": ini,
-                                                      "fim": fim, **resultado(ini, fim)})
+                                                      "fim": fim, **resultado(ini, fim, empresa, request.user)})
 
 
 @login_required
@@ -99,21 +115,24 @@ def balanco(request):
         data = datetime.date.fromisoformat(request.GET.get("data", ""))
     except ValueError:
         data = timezone.localdate()
-    sal = servicos.saldos(ate=data)
+    empresa = Empresa.acessiveis(request.user).filter(pk=int(request.GET["empresa"])).first() \
+        if request.GET.get("empresa", "").isdigit() else None
+    sal = servicos.saldos(ate=data, empresa=empresa, user=request.user)
     lados = {"ativo": [], "passivo": [], "pl": []}
     for c in ContaContabil.objects.filter(natureza__in=lados, sintetica=False):
         d, cr = sal.get(c.pk, (ZERO, ZERO))
         v = servicos.saldo_natural(c, d, cr)
         if v:
             lados[c.natureza].append((c, v))
-    res = resultado(None, data)["resultado"]
+    res = resultado(None, data, empresa, request.user)["resultado"]
     t = {n: sum((v for _, v in itens), ZERO) for n, itens in lados.items()}
     return render(request, "contabilidade/balanco.html", {
-        "titulo": "Balanço patrimonial", "icone": "bank", "data": data, "lados": lados, "t": t, "resultado": res,
+        "titulo": "Balanço patrimonial", "icone": "bank", "data": data, "empresa": empresa,
+        "empresas": Empresa.acessiveis(request.user).order_by("-matriz", "razao_social"), "lados": lados, "t": t, "resultado": res,
         "total_passivo": t["passivo"] + t["pl"] + res, "fecha": t["ativo"] == t["passivo"] + t["pl"] + res})
 
 
-class RazaoForm(BootstrapMixin, forms.Form):
+class RazaoForm(EmpresaFiltroMixin, BootstrapMixin, forms.Form):
     conta = forms.ModelChoiceField(queryset=ContaContabil.objects.filter(sintetica=False))
     inicio = forms.DateField(label="de")
     fim = forms.DateField(label="até")
@@ -123,16 +142,19 @@ class RazaoForm(BootstrapMixin, forms.Form):
 @permission_required(VER, raise_exception=True)
 def razao(request):
     hoje = timezone.localdate()
-    form = RazaoForm(request.GET or None, initial={"inicio": hoje.replace(day=1), "fim": hoje})
+    form = RazaoForm(request.GET or None, initial={"inicio": hoje.replace(day=1), "fim": hoje}, user=request.user)
     ctx = {"titulo": "Razão", "icone": "journal-bookmark", "form": form}
     if form.is_bound and form.is_valid():
         d = form.cleaned_data
         c = d["conta"]
-        ad, ac = servicos.saldos(ate=d["inicio"] - datetime.timedelta(days=1)).get(c.pk, (ZERO, ZERO))
+        empresa = form.empresa()
+        ad, ac = servicos.saldos(ate=d["inicio"] - datetime.timedelta(days=1), empresa=empresa,
+                                 user=request.user).get(c.pk, (ZERO, ZERO))
         saldo = servicos.saldo_natural(c, ad, ac)
         linhas = []
-        for p in (Partida.objects.filter(conta=c, lancamento__data__range=(d["inicio"], d["fim"]))
-                  .select_related("lancamento").order_by("lancamento__data", "lancamento_id", "id")):
+        partidas = servicos.escopo_lancamentos(
+            Partida.objects.filter(conta=c, lancamento__data__range=(d["inicio"], d["fim"])), empresa, request.user)
+        for p in partidas.select_related("lancamento").order_by("lancamento__data", "lancamento_id", "id"):
             saldo += p.valor if (p.tipo == "D") == c.devedora else -p.valor
             linhas.append({"p": p, "saldo": saldo})
         ctx.update(conta=c, anterior=servicos.saldo_natural(c, ad, ac), linhas=linhas, saldo=saldo)
@@ -147,16 +169,22 @@ class LancamentoManualForm(BootstrapMixin, forms.Form):
     valor = forms.DecimalField(min_value=Decimal("0.01"), decimal_places=2)
     centro_custo = forms.ModelChoiceField(label="centro de custo", required=False, queryset=CentroCusto.objects.all())
 
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["empresa"] = forms.ModelChoiceField(
+            label="empresa", queryset=Empresa.acessiveis(user).order_by("-matriz", "razao_social"))
+
 
 @login_required
 @permission_required("contabilidade.add_lancamento", raise_exception=True)
 def lancar_manual(request):
-    form = LancamentoManualForm(request.POST or None)
+    form = LancamentoManualForm(request.POST or None, user=request.user,
+                                initial={"empresa": getattr(request, "empresa", None)})
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:
             lanc = servicos.gravar(d["data"], d["historico"], d["debito"], d["credito"], d["valor"],
-                                   centro_custo=d["centro_custo"], manual=True)
+                                   centro_custo=d["centro_custo"], manual=True, empresa=d["empresa"])
         except ValidationError as e:
             form.add_error(None, e)
         else:

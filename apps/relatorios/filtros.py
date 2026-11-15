@@ -68,15 +68,16 @@ class Filtro:
             d = _somar_meses(d, 1)
         return out
 
-    def escopo(self, qs):
-        """Recorta por empresa. Modelos sem campo `empresa` voltam como estão."""
+    def escopo(self, qs, caminho="empresa"):
+        """Recorta por empresa (campo `empresa` ou um caminho até ela, ex.: armazem__empresa).
+        Modelos sem esse campo voltam como estão."""
         try:
-            qs.model._meta.get_field("empresa")
+            qs.model._meta.get_field(caminho.split("__")[0])
         except Exception:
             return qs
         if self.empresa:
-            return qs.filter(empresa=self.empresa)
-        return restringir_por_empresa(qs, qs.model, self.user)
+            return qs.filter(**{caminho: self.empresa})
+        return restringir_por_empresa(qs, qs.model, self.user, caminho)
 
     def querystring(self):
         q = f"periodo={self.periodo}"

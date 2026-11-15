@@ -15,16 +15,16 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import ModeloBase
+from apps.core.models import ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 from apps.core.formatos import qtd as fq
 
 Q4 = Decimal("0.0001")
 
 
-class Armazem(ModeloBase):
+class Armazem(ModeloBase, PorEmpresaMixin):
     TIPOS = [("normal", "Normal"), ("quarentena", "Quarentena (aguarda inspeção)"), ("terceiros", "Em terceiros")]
-    codigo = models.CharField("código", max_length=10, unique=True)
+    codigo = models.CharField("código", max_length=10)
     nome = models.CharField(max_length=100)
     tipo = models.CharField(max_length=12, choices=TIPOS, default="normal")
     padrao = models.BooleanField("padrão", default=False,
@@ -35,24 +35,39 @@ class Armazem(ModeloBase):
         verbose_name = "armazém"
         verbose_name_plural = "armazéns"
         ordering = ["codigo"]
+        constraints = [models.UniqueConstraint(fields=["empresa", "codigo"], name="armazem_codigo_por_empresa")]
 
     def __str__(self):
         return f"{self.codigo} - {self.nome}"
 
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
-        if self.padrao:
-            Armazem.objects.exclude(pk=self.pk).filter(padrao=True).update(padrao=False)
+        if self.padrao:   # um armazém padrão por empresa
+            Armazem.objects.exclude(pk=self.pk).filter(padrao=True, empresa=self.empresa).update(padrao=False)
 
     @classmethod
-    def principal(cls):
-        a = cls.objects.filter(padrao=True, ativo=True).first() or cls.objects.filter(tipo="normal", ativo=True).first()
-        return a or cls.objects.create(codigo="01", nome="Almoxarifado", padrao=True)
+    def _da_empresa(cls, empresa):
+        from apps.core.middleware import empresa_atual
+        from apps.core.models import Empresa
+
+        empresa = empresa or empresa_atual() or Empresa.padrao()
+        return cls.objects.filter(ativo=True, empresa=empresa), empresa
 
     @classmethod
-    def quarentena(cls):
-        a = cls.objects.filter(tipo="quarentena", ativo=True).first()
-        return a or cls.objects.create(codigo="QUA", nome="Quarentena", tipo="quarentena")
+    def principal(cls, empresa=None):
+        """Armazém padrão da empresa (a do documento; sem informar, a empresa ativa ou a matriz)."""
+        qs, empresa = cls._da_empresa(empresa)
+        a = qs.filter(padrao=True).first() or qs.filter(tipo="normal").first()
+        if a is None:
+            cod = "01" if not cls.objects.filter(empresa=empresa, codigo="01").exists() else "ALM"
+            a = cls.objects.create(codigo=cod, nome="Almoxarifado", padrao=True, empresa=empresa)
+        return a
+
+    @classmethod
+    def quarentena(cls, empresa=None):
+        qs, empresa = cls._da_empresa(empresa)
+        a = qs.filter(tipo="quarentena").first()
+        return a or cls.objects.create(codigo="QUA", nome="Quarentena", tipo="quarentena", empresa=empresa)
 
 
 class Saldo(models.Model):
@@ -98,6 +113,10 @@ class Movimento(models.Model):
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
                                 related_name="+")
     content_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL, editable=False)
+
+    @property
+    def empresa(self):
+        return self.armazem.empresa
     object_id = models.PositiveBigIntegerField(null=True, blank=True, editable=False)
     referencia = GenericForeignKey("content_type", "object_id")
 

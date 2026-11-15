@@ -1,3 +1,4 @@
+from apps.core.models import Empresa
 import datetime
 from decimal import Decimal as D
 
@@ -140,9 +141,11 @@ class ContabilidadeTest(TestCase):
         c = ContaContabil.objects.get(codigo="2.1.1")
         r = self.client.get(reverse("contabilidade:razao"), {"conta": c.pk, "inicio": self.hoje, "fim": self.hoje})
         self.assertContains(r, "Luz")
+        emp = Empresa.objects.create(razao_social="Matriz Teste Ltda", cnpj="11222333000181", matriz=True)
         r = self.client.post(reverse("contabilidade:lancar_manual"), {
             "data": self.hoje, "historico": "Capital", "debito": ContaContabil.objects.get(codigo="1.1.1").pk,
-            "credito": ContaContabil.objects.get(codigo="2.3.1").pk, "valor": "1000"})
+            "credito": ContaContabil.objects.get(codigo="2.3.1").pk, "valor": "1000",
+            "empresa": emp.pk})
         lanc = Lancamento.objects.get(evento="")
         self.assertRedirects(r, lanc.get_absolute_url())
         self.client.post(reverse("contabilidade:estornar", args=[lanc.pk]))

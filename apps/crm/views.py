@@ -7,7 +7,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core import acoes
-from apps.core.crud import BootstrapMixin
+from apps.core.crud import BootstrapMixin, restringir_por_empresa
 
 from .models import ABERTOS, ESTAGIOS, Interacao, Oportunidade
 
@@ -26,7 +26,8 @@ def funil(request):
             except ValidationError as e:
                 messages.error(request, " ".join(e.messages))
         return redirect("crm:funil")
-    qs = Oportunidade.objects.filter(estagio__in=ABERTOS).select_related("cliente", "responsavel")
+    qs = restringir_por_empresa(Oportunidade.objects.filter(estagio__in=ABERTOS), Oportunidade, request.user)
+    qs = qs.select_related("cliente", "responsavel")
     if request.GET.get("minhas"):
         qs = qs.filter(responsavel=request.user)
     nomes = dict(ESTAGIOS)

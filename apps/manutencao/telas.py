@@ -7,12 +7,12 @@ from .models import Equipamento, OrdemServico, PecaOS, PlanoManutencao
 
 class EquipamentoCrud(Crud):
     model = Equipamento
-    fields = ["codigo", "nome", "tipo", "fabricante", "modelo", "numero_serie", "departamento", "localizacao",
+    fields = ["empresa", "codigo", "nome", "tipo", "fabricante", "modelo", "numero_serie", "departamento", "localizacao",
               "data_aquisicao", "critico", "ativo"]
     list_display = ("codigo", "nome", "tipo", "localizacao", "critico", "ativo")
     search_fields = ("codigo", "nome", "numero_serie", "localizacao")
     filter_fields = ("critico", "ativo", "departamento")
-    detail_fields = ["codigo", "nome", "tipo", "fabricante", "modelo", "numero_serie", "departamento",
+    detail_fields = ["empresa", "codigo", "nome", "tipo", "fabricante", "modelo", "numero_serie", "departamento",
                      "localizacao", "data_aquisicao", "critico", "ativo", "horas_parado"]
     related = (("planos", "Planos de manutenção", ["descricao", "tipo", "periodicidade_dias", "proxima"]),
                ("ordens", "Ordens de serviço", ["numero", "tipo", "status", "abertura", "custo_pecas"]))

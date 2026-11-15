@@ -10,13 +10,13 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import ModeloBase
+from apps.core.models import ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 
 D2 = Decimal("0.01")
 
 
-class Projeto(NumeradoMixin, ModeloBase):
+class Projeto(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "PRJ"
     STATUS = [("planejamento", "Planejamento"), ("andamento", "Em andamento"), ("pausado", "Pausado"),
               ("concluido", "Concluído"), ("cancelado", "Cancelado")]

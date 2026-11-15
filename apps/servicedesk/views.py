@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from apps.core import acoes
-from apps.core.crud import BootstrapMixin
+from apps.core.crud import BootstrapMixin, restringir_por_empresa
 
 from .models import Area, ArtigoConhecimento, Chamado, Mudanca, sugerir_servicos
 
@@ -95,7 +95,7 @@ def fila(request):
     if not areas.exists():
         messages.info(request, "Você não faz parte de nenhuma equipe de atendimento. Estes são os seus chamados.")
         return redirect("servicedesk:chamado_list")
-    base = Chamado.objects.filter(area__in=areas).select_related("area", "solicitante", "analista", "servico")
+    base = restringir_por_empresa(Chamado.objects.filter(area__in=areas), Chamado, request.user).select_related("area", "solicitante", "analista", "servico")
     andamento = base.filter(status__in=Chamado.ATIVOS)
     agora = timezone.now()
     visoes = {

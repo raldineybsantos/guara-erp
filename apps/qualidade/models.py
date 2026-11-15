@@ -8,12 +8,12 @@ from django.db import models, transaction
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import ModeloBase
+from apps.core.models import ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 from apps.core.formatos import qtd as fq
 
 
-class Inspecao(NumeradoMixin, ModeloBase):
+class Inspecao(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "INS"
     ORIGENS = [("recebimento", "Recebimento de compra"), ("producao", "Produção"), ("manual", "Manual")]
     STATUS = [("pendente", "Pendente"), ("aprovada", "Aprovada"), ("parcial", "Aprovada parcialmente"),
@@ -40,6 +40,11 @@ class Inspecao(NumeradoMixin, ModeloBase):
         verbose_name_plural = "inspeções"
         ordering = ["-numero"]
 
+    def save(self, *args, **kwargs):
+        if not self.empresa_id and self.armazem_id:
+            self.empresa_id = self.armazem.empresa_id      # a inspeção é da empresa do armazém de quarentena
+        super().save(*args, **kwargs)
+
     @transaction.atomic
     def concluir(self, usuario, quantidade_aprovada, resultado):
         """Libera o aprovado para o armazém principal; o reprovado fica na quarentena e abre não conformidade."""
@@ -49,7 +54,7 @@ class Inspecao(NumeradoMixin, ModeloBase):
             raise ValidationError("Inspeção já concluída.")
         aprovada = min(max(quantidade_aprovada, 0), self.quantidade)
         if aprovada > 0:
-            est.transferir(self.produto, aprovada, self.armazem, est.Armazem.principal(), self.numero,
+            est.transferir(self.produto, aprovada, self.armazem, est.Armazem.principal(self.empresa), self.numero,
                            "Liberado pela Qualidade", referencia=self)
         reprovada = self.quantidade - aprovada
         self.quantidade_aprovada = aprovada
@@ -65,7 +70,7 @@ class Inspecao(NumeradoMixin, ModeloBase):
         return self.status
 
 
-class NaoConformidade(NumeradoMixin, ModeloBase):
+class NaoConformidade(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "NC"
     ORIGENS = [("recebimento", "Recebimento / fornecedor"), ("producao", "Produção"), ("cliente", "Reclamação de cliente"),
                ("interna", "Processo interno"), ("auditoria", "Auditoria")]

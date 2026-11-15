@@ -7,7 +7,7 @@ from .models import Armazem, Inventario, ItemInventario, Movimento, Saldo
 
 class ArmazemCrud(Crud):
     model = Armazem
-    fields = ["codigo", "nome", "tipo", "padrao", "ativo"]
+    fields = ["empresa", "codigo", "nome", "tipo", "padrao", "ativo"]
     list_display = ("codigo", "nome", "tipo", "padrao", "ativo")
     search_fields = ("codigo", "nome")
     icon = "building"
@@ -17,6 +17,7 @@ class ArmazemCrud(Crud):
 
 class SaldoCrud(Crud):
     model = Saldo
+    empresa_campo = "armazem__empresa"
     list_display = ("produto", "armazem", "quantidade", "custo_medio", "valor", "atualizado_em")
     search_fields = ("produto__codigo", "produto__descricao")
     filter_fields = ("armazem",)
@@ -30,6 +31,7 @@ class SaldoCrud(Crud):
 
 class MovimentoCrud(Crud):
     model = Movimento
+    empresa_campo = "armazem__empresa"
     list_display = ("data", "tipo", "origem", "produto", "armazem", "quantidade", "custo_unitario", "saldo_apos",
                     "documento", "usuario")
     search_fields = ("produto__codigo", "produto__descricao", "documento", "observacao")
@@ -56,6 +58,7 @@ class InventarioForm(FormBase):
 class InventarioCrud(Crud):
     model = Inventario
     form_class = InventarioForm
+    empresa_campo = "armazem__empresa"
     inline = (ItemInventario, ["produto", "quantidade_contada"], 0)
     inline_no_detalhe = False
     list_display = ("numero", "armazem", "data", "status")

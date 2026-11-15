@@ -405,9 +405,10 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
             from apps.contabilidade.servicos import lancar
 
             lancar("compra_despesa", quantidade * item.valor_unitario, rec.data,
-                   f"{self.numero}: {item} — {self.fornecedor}", item_recebido or rec, self.centro_custo)
+                   f"{self.numero}: {item} — {self.fornecedor}", item_recebido or rec, self.centro_custo,
+                   empresa=self.empresa)
             return
-        destino = est.Armazem.quarentena() if produto.inspecionar_recebimento else est.Armazem.principal()
+        destino = est.Armazem.quarentena(self.empresa) if produto.inspecionar_recebimento else est.Armazem.principal(self.empresa)
         est.entrada(produto, quantidade, item.valor_unitario, destino, "compra", self.numero,
                     f"Recebimento {rec.pk}", referencia=rec)
         if produto.inspecionar_recebimento:

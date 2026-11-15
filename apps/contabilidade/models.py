@@ -13,7 +13,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import ModeloBase
+from apps.core.models import Empresa, ModeloBase
 from apps.core.numeracao import NumeradoMixin
 
 ZERO = Decimal("0")
@@ -126,6 +126,7 @@ class Lancamento(NumeradoMixin, models.Model):
     content_type = models.ForeignKey(ContentType, null=True, blank=True, on_delete=models.SET_NULL)
     object_id = models.PositiveBigIntegerField(null=True, blank=True)
     referencia = GenericForeignKey("content_type", "object_id")
+    empresa = models.ForeignKey(Empresa, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
     estorno_de = models.OneToOneField("self", null=True, blank=True, on_delete=models.PROTECT,
                                       related_name="estornado_por")
     criado_em = models.DateTimeField(auto_now_add=True)
@@ -164,7 +165,7 @@ class Lancamento(NumeradoMixin, models.Model):
             raise ValidationError("Lançamento já estornado.")
         data = PeriodoFechado.proxima_data_aberta(data or max(self.data, timezone.localdate()))
         est = Lancamento.objects.create(data=data, historico=f"Estorno de {self.numero}. {motivo}".strip()[:250],
-                                        evento=self.evento, content_type=self.content_type,
+                                        evento=self.evento, content_type=self.content_type, empresa=self.empresa,
                                         object_id=self.object_id, estorno_de=self, criado_por=usuario_atual())
         for p in self.partidas.all():
             Partida.objects.create(lancamento=est, conta=p.conta, tipo="C" if p.tipo == "D" else "D", valor=p.valor,
