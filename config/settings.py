@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     "apps.sst",
     "apps.rh",
     "apps.seguranca",
+    "apps.identidade",
     "apps.crm",
     "apps.projetos",
     "apps.manutencao",
@@ -145,6 +146,10 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # campos de formulário (arquivos
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+AUTHENTICATION_BACKENDS = [
+    "django.contrib.auth.backends.ModelBackend",    # contas locais (sempre disponíveis: acesso de emergência)
+    "apps.identidade.ldap_auth.LDAPBackend",        # LDAP/AD, conforme configurado na tela Login corporativo
+]
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "dashboard"
 LOGOUT_REDIRECT_URL = "login"

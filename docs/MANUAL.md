@@ -34,6 +34,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 25. [Auditoria e logs de erro](#25-auditoria-e-logs-de-erro)
 26. [Recursos Humanos](#26-recursos-humanos)
 27. [Segurança da conta e backups](#27-segurança-da-conta-e-backups)
+28. [Login corporativo: LDAP/AD e login único (Microsoft, Google)](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
 
 ---
 
@@ -1390,3 +1391,64 @@ confere se ele abre, copia para a cópia externa configurada e apaga os antigos 
 
 A **restauração** é feita por um técnico com acesso ao servidor (`backup_restaurar`, veja [INSTALACAO.md](INSTALACAO.md#5-backup-e-restauração)).
 Peça para **ensaiar a restauração** num banco de teste de tempos em tempos.
+
+---
+
+## 28. Login corporativo: LDAP/AD e login único (Microsoft, Google)
+
+**Administração → Login corporativo (LDAP/SSO)** (superusuário). Os usuários que entram por esses caminhos **não têm senha no
+ERP**: a senha é conferida no diretório (LDAP) ou o provedor confirma quem é (SSO). As contas locais continuam funcionando
+(guarde pelo menos um superusuário local como acesso de emergência).
+
+### 28.1 LDAP / Active Directory
+
+O usuário digita o **mesmo login e senha da rede** na tela de entrada. O ERP procura a conta com uma **conta de serviço**
+(só leitura), confere a senha tentando autenticar como o usuário e **não guarda a senha**.
+
+1. Crie no AD uma conta de serviço só de leitura (ex.: `svc-erp`). Anote o DN e a senha.
+2. **Adicionar** um diretório e preencha: servidor (nome DNS que consta no certificado), segurança (**LDAPS 636** ou StartTLS),
+   **base de busca** (ex.: `OU=Usuários,DC=empresa,DC=local`), DN e senha da conta de serviço.
+   O filtro padrão é para o AD (`sAMAccountName`); para OpenLDAP use `(&(objectClass=inetOrgPerson)(uid={usuario}))`
+   e `uid` como atributo do login.
+3. Se o servidor usa **CA interna**, cole o certificado raiz em *Certificado da CA*. A conexão **sempre valida o certificado**;
+   não há opção de ignorá-lo.
+4. **Grupos:** em *grupos do diretório → grupos do ERP*, uma regra por linha:
+   `CN=Financeiro,OU=Grupos,DC=empresa,DC=local => Financeiro`. A cada login o ERP ajusta os grupos **só desses**
+   (quem sai do grupo no AD o perde no ERP); grupos dados à mão no ERP continuam. *Grupo exigido para entrar* restringe
+   quem pode usar o ERP.
+5. Use **Testar** (informe um login e, se quiser, a senha) antes de liberar para todos.
+
+Regras de segurança: senha vazia é recusada; conta **desativada no AD** não entra; um usuário local que já tem o mesmo
+login **não é assumido** pelo diretório (a menos que você marque *vincular a usuários locais*); se o AD estiver fora do ar,
+o login local continua e o erro vai para o log de erros. O 2FA do ERP continua valendo para quem é obrigado a ter.
+
+### 28.2 Login único: Microsoft, Google e outros (OpenID Connect)
+
+Aparece um botão **Entrar com…** na tela de login. Antes, cadastre o ERP como aplicativo no provedor e informe o
+**endereço de retorno** que a tela *Login corporativo* mostra (`https://SEU-ERP/identidade/retorno/<provedor>/`).
+Em produção defina `ERP_URL_BASE=https://erp.empresa.com.br` no `.env` e use HTTPS.
+
+**Microsoft (Entra ID / Microsoft 365):** portal Azure → *Entra ID → Registros de aplicativo → Novo registro*; tipo de conta:
+**somente este diretório**; URI de redirecionamento (Web): o endereço acima. Em *Certificados e segredos* crie um segredo.
+No ERP: tipo Microsoft, **ID do aplicativo**, **segredo** e o **ID do diretório (tenant)**.
+
+**Google (Workspace ou Gmail):** console.cloud.google.com → *APIs e serviços → Credenciais → ID do cliente OAuth* (aplicativo da
+Web), com o URI de redirecionamento acima. No ERP: tipo Google, **ID do cliente**, **segredo** e, obrigatoriamente
+para criar usuários, os **domínios permitidos** (ex.: `empresa.com.br`; vale o domínio do Workspace e o do e-mail).
+
+**Outros (Keycloak, Okta, Authentik…):** tipo *Outro provedor OpenID Connect* e o **emissor** (issuer) com `https://`.
+
+**Quem pode entrar:**
+- Quem já foi ligado ao provedor entra sempre pelo identificador estável dele (não pelo e-mail).
+- *Criar usuários no primeiro acesso* (desligado por padrão): cria o usuário **sem acesso a nada** (ou só ao *grupo dos novos
+  usuários* que você escolher) até um administrador liberar. Nunca concede perfil de administrador.
+- *Vincular pelo e-mail* (desligado): faz um usuário **já cadastrado** com o mesmo e-mail passar a entrar pelo provedor.
+  Sem isso, um usuário local com aquele e-mail **não** é assumido.
+- *Domínios permitidos* limita o acesso pelo domínio do e-mail (no Google, também pelo domínio do Workspace).
+
+**2FA:** o login único confia no MFA do provedor (ative a verificação em duas etapas lá). Se preferir exigir também o código do
+ERP para Administradores/Financeiro, marque *exigir também o 2FA do ERP* no provedor.
+
+**Desligar um funcionário:** desative no AD/provedor **e** desative o usuário no ERP (*Usuários e grupos*): uma sessão já
+aberta no ERP continua até expirar (8 horas) e o ERP só consulta o provedor no momento do login.
+

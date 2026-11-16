@@ -12,3 +12,5 @@ cryptography>=42
 lxml>=5.0
 requests>=2.31
 segno>=1.6
+ldap3>=2.9
+PyJWT[crypto]>=2.8

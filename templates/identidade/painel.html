@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-info small">Usuários criados por LDAP ou SSO não têm senha no ERP. Quem tem 2FA obrigatório continua com ele no LDAP;
+  no SSO confia-se no MFA do provedor (a menos que você marque o contrário). Vínculos ativos: <strong>{{ vinculos }}</strong>.</div>
+<div class="d-flex justify-content-between align-items-center mb-2"><h5 class="mb-0">Diretórios LDAP / Active Directory</h5>
+  <a class="btn btn-sm btn-primary" href="{% url 'identidade:ldap_novo' %}"><i class="bi bi-plus-lg"></i> Adicionar</a></div>
+<div class="table-responsive mb-4"><table class="table table-sm align-middle">
+  <thead><tr><th>Nome</th><th>Servidor</th><th>Segurança</th><th>Ativo</th><th></th></tr></thead>
+  <tbody>{% for c in ldaps %}<tr><td>{{ c.nome }}</td><td>{{ c.servidor }}:{{ c.porta }}</td><td>{{ c.get_seguranca_display }}</td>
+    <td>{% if c.ativo %}Sim{% else %}Não{% endif %}</td>
+    <td class="text-end text-nowrap">
+      <form method="post" action="{% url 'identidade:ldap_testar' c.pk %}" class="d-inline-flex gap-1">{% csrf_token %}
+        <input name="login" class="form-control form-control-sm" placeholder="login (opcional)" style="width:130px" autocomplete="off">
+        <input name="senha" type="password" class="form-control form-control-sm" placeholder="senha (opcional)" style="width:130px" autocomplete="new-password">
+        <button class="btn btn-sm btn-outline-primary">Testar</button></form>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'identidade:ldap_editar' c.pk %}">Editar</a>
+      <form method="post" action="{% url 'identidade:excluir' 'ldap' c.pk %}" class="d-inline" onsubmit="return confirm('Remover este diretório?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Remover</button></form>
+    </td></tr>{% empty %}<tr><td colspan="5" class="text-muted">Nenhum diretório configurado.</td></tr>{% endfor %}</tbody></table></div>
+<div class="d-flex justify-content-between align-items-center mb-2"><h5 class="mb-0">Login único (Microsoft, Google e outros OpenID Connect)</h5>
+  <a class="btn btn-sm btn-primary" href="{% url 'identidade:oidc_novo' %}"><i class="bi bi-plus-lg"></i> Adicionar</a></div>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Botão</th><th>Tipo</th><th>Endereço de retorno (cadastre no provedor)</th><th>Ativo</th><th></th></tr></thead>
+  <tbody>{% for p in provedores %}<tr><td>{{ p.nome }}</td><td>{{ p.get_tipo_display }}</td>
+    <td><code class="user-select-all small">{{ request.scheme }}://{{ request.get_host }}/identidade/retorno/{{ p.slug }}/</code></td>
+    <td>{% if p.ativo %}Sim{% else %}Não{% endif %}</td>
+    <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="{% url 'identidade:oidc_editar' p.pk %}">Editar</a>
+      <form method="post" action="{% url 'identidade:excluir' 'oidc' p.pk %}" class="d-inline" onsubmit="return confirm('Remover este provedor?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Remover</button></form></td></tr>
+    {% empty %}<tr><td colspan="5" class="text-muted">Nenhum provedor configurado.</td></tr>{% endfor %}</tbody></table></div>
+<p class="small text-muted">Se <code>ERP_URL_BASE</code> estiver definido no <code>.env</code>, o endereço de retorno usa esse endereço (obrigatório atrás de proxy/HTTPS). Passo a passo no manual (§28).</p>
+{% endblock %}

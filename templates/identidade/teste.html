@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+{% block content %}
+<ul class="list-group mb-3" style="max-width:720px">{% for ok, msg in resultados %}
+  <li class="list-group-item {% if ok %}list-group-item-success{% else %}list-group-item-danger{% endif %}">{% if ok %}✔{% else %}✘{% endif %} {{ msg }}</li>{% endfor %}</ul>
+<a class="btn btn-outline-secondary" href="{% url 'identidade:painel' %}">Voltar</a>
+{% endblock %}

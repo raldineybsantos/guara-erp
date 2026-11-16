@@ -138,7 +138,6 @@ Os instaladores ajudam nisso:
 
 ## 5. Pendências recomendadas (fora do escopo desta versão)
 
-- Integração com AD/LDAP ou SSO, se a empresa já usa.
 - Antivírus nos uploads do GED (ex.: ClamAV).
 - Teste de invasão por terceiro antes de expor o sistema à internet.
 
@@ -169,6 +168,25 @@ do servidor. Retenção avô-pai-filho. Nenhum comando passa por shell; o downlo
 para a auditoria. **O `.env` e a `BACKUP_SENHA` não estão no backup: guarde-os em outro lugar.** Durante a geração há,
 por segundos, um dump em texto claro numa pasta temporária (`0700`) que é apagada ao final — em servidor compartilhado,
 aponte `TMPDIR` para um disco cifrado.
+
+## Login corporativo (LDAP/AD e SSO)
+
+- **LDAP/AD (ldap3):** só TLS (LDAPS ou StartTLS) com **certificado sempre validado** (CA própria opcional). A senha vazia é
+  recusada (evita o bind anônimo), o login digitado entra no filtro **escapado** (sem injeção de LDAP), a conta de serviço só
+  lê e sua senha fica **cifrada** com a chave do cofre e fora da auditoria. Conta desativada no AD não entra. Um usuário
+  local de mesmo login não é assumido pelo diretório sem autorização explícita.
+- **SSO OpenID Connect:** fluxo de código com **PKCE (S256)**, `state` e `nonce` de uso único na sessão (expira em 10 min).
+  O ID token é validado por assinatura (JWKS do provedor, algoritmos assimétricos apenas: `none` e HMAC são recusados),
+  emissor, público, validade e nonce; Microsoft confere ainda o tenant do token e **rejeita** `common`/`organizations`/
+  `consumers`. O endereço de descoberta e todos os endpoints precisam ser HTTPS e o emissor anunciado tem de coincidir
+  com o configurado.
+- **Vínculo seguro:** a identidade é ligada pelo identificador estável do provedor (`sub`), nunca só pelo e-mail. Usuário local
+  com o mesmo e-mail só é ligado se o administrador marcar isso; e-mail não verificado é recusado; criação automática exige
+  domínio permitido (Google/genérico), cria sem acesso e nunca dá perfil de administrador.
+- **Limites honestos:** (1) o ERP só consulta o diretório/provedor no login: desativar alguém lá **não derruba** a sessão
+  aberta (até 8 h) — desative também no ERP; (2) o grupo vindo do LDAP é sincronizado a cada login, não em tempo real;
+  (3) SAML e SCIM (provisionamento/desprovisionamento automático) não estão implementados; (4) o LDAP usa o login como
+  identificador, então reaproveitar um login de alguém que saiu cria a ligação com o antigo usuário do ERP.
 
 ## Certificado A1 da empresa (transmissão fiscal)
 

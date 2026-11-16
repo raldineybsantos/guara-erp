@@ -14,8 +14,10 @@ EXCLUIR = {"core.logauditoria", "core.seloauditoria", "core.logerro", "core.noti
            "rh.apuracaodia", "rh.holerite", "rh.itemholerite",
            # segredos e códigos: os eventos de 2FA vão para a trilha como "auth.mfa" (sem valores)
            "seguranca.dispositivomfa", "seguranca.codigorecuperacao", "seguranca.registrobackup"}
+# identidades externas mudam a cada login: o evento de login já fica em auth.login
+EXCLUIR |= {"identidade.identidadeexterna"}
 IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "chave_api", "telegram_token", "telegram_segredo",
-           "xml_enviado", "xml_retorno", "xml", "xml_assinado", "last_login", "detalhe"}
+           "bind_senha", "client_secret", "xml_enviado", "xml_retorno", "xml", "xml_assinado", "last_login", "detalhe"}
 MASCARAR = {"password"}
 _cache_apps = {}
 

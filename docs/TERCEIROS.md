@@ -27,6 +27,8 @@ arquivos ou nos pacotes instalados.
 | tzdata | Apache-2.0 |
 | defusedxml | PSF-2.0 |
 | segno (QR code do 2FA) | BSD-3-Clause |
+| ldap3 (login LDAP/AD) | LGPL-3.0 |
+| PyJWT (validação do ID token do SSO) | MIT |
 
 ## Serviços usados no Docker (imagens, não redistribuídas)
 

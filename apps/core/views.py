@@ -154,6 +154,14 @@ class LoginView(auth_views.LoginView):
             return self.render_to_response(self.get_context_data(form=form, bloqueado=True), status=429)
         return super().post(request, *args, **kwargs)
 
+    def get_context_data(self, **kwargs):
+        from apps.identidade.models import ConfiguracaoLDAP, ProvedorOIDC
+
+        ctx = super().get_context_data(**kwargs)
+        ctx["provedores_sso"] = ProvedorOIDC.objects.filter(ativo=True)
+        ctx["tem_ldap"] = ConfiguracaoLDAP.objects.filter(ativo=True).exists()
+        return ctx
+
     def form_valid(self, form):
         resposta = super().form_valid(form)
         from apps.seguranca import mfa
