@@ -11,3 +11,4 @@ pyHanko>=0.25,<0.40
 cryptography>=42
 lxml>=5.0
 requests>=2.31
+segno>=1.6

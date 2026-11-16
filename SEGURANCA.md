@@ -109,8 +109,8 @@ Os instaladores ajudam nisso:
 
 ## 4. Manutenção
 
-- **Backup:** botão na página Banco de dados (superusuário) ou `docker compose exec db pg_dump -U postgres erp > backup.sql`.
-  O arquivo contém **todos os dados**, inclusive pessoais: guarde criptografado e fora do servidor.
+- **Backup:** automático e cifrado (veja "Verificação em duas etapas e backup" abaixo). O botão `.sql` da página
+  Banco de dados gera um arquivo **sem cifra** com **todos os dados**, inclusive pessoais: use com cuidado.
 - **VACUUM/ANALYZE:** o autovacuum do PostgreSQL já roda sozinho. O botão força uma execução manual.
 - **Atualizações:** `git pull && docker compose up -d --build` (aplica migrações automaticamente).
   Atualize as imagens (`docker compose pull`) mensalmente.
@@ -138,11 +138,37 @@ Os instaladores ajudam nisso:
 
 ## 5. Pendências recomendadas (fora do escopo desta versão)
 
-- Autenticação em dois fatores (ex.: `django-otp`) para Administradores e Financeiro.
 - Integração com AD/LDAP ou SSO, se a empresa já usa.
 - Antivírus nos uploads do GED (ex.: ClamAV).
-- Backup automático agendado com retenção e cópia externa.
 - Teste de invasão por terceiro antes de expor o sistema à internet.
+
+## Verificação em duas etapas e backup
+
+**2FA (TOTP).** Código de 6 dígitos de aplicativo autenticador (Google/Microsoft Authenticator, Authy, Bitwarden,
+1Password), implementado conforme a RFC 6238 e conferido com os vetores de teste da própria RFC.
+
+- **Quem:** obrigatório para superusuários e para os grupos de `MFA_GRUPOS_OBRIGATORIOS` (padrão: Administradores e
+  Financeiro); os demais podem ativar em *Segurança da conta*. Quem é obrigado e ainda não cadastrou só alcança a tela
+  de cadastro: um *middleware* bloqueia todo o resto até o segundo fator ser concluído nesta sessão (inclusive o `/admin/`).
+- **Segredo cifrado:** o segredo TOTP fica cifrado no banco com a mesma chave do cofre do certificado e nunca aparece na
+  auditoria. Cada código vale uma vez (o passo de 30 s usado é gravado e recusado de novo); tolerância de ±30 s de relógio.
+- **Códigos de recuperação:** 10, uso único, guardados só como SHA-256. Ao gerar novos, os antigos deixam de valer.
+- **Força bruta:** `LOGIN_MAX_TENTATIVAS` erros em `LOGIN_BLOQUEIO_MINUTOS` bloqueiam a verificação do usuário (mesmo
+  com o código certo) e ficam na auditoria (`auth.mfa`). Ações sensíveis (novos códigos, desativar) pedem um código válido.
+- **Celular perdido:** com um código de recuperação o usuário entra e recadastra; sem eles, um **superusuário redefine**
+  em *Administração → Dois fatores* (fica registrado quem redefiniu). Se o único superusuário perder tudo:
+  `python manage.py shell -c "from apps.seguranca.models import DispositivoMFA as D; D.objects.filter(usuario__username='NOME').delete()"`
+  (acesso ao servidor).
+- **Limite honesto:** TOTP não protege contra páginas falsas que retransmitem o código em tempo real (*phishing* ativo).
+  Para isso, chaves de segurança (WebAuthn) — não implementadas. Sessões abertas antes da atualização pedem o 2FA no
+  próximo acesso. `MFA_ATIVO=0` desliga tudo (use só para recuperação de emergência).
+
+**Backup.** Cifrado com AES-256-GCM (chave derivada por scrypt da `BACKUP_SENHA`; blocos autenticados, então senha errada,
+adulteração ou arquivo truncado são detectados), com permissão `0600`, verificado logo após a geração e copiado para fora
+do servidor. Retenção avô-pai-filho. Nenhum comando passa por shell; o download e a execução são só de superusuário e vão
+para a auditoria. **O `.env` e a `BACKUP_SENHA` não estão no backup: guarde-os em outro lugar.** Durante a geração há,
+por segundos, um dump em texto claro numa pasta temporária (`0700`) que é apagada ao final — em servidor compartilhado,
+aponte `TMPDIR` para um disco cifrado.
 
 ## Certificado A1 da empresa (transmissão fiscal)
 

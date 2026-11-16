@@ -154,6 +154,13 @@ class LoginView(auth_views.LoginView):
             return self.render_to_response(self.get_context_data(form=form, bloqueado=True), status=429)
         return super().post(request, *args, **kwargs)
 
+    def form_valid(self, form):
+        resposta = super().form_valid(form)
+        from apps.seguranca import mfa
+
+        mfa.iniciar_sessao(self.request, form.get_user())
+        return resposta
+
 
 @login_required
 def avisos(request):

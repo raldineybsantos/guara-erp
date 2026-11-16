@@ -5,3 +5,4 @@ cd /d "%~dp0\.."
 .venv\Scripts\python.exe manage.py executar_regua >> rotinas.log 2>&1
 .venv\Scripts\python.exe manage.py alertar_contratos >> rotinas.log 2>&1
 .venv\Scripts\python.exe manage.py rotinas_diarias >> rotinas.log 2>&1
+REM Backup diario (agende este mesmo arquivo as 02:00 em outra tarefa, ou use scripts\backup_windows.bat)

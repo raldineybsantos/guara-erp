@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:560px"><div class="card-body p-4">
+  {% if primeira %}<div class="alert alert-success small">Verificação em duas etapas ativada.</div>{% endif %}
+  <div class="alert alert-warning small"><strong>Guarde estes códigos agora.</strong> Cada um vale uma vez e serve se você perder o celular.
+    Eles não serão mostrados de novo. Guarde em cofre de senhas ou impresso, fora do computador.</div>
+  <div class="row row-cols-2 g-2 mb-3">{% for c in codigos %}<div class="col"><code class="d-block border rounded p-2 text-center fs-6">{{ c }}</code></div>{% endfor %}</div>
+  <a class="btn btn-primary" href="/">Continuar</a>
+  <button type="button" class="btn btn-outline-secondary" onclick="window.print()">Imprimir</button>
+</div></div>
+{% endblock %}

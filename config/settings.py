@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "apps.servicedesk",
     "apps.sst",
     "apps.rh",
+    "apps.seguranca",
     "apps.crm",
     "apps.projetos",
     "apps.manutencao",
@@ -77,6 +78,7 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "apps.seguranca.middleware.MFAMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.core.middleware.AuditoriaMiddleware",
@@ -165,6 +167,21 @@ SECURE_CROSS_ORIGIN_OPENER_POLICY = "same-origin"
 # Bloqueio de login: N falhas em X minutos bloqueia o usuário (e o IP após 3×N)
 LOGIN_MAX_TENTATIVAS = int(os.getenv("LOGIN_MAX_TENTATIVAS", "5"))
 LOGIN_BLOQUEIO_MINUTOS = int(os.getenv("LOGIN_BLOQUEIO_MINUTOS", "15"))
+# Verificação em duas etapas (TOTP). Superusuários e os grupos abaixo são obrigados; os demais podem ativar.
+# (Desligada só na suíte de testes; os testes de 2FA a religam com override_settings.)
+MFA_ATIVO = env_bool("MFA_ATIVO", True) and "test" not in sys.argv
+MFA_GRUPOS_OBRIGATORIOS = [g.strip() for g in os.getenv("MFA_GRUPOS_OBRIGATORIOS", "Administradores,Financeiro").split(",") if g.strip()]
+MFA_EMISSOR = os.getenv("MFA_EMISSOR", "Guará ERP")
+# Backup automático (veja docs/INSTALACAO.md): cifrado, com retenção e cópia externa.
+BACKUP_DIR = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
+BACKUP_COPIA_DIR = os.getenv("BACKUP_COPIA_DIR", "")          # disco externo / NAS montado
+BACKUP_COMANDO_COPIA = os.getenv("BACKUP_COMANDO_COPIA", "")  # ex.: rclone copy {arquivo} nuvem:guara
+BACKUP_SENHA = os.getenv("BACKUP_SENHA", "")                  # frase longa; sem ela usa-se a chave do cofre
+BACKUP_HORA = os.getenv("BACKUP_HORA", "02:00")
+BACKUP_INCLUIR_MEDIA = env_bool("BACKUP_INCLUIR_MEDIA", True)
+BACKUP_RETENCAO_DIARIOS = int(os.getenv("BACKUP_RETENCAO_DIARIOS", "7"))
+BACKUP_RETENCAO_SEMANAIS = int(os.getenv("BACKUP_RETENCAO_SEMANAIS", "4"))
+BACKUP_RETENCAO_MENSAIS = int(os.getenv("BACKUP_RETENCAO_MENSAIS", "12"))
 # Só ative se o ERP estiver atrás de um proxy reverso (nginx/Caddy/Traefik) que define o cabeçalho
 CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 

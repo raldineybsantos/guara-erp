@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not senha_propria %}<div class="alert alert-warning small"><strong>Atenção:</strong> BACKUP_SENHA não está definida; os backups usam uma chave derivada da
+  FISCAL_CHAVE_COFRE/SECRET_KEY. Defina uma frase própria no <code>.env</code> e guarde-a <u>fora do servidor</u>: sem ela o backup não abre.</div>{% endif %}
+{% if not copia_dir and not copia_cmd %}<div class="alert alert-warning small"><strong>Sem cópia externa.</strong> Os backups só existem neste servidor.
+  Configure BACKUP_COPIA_DIR (disco/NAS) ou BACKUP_COMANDO_COPIA (rclone, rsync…).</div>{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-md-8"><div class="card h-100"><div class="card-body small">
+    <div><strong>Pasta local:</strong> <code>{{ pasta }}</code> — {{ n_arquivos }} arquivo(s){% if espaco is not None %}, {{ espaco|filesizeformat }} livres{% endif %}</div>
+    <div><strong>Cópia externa:</strong> {% if copia_dir %}<code>{{ copia_dir }}</code>{% endif %}{% if copia_cmd %} comando externo{% endif %}{% if not copia_dir and not copia_cmd %}não configurada{% endif %}</div>
+    <div><strong>Agendamento:</strong> todo dia às {{ hora }} · <strong>Retenção:</strong> {{ retencao.0 }} diários, {{ retencao.1 }} semanais, {{ retencao.2 }} mensais</div>
+  </div></div></div>
+  <div class="col-md-4"><div class="card h-100"><div class="card-body d-flex align-items-center justify-content-center">
+    <form method="post" action="{% url 'seguranca:backup_executar' %}">{% csrf_token %}
+      <button class="btn btn-primary" {% if em_andamento %}disabled{% endif %}><i class="bi bi-cloud-arrow-up"></i> {% if em_andamento %}Em andamento…{% else %}Fazer backup agora{% endif %}</button>
+    </form></div></div></div>
+</div>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Início</th><th>Origem</th><th>Situação</th><th>Arquivo</th><th class="text-end">Tamanho</th><th>Verificado</th><th>Cópia externa</th><th></th></tr></thead>
+  <tbody>{% for r in registros %}<tr>
+    <td>{{ r.iniciado_em|date:"d/m/Y H:i" }}</td><td>{{ r.get_origem_display }}</td>
+    <td>{% if r.situacao == "ok" %}<span class="badge text-bg-success">OK</span>{% elif r.situacao == "erro" %}<span class="badge text-bg-danger">Falhou</span>{% else %}<span class="badge text-bg-secondary">Executando</span>{% endif %}</td>
+    <td><code>{{ r.arquivo|default:"—" }}</code>{% if r.erro %}<div class="small text-danger">{{ r.erro|truncatechars:160 }}</div>{% endif %}</td>
+    <td class="text-end">{{ r.tamanho|filesizeformat }}</td>
+    <td>{% if r.verificado %}Sim{% else %}—{% endif %}</td><td>{{ r.copia_externa|default:"—" }}</td>
+    <td class="text-end text-nowrap">{% if r.arquivo in disponiveis %}
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'seguranca:backup_baixar' r.arquivo %}">Baixar</a>
+      <form method="post" action="{% url 'seguranca:backup_verificar' r.arquivo %}" class="d-inline">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Verificar</button></form>{% endif %}</td>
+  </tr>{% empty %}<tr><td colspan="8" class="text-muted">Nenhum backup ainda.</td></tr>{% endfor %}</tbody></table></div>
+<p class="small text-muted">O backup contém o banco e os arquivos do GED, cifrados (AES-256-GCM). Para restaurar use
+  <code>python manage.py backup_restaurar ARQUIVO</code> (veja docs/INSTALACAO.md). Guarde a BACKUP_SENHA e o <code>.env</code> fora do servidor.</p>
+{% endblock %}

@@ -44,6 +44,7 @@ services:
       - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8000}:8000"
     volumes:
       - media:/app/media
+      - backups:/app/backups
     networks: [interna]
 
   agendador:
@@ -56,6 +57,11 @@ services:
       SOMENTE_AGUARDAR_BANCO: "1"
     depends_on:
       - web
+    volumes:
+      - media:/app/media       # o backup inclui os arquivos do GED
+      - backups:/app/backups
+      # cópia externa: monte aqui um disco/NAS e aponte BACKUP_COPIA_DIR=/copia no .env
+      # - /mnt/nas/guara:/copia
     command: ["python", "manage.py", "agendador", "--hora", "08:00"]
     networks: [interna]
 
@@ -98,5 +104,6 @@ networks:
 volumes:
   pgdata:
   media:
+  backups:
   pgadmin:
   caddy:

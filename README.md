@@ -56,7 +56,7 @@ símbolo do Cerrado: ele percorre grandes territórios com eficiência, como um 
 | **GED** | Pastas com controle de acesso por grupo, documentos com **versões**, hash SHA-256, validade (contratos, alvarás), documentos confidenciais, download auditado e visualização no navegador. **Assinatura digital ICP-Brasil** com certificado A1: PAdES em PDF (vários signatários) e CAdES `.p7s` nos demais arquivos. Inclui verificação de assinaturas, também das feitas fora do sistema (gov.br, token A3). |
 | **Relatórios e dashboards** | Seis painéis analíticos (executivo, financeiro, comercial, suprimentos, operação e Service Desk) com gráficos, comparação com o período anterior, filtro por empresa/filial e exportação CSV. Cada perfil vê só o que pode consultar. |
 | **Assistente de IA** | Pedido em linguagem natural vira formulário preenchido, em **todos os módulos**, pelo chat do ERP ou pelo **Telegram**. Também **consulta** as listas (o ERP executa, com as permissões do usuário) e faz a **triagem do Service Desk**: classifica o chamado, orienta pela biblioteca de soluções e encaminha à equipe quando não resolve. IA local (Ollama) ou na nuvem (API compatível com OpenAI, Anthropic), à escolha do administrador. A IA só propõe: quem salva é o usuário, com as permissões dele. |
-| **Administração** | Usuários, grupos e permissões; **auditoria** automática de toda inclusão/alteração/exclusão (com o que mudou); página de **Banco de dados** (tamanho, tabelas, backup `.sql` com um clique, VACUUM) e **pgAdmin** incluso no Docker. |
+| **Administração** | Usuários, grupos e permissões; **auditoria** automática de toda inclusão/alteração/exclusão (com o que mudou); página de **Banco de dados** (tamanho, tabelas, backup `.sql` com um clique, VACUUM) e **pgAdmin** incluso no Docker. **Verificação em duas etapas (2FA/TOTP)**, obrigatória para Administradores e Financeiro, com códigos de recuperação. **Backup automático cifrado** (banco + arquivos do GED) com verificação, retenção diária/semanal/mensal, cópia externa (disco, NAS, rclone) e restauração por comando. |
 
 Toda tela de listagem tem busca, filtros, ordenação, paginação e **exportação para CSV/Excel**.
 Painel inicial com saldos, vencidos, próximos pagamentos/recebimentos, tarefas e gráfico de fluxo de caixa.
@@ -201,9 +201,13 @@ formulário, detalhe, exclusão, menu e permissões são gerados automaticamente
 
 ## Limites desta versão (MVP)
 
-- **Emissão de NF-e/NFS-e**: o sistema calcula, numera e registra as notas, mas **não transmite à SEFAZ
-  ou à prefeitura**. Use seu emissor/certificado A1 e informe chave e protocolo, ou integre um serviço
-  (ex.: Focus NFe, PlugNotas, NFE.io) em `apps/fiscal`.
+- **Emissão de NF-e/NFS-e**: a **NFS-e pelo Emissor Nacional** está implementada (DPS assinada, TLS mútuo, consulta e
+  cancelamento), mas só em **homologação**: a produção fica travada até ser liberada, e ainda falta o teste real com o
+  certificado A1. A **NF-e de mercadoria não é transmitida à SEFAZ**, nem a NFS-e de municípios fora do padrão nacional
+  (São Paulo, por exemplo): informe chave e protocolo, ou integre um serviço (Focus NFe, PlugNotas, NFE.io) em `apps/fiscal`.
+- **Segurança:** o 2FA é por código de aplicativo (TOTP); não há chave de segurança (WebAuthn), LDAP/SSO, antivírus nos
+  uploads do GED nem teste de invasão por terceiros. O backup cifrado existe, mas a **cópia externa e o ensaio de
+  restauração dependem de você configurar** (veja docs/INSTALACAO.md §5).
 - **Boleto registrado / PIX dinâmico**: o PIX gerado é o copia-e-cola **estático** (sem confirmação automática).
   Boleto e PIX com baixa automática exigem integração com o banco ou um gateway (Asaas, Iugu, Gerencianet etc.).
 - **RH:** os cálculos de folha, férias e rescisão seguem as tabelas de 2026, mas devem ser **validados pela contabilidade** antes do uso real. O eSocial gera, assina e monta o lote, mas **não transmite** e ainda não foi validado contra os XSD oficiais. O ponto é gerencial (não é REP homologado).

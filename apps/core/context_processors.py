@@ -60,6 +60,8 @@ LINKS_EXTRAS = [
      "core.view_logauditoria", 91),
     ("Administração", "Usuários e grupos", "admin:auth_user_changelist", "person-gear", "auth.view_user", 1),
     ("Administração", "Banco de dados", "banco_dados", "database", "is_superuser", 2),
+    ("Administração", "Backups", "seguranca:backups", "cloud-arrow-up", "is_superuser", 4),
+    ("Administração", "Dois fatores (2FA)", "seguranca:mfa_usuarios", "shield-check", "is_superuser", 3),
     ("Administração", "Admin completo", "admin:index", "tools", "is_staff", 99),
 ]
 

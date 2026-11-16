@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:640px"><div class="card-body p-4">
+  {% if obrigatorio %}<div class="alert alert-info small">Seu perfil exige verificação em duas etapas. Configure agora para continuar.</div>{% endif %}
+  <ol class="small">
+    <li>Instale um aplicativo autenticador (Google Authenticator, Microsoft Authenticator, Authy, Bitwarden ou 1Password).</li>
+    <li>Leia o QR code abaixo ou digite a chave manualmente.</li>
+    <li>Digite o código de 6 dígitos que o aplicativo mostrar.</li>
+  </ol>
+  <div class="d-flex flex-wrap gap-4 align-items-center mb-3">
+    <div class="border rounded p-2 bg-white" role="img" aria-label="QR code para o aplicativo autenticador">{{ qr|safe }}</div>
+    <div><div class="small text-muted">Chave manual</div><code class="fs-6 user-select-all">{{ chave }}</code>
+      <div class="small text-muted mt-2">Tipo: baseada em tempo (TOTP), 6 dígitos, 30 s.</div></div>
+  </div>
+  {% if erro %}<div class="alert alert-danger small">Código inválido. Confira a hora do celular e tente de novo.</div>{% endif %}
+  <form method="post" class="d-flex gap-2" style="max-width:360px">{% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <input name="codigo" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required aria-label="Código de 6 dígitos">
+    <button class="btn btn-primary">Ativar</button>
+  </form>
+</div></div>
+{% endblock %}

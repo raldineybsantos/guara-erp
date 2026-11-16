@@ -26,6 +26,7 @@ arquivos ou nos pacotes instalados.
 | python-dotenv | BSD-3-Clause |
 | tzdata | Apache-2.0 |
 | defusedxml | PSF-2.0 |
+| segno (QR code do 2FA) | BSD-3-Clause |
 
 ## Serviços usados no Docker (imagens, não redistribuídas)
 

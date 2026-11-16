@@ -21,6 +21,9 @@ class Command(BaseCommand):
 
         rh = rotinas_rh.executar()
         self.stdout.write(f"RH: {rh['periodos']} período(s) aquisitivo(s) criado(s), {rh['avisos']} aviso(s) de férias.")
+        from apps.seguranca import backup
+
+        self.stdout.write("Backup: " + ("ATRASADO — administradores avisados." if backup.verificar_atraso() else "em dia."))
         m = auditoria.manutencao()
         self.stdout.write(f"Auditoria: {'trilha selada' if m['selo'] else 'nada novo a selar'}; "
                           f"{m['erros_apagados']} erro(s) antigo(s) removido(s).")

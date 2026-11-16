@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:640px"><div class="card-body p-4">
+  {% if not mfa_ligado %}<div class="alert alert-secondary small">A verificação em duas etapas está desligada neste servidor (MFA_ATIVO).</div>{% endif %}
+  {% if ativo %}
+    <p><span class="badge text-bg-success">Ativa</span>{% if desde %} desde {{ desde|date:"d/m/Y H:i" }}{% endif %}
+       {% if obrigatorio %}<span class="badge text-bg-info">Obrigatória para o seu perfil</span>{% endif %}</p>
+    <p class="small">Códigos de recuperação restantes: <strong>{{ restantes }}</strong>{% if restantes <= 3 %} — gere novos em breve.{% endif %}</p>
+    <hr>
+    <form method="post" action="{% url 'seguranca:mfa_codigos' %}" class="d-flex gap-2 mb-3" style="max-width:420px">{% csrf_token %}
+      <input name="codigo" class="form-control" placeholder="Código atual" inputmode="numeric" maxlength="12" required aria-label="Código atual">
+      <button class="btn btn-outline-primary text-nowrap">Gerar novos códigos</button>
+    </form>
+    {% if not obrigatorio %}
+    <form method="post" action="{% url 'seguranca:mfa_desativar' %}" class="d-flex gap-2" style="max-width:420px">{% csrf_token %}
+      <input name="codigo" class="form-control" placeholder="Código atual" inputmode="numeric" maxlength="12" required aria-label="Código atual">
+      <button class="btn btn-outline-danger text-nowrap">Desativar</button>
+    </form>{% endif %}
+  {% else %}
+    <p><span class="badge text-bg-secondary">Desativada</span></p>
+    <p class="small text-muted">Adiciona uma segunda prova de identidade (código do celular) além da senha.</p>
+    <a class="btn btn-primary" href="{% url 'seguranca:mfa_ativar' %}">Ativar agora</a>
+  {% endif %}
+  <hr><a href="{% url 'password_change' %}" class="small">Alterar senha</a>
+  {% if request.user.is_superuser %} · <a href="{% url 'seguranca:mfa_usuarios' %}" class="small">2FA dos usuários</a>{% endif %}
+</div></div>
+{% endblock %}

@@ -9,3 +9,5 @@ venv/
 .coverage
 .idea/
 .vscode/
+backups/
+*.gbk

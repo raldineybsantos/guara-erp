@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# postgresql-client: pg_dump para o backup pela interface web
+# postgresql-client: pg_dump/pg_restore para o backup (web e agendador)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends postgresql-client \
     && rm -rf /var/lib/apt/lists/*
@@ -16,7 +16,7 @@ RUN pip install -r requirements.txt
 COPY . .
 RUN DJANGO_SECRET_KEY=build python manage.py collectstatic --noinput \
     && chmod +x docker/entrypoint.sh \
-    && useradd -m erp && mkdir -p /app/media && chown -R erp /app/media
+    && useradd -m erp && mkdir -p /app/media /app/backups && chown -R erp /app/media /app/backups
 
 USER erp
 EXPOSE 8000

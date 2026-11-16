@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Usuário</th><th>2FA</th><th>Obrigatório</th><th>Códigos restantes</th><th></th></tr></thead>
+  <tbody>{% for l in lista %}<tr>
+    <td>{{ l.u.username }}</td>
+    <td>{% if l.ativo %}<span class="badge text-bg-success">Ativo</span>{% else %}<span class="badge text-bg-secondary">Não</span>{% endif %}</td>
+    <td>{% if l.exigido %}Sim{% else %}—{% endif %}</td><td>{% if l.ativo %}{{ l.restantes }}{% else %}—{% endif %}</td>
+    <td class="text-end">{% if l.ativo and l.u.pk != request.user.pk %}
+      <form method="post" action="{% url 'seguranca:mfa_redefinir' l.u.pk %}" onsubmit="return confirm('Redefinir o 2FA de {{ l.u.username|escapejs }}?')">{% csrf_token %}
+        <button class="btn btn-sm btn-outline-danger">Redefinir</button></form>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div>
+{% endblock %}

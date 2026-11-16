@@ -31,6 +31,9 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 22. [Administração](#22-administração)
 23. [Perguntas frequentes](#23-perguntas-frequentes)
 24. [Relatórios e dashboards](#24-relatórios-e-dashboards)
+25. [Auditoria e logs de erro](#25-auditoria-e-logs-de-erro)
+26. [Recursos Humanos](#26-recursos-humanos)
+27. [Segurança da conta e backups](#27-segurança-da-conta-e-backups)
 
 ---
 
@@ -1345,3 +1348,45 @@ restrita, e o sistema **não transmite** ao governo (falta o certificado da empr
 4. Ao validar com o certificado real, ajuste o que o XSD apontar — os pontos mais prováveis são campos opcionais
    dependentes de cada empresa e o evento de cargos/lotações.
 
+---
+
+## 27. Segurança da conta e backups
+
+### 27.1 Verificação em duas etapas (2FA)
+
+Além da senha, o sistema pede um **código de 6 dígitos** do seu celular. É obrigatório para **Administradores e
+Financeiro**; os demais usuários podem ativar por conta própria.
+
+**Ativar** (menu do seu nome, no canto superior → **Segurança da conta** → *Ativar agora*; quem é obrigado cai direto aqui no
+primeiro acesso):
+
+1. Instale um aplicativo autenticador no celular (Google Authenticator, Microsoft Authenticator, Authy, Bitwarden ou 1Password).
+2. Leia o **QR code** na tela (ou digite a chave manual).
+3. Digite o código que o aplicativo mostrar e clique em **Ativar**.
+4. **Guarde os 10 códigos de recuperação** que aparecem uma única vez (cofre de senhas ou impressos). Cada um vale uma vez.
+
+**Entrar:** usuário e senha e, em seguida, o código do aplicativo (muda a cada 30 s e não pode ser usado duas vezes).
+Sem o celular, digite um código de recuperação no mesmo campo.
+
+**Em Segurança da conta** você vê quantos códigos de recuperação restam, **gera novos** (os antigos deixam de valer) e,
+se não for obrigado, **desativa** o 2FA. Essas duas ações pedem um código válido na hora.
+
+**Perdi o celular e os códigos:** peça a um administrador. Em **Administração → Dois fatores (2FA)** ele vê quem usa e
+clica em **Redefinir**; no próximo login você cadastra o novo aparelho. Fica registrado na auditoria quem redefiniu.
+
+**Muitos erros seguidos** bloqueiam a verificação por alguns minutos (por segurança, mesmo com o código certo).
+
+### 27.2 Backups (superusuário)
+
+**Administração → Backups.** O sistema faz um backup cifrado **todo dia às 02:00** (banco de dados + arquivos do GED),
+confere se ele abre, copia para a cópia externa configurada e apaga os antigos (mantém 7 diários, 4 semanais e 12 mensais).
+
+- A tela mostra a pasta, o espaço livre, a cópia externa, o agendamento e a **lista dos últimos backups** (situação,
+  tamanho, se foi verificado e se foi copiado).
+- **Fazer backup agora:** roda em segundo plano; atualize a página para ver o resultado.
+- **Baixar:** baixa o arquivo cifrado `.gbk` (fica na auditoria). **Verificar:** prova que o arquivo abre e o banco é legível.
+- **Avisos vermelhos** na tela: *sem cópia externa* (configure um disco/NAS) e *BACKUP_SENHA não definida*.
+- Se um backup falhar, ou passar de 36 horas sem nenhum, os administradores recebem um aviso.
+
+A **restauração** é feita por um técnico com acesso ao servidor (`backup_restaurar`, veja [INSTALACAO.md](INSTALACAO.md#5-backup-e-restauração)).
+Peça para **ensaiar a restauração** num banco de teste de tempos em tempos.

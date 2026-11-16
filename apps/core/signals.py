@@ -11,7 +11,9 @@ from django.dispatch import receiver
 EXTRAS = {"auth.user", "auth.group"}
 EXCLUIR = {"core.logauditoria", "core.seloauditoria", "core.logerro", "core.notificacao",
            # derivados e recalculáveis; as entradas (marcações, lançamentos, folha) continuam auditadas
-           "rh.apuracaodia", "rh.holerite", "rh.itemholerite"}
+           "rh.apuracaodia", "rh.holerite", "rh.itemholerite",
+           # segredos e códigos: os eventos de 2FA vão para a trilha como "auth.mfa" (sem valores)
+           "seguranca.dispositivomfa", "seguranca.codigorecuperacao", "seguranca.registrobackup"}
 IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "chave_api", "telegram_token", "telegram_segredo",
            "xml_enviado", "xml_retorno", "xml", "xml_assinado", "last_login", "detalhe"}
 MASCARAR = {"password"}

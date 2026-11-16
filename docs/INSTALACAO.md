@@ -337,7 +337,61 @@ Outra opção é registrar como serviço com o [NSSM](https://nssm.cc/):
 
 ## 5. Backup e restauração
 
+### 5.1 Backup automático (recomendado)
+
+O sistema faz **todo dia às 02:00** um backup **cifrado (AES-256-GCM)** do banco **e** dos arquivos do GED, confere
+se ele abre (decifra, valida o manifesto e lê o banco com `pg_restore --list`), copia para fora do servidor e apaga os
+antigos pela política de retenção. O resultado aparece em **Administração → Backups** (superusuário), onde também
+dá para **fazer um backup agora**, **baixar** e **verificar** cada arquivo. Se um backup falhar, ou passar de 36 horas
+sem nenhum, os superusuários recebem aviso (e e-mail, se configurado).
+
+Configure no `.env`:
+
+```ini
+BACKUP_SENHA=uma frase longa e secreta        # cifra os backups. GUARDE FORA DO SERVIDOR
+BACKUP_HORA=02:00
+BACKUP_COPIA_DIR=/copia                        # disco USB / NAS montado (veja abaixo)
+BACKUP_COMANDO_COPIA=rclone copy {arquivo} nuvem:guara-backups   # opcional: rclone, rsync, scp, aws s3 cp...
+BACKUP_RETENCAO_DIARIOS=7                      # guarda o mais recente de cada um dos últimos 7 dias,
+BACKUP_RETENCAO_SEMANAIS=4                     # 4 semanas
+BACKUP_RETENCAO_MENSAIS=12                     # e 12 meses
+```
+
+- **Cópia externa:** o backup só vale se existir fora do servidor. No Docker, monte o disco/NAS no serviço
+  `agendador` (linha comentada no `docker-compose.yml`, ex.: `/mnt/nas/guara:/copia`) e use `BACKUP_COPIA_DIR=/copia`.
+  A cópia é conferida byte a byte e a mesma retenção vale lá. `BACKUP_COMANDO_COPIA` roda sem shell; `{arquivo}` vira o
+  caminho do backup (para nuvem, configure antes o `rclone` no servidor).
+- **Docker:** o serviço `agendador` faz o backup (volumes `media` e `backups`). **Linux nativo:** o agendador do
+  `instalar_linux.sh` já cobre; ou use cron: `0 2 * * * cd /opt/guara-erp && .venv/bin/python manage.py backup_executar`.
+  **Windows nativo:** agende `scripts\backup_windows.bat` no Agendador de Tarefas às 02:00.
+- **O que o backup NÃO contém:** o arquivo `.env` (senhas, `DJANGO_SECRET_KEY`, `FISCAL_CHAVE_COFRE`, `BACKUP_SENHA`).
+  Guarde o `.env` num cofre de senhas, **fora do servidor**. Sem a `BACKUP_SENHA` o backup não abre, e sem a
+  `FISCAL_CHAVE_COFRE` (ou `DJANGO_SECRET_KEY`) o certificado A1 e os segredos do 2FA restaurados não podem ser lidos.
+- Sem `BACKUP_SENHA`, a chave é derivada da `FISCAL_CHAVE_COFRE`/`DJANGO_SECRET_KEY` (a tela avisa). Funciona, mas
+  é melhor ter uma frase própria.
+
+**Verificar um backup** (sem restaurar nada): `python manage.py backup_verificar guara-AAAAMMDD-HHMMSS.gbk`
+(no Docker: `docker compose exec web python manage.py backup_verificar /app/backups/ARQUIVO.gbk`).
+
+**Restaurar** (pare o ERP antes; substitui o conteúdo do banco):
+
+```bash
+# Docker
+docker compose stop web agendador
+docker compose run --rm web python manage.py backup_restaurar /app/backups/ARQUIVO.gbk --confirmo erp
+docker compose up -d
+# Linux/Windows nativo
+python manage.py backup_restaurar backups/ARQUIVO.gbk --confirmo erp
+```
+
+`--confirmo` exige o nome do banco (trava contra engano). A senha vem da `BACKUP_SENHA` do `.env` (ou `--senha`).
+Para **ensaiar** sem risco, restaure num banco novo: `--banco erp_teste` (crie-o antes com `createdb`). Faça esse
+ensaio de vez em quando: backup que nunca foi restaurado é só uma esperança.
+
+### 5.2 Backup manual
+
 **Pela tela:** Administração → Banco de dados → **Baixar backup (.sql)**. Só superusuários veem essa opção.
+(Esse arquivo **não é cifrado** e não inclui os arquivos do GED; prefira o backup automático.)
 
 **Pelo terminal:**
 
@@ -369,7 +423,7 @@ docker compose exec -T db pg_restore -U postgres -d erp --clean --if-exists --no
 sudo -u postgres pg_restore -d erp --clean --if-exists --no-owner --role=erp erp_AAAA-MM-DD.dump
 ```
 
-Backup automático diário no Linux (crontab do root, mantém 30 dias):
+Alternativa sem o sistema de backup do Guará (só banco, sem cifra, crontab do root, mantém 30 dias):
 
 ```cron
 0 2 * * * cd /opt/guara-erp && docker compose exec -T db pg_dump -U postgres -Fc erp > /backup/erp_$(date +\%F).dump && find /backup -name 'erp_*.dump' -mtime +30 -delete
