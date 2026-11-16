@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from django.urls import path
 
-from . import views, views_backup
+from . import views, views_antivirus, views_backup
 
 app_name = "seguranca"
 
@@ -19,4 +19,7 @@ urlpatterns = [
     path("backups/executar/", views_backup.executar, name="backup_executar"),
     path("backups/<str:nome>/baixar/", views_backup.baixar, name="backup_baixar"),
     path("backups/<str:nome>/verificar/", views_backup.verificar, name="backup_verificar"),
+    path("antivirus/", views_antivirus.painel, name="antivirus"),
+    path("antivirus/testar/", views_antivirus.testar, name="antivirus_testar"),
+    path("antivirus/varrer/", views_antivirus.varrer, name="antivirus_varrer"),
 ]

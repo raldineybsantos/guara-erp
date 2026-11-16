@@ -24,6 +24,11 @@ class Command(BaseCommand):
         from apps.seguranca import backup
 
         self.stdout.write("Backup: " + ("ATRASADO — administradores avisados." if backup.verificar_atraso() else "em dia."))
+        from apps.seguranca import varredura
+
+        av = varredura.rotina_diaria()
+        self.stdout.write("Antivírus: " + ("desligado." if not av["ativo"] else "ClamAV FORA DO AR — administradores avisados."
+                                           if not av["no_ar"] else f"{av['limpo']} arquivo(s) verificado(s), {av['infectado']} ameaça(s)."))
         m = auditoria.manutencao()
         self.stdout.write(f"Auditoria: {'trilha selada' if m['selo'] else 'nada novo a selar'}; "
                           f"{m['erros_apagados']} erro(s) antigo(s) removido(s).")

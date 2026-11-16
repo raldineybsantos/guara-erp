@@ -215,7 +215,9 @@ class Command(BaseCommand):
                 "", "Documento de DEMONSTRAÇÃO gerado pelo Guará ERP."])
             doc = Documento.objects.create(pasta=pasta, titulo=f"Contrato {c.numero} — {titulo}"[:200], tipo="contrato",
                                            validade=fim, tags=f"contrato, {c.numero}")
-            doc.adicionar_versao(ContentFile(pdf, name=f"{c.numero}.pdf"), "Minuta", usuarios["juridico"])
+            minuta = ContentFile(pdf, name=f"{c.numero}.pdf")
+            minuta._antivirus_ok = True      # conteúdo gerado pelo próprio sistema
+            doc.adicionar_versao(minuta, "Minuta", usuarios["juridico"])
             c.documento = doc
             c.status = status
             c.save()

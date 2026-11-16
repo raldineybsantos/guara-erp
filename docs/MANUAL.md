@@ -35,6 +35,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 26. [Recursos Humanos](#26-recursos-humanos)
 27. [Segurança da conta e backups](#27-segurança-da-conta-e-backups)
 28. [Login corporativo: LDAP/AD e login único (Microsoft, Google)](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
+29. [Antivírus nos uploads](#29-antivírus-nos-uploads)
 
 ---
 
@@ -1452,3 +1453,22 @@ ERP para Administradores/Financeiro, marque *exigir também o 2FA do ERP* no pro
 **Desligar um funcionário:** desative no AD/provedor **e** desative o usuário no ERP (*Usuários e grupos*): uma sessão já
 aberta no ERP continua até expirar (8 horas) e o ERP só consulta o provedor no momento do login.
 
+---
+
+## 29. Antivírus nos uploads
+
+Todo arquivo que você envia ao **GED**, aos **contratos** (Jurídico) ou na **importação de XML** é examinado pelo antivírus
+(ClamAV) antes de ser guardado.
+
+**O que você vê:**
+- **Ameaça detectada:** o envio é recusado com o nome da ameaça. Não tente de novo com o mesmo arquivo; avise a TI.
+- **"Não foi possível verificar… recusado por segurança":** o antivírus está fora do ar. Tente em alguns minutos; se persistir,
+  avise o administrador (ele recebe um aviso automático).
+- **"Passa do limite que o antivírus consegue verificar":** o arquivo é grande demais (padrão 100 MB; o envio máximo geral é
+  50 MB). Divida ou compacte, ou peça ao administrador para ampliar o limite.
+- Um arquivo antigo que a varredura marcar como ameaça fica com o **download bloqueado**.
+
+**Administrador (superusuário):** **Administração → Antivírus** mostra se o ClamAV está no ar (e a versão), os limites, quantos
+arquivos do GED estão sem ameaças/com ameaça/não verificados e as últimas ocorrências. **Testar detecção (EICAR)** envia o arquivo
+de teste padrão da indústria e confirma que a detecção funciona de ponta a ponta; **Verificar pendentes** examina os arquivos
+enviados antes do antivírus. Configuração e limites em [INSTALACAO.md](INSTALACAO.md#53-antivírus-dos-uploads-clamav).

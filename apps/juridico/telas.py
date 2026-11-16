@@ -9,6 +9,7 @@ from django.utils import timezone
 
 from apps.core.crud import Crud, FormBase
 from apps.core.validators import validar_arquivo_seguro
+from apps.seguranca.antivirus import validador as validar_antivirus
 
 from .models import Aditivo, Contrato
 
@@ -28,7 +29,7 @@ def pasta_juridico():
 class ContratoForm(FormBase):
     precisa_request = True
     arquivo = forms.FileField(label="Arquivo do contrato (PDF recomendado)", required=False,
-                              validators=[validar_arquivo_seguro],
+                              validators=[validar_arquivo_seguro, validar_antivirus],
                               help_text="Fica guardado no GED, na pasta Jurídico. Enviar outro arquivo cria uma nova versão.")
 
     class Meta:

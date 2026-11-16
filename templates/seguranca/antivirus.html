@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not ativo %}<div class="alert alert-danger">O antivírus está <strong>desligado</strong> (ANTIVIRUS_ATIVO=0): os arquivos enviados não são examinados.</div>
+{% elif not no_ar %}<div class="alert alert-danger"><strong>ClamAV fora do ar.</strong> Enquanto isso, <u>todos os envios de arquivo são recusados</u> (falha fechada).
+  {% if erro %}<div class="small">{{ erro }}</div>{% endif %}</div>
+{% else %}<div class="alert alert-success small">ClamAV respondendo — <code>{{ versao }}</code></div>{% endif %}
+<div class="row g-3 mb-3">
+  <div class="col-md-7"><div class="card h-100"><div class="card-body small">
+    <div><strong>Servidor:</strong> <code>{{ destino }}</code></div>
+    <div><strong>Limite verificável:</strong> {{ limite }} MB (limite de envio do ERP: {{ limite_envio }} MB). Acima do limite do antivírus o envio é recusado.</div>
+    <div class="mt-2"><strong>Arquivos do GED:</strong>
+      sem ameaças {{ contagem.limpo|default:0 }} · <span class="{% if contagem.infectado %}text-danger fw-bold{% endif %}">com ameaça {{ contagem.infectado|default:0 }}</span> ·
+      não verificados {{ contagem.nao_verificado|default:0 }} · falha na verificação {{ contagem.erro|default:0 }}</div>
+  </div></div></div>
+  <div class="col-md-5"><div class="card h-100"><div class="card-body d-flex flex-wrap gap-2 align-items-center">
+    <form method="post" action="{% url 'seguranca:antivirus_testar' %}">{% csrf_token %}<button class="btn btn-outline-primary" {% if not ativo %}disabled{% endif %}>Testar detecção (EICAR)</button></form>
+    <form method="post" action="{% url 'seguranca:antivirus_varrer' %}">{% csrf_token %}<button class="btn btn-primary" {% if not ativo or not pendentes %}disabled{% endif %}>Verificar pendentes ({{ pendentes }})</button></form>
+  </div></div></div>
+</div>
+<h6>Últimas ocorrências</h6>
+<table class="table table-sm"><tbody>{% for o in ocorrencias %}<tr><td class="text-nowrap">{{ o.data|date:"d/m/Y H:i" }}</td><td>{{ o.descricao }}</td></tr>
+  {% empty %}<tr><td class="text-muted">Nenhuma ocorrência.</td></tr>{% endfor %}</tbody></table>
+{% endblock %}

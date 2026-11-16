@@ -31,15 +31,33 @@ services:
       interval: 5s
       retries: 10
 
+  clamav:
+    # Antivírus dos uploads (GED, contratos, XML). Falha fechada: se ele cair, os envios são recusados.
+    # Precisa de ~2 GB de RAM; na primeira subida baixa as assinaturas (alguns minutos) e só então fica pronto.
+    image: clamav/clamav:stable
+    restart: unless-stopped
+    environment:
+      # limites alinhados com ANTIVIRUS_LIMITE_MB (100); para arquivos maiores aumente os dois
+      CLAMD_CONF_StreamMaxLength: ${CLAMD_LIMITE_MB:-100}M
+      CLAMD_CONF_MaxFileSize: ${CLAMD_LIMITE_MB:-100}M
+      CLAMD_CONF_MaxScanSize: ${CLAMD_ESCANEAMENTO_MB:-400}M
+    volumes:
+      - clamdb:/var/lib/clamav
+    networks: [interna]
+    # sem "ports": só os containers acessam o clamd (a porta 3310 não tem autenticação)
+
   web:
     build: .
     restart: unless-stopped
     env_file: .env
     environment:
       POSTGRES_HOST: db
+      CLAMAV_HOST: clamav
     depends_on:
       db:
         condition: service_healthy
+      clamav:
+        condition: service_started
     ports:
       - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8000}:8000"
     volumes:
@@ -54,6 +72,7 @@ services:
     env_file: .env
     environment:
       POSTGRES_HOST: db
+      CLAMAV_HOST: clamav
       SOMENTE_AGUARDAR_BANCO: "1"
     depends_on:
       - web
@@ -105,5 +124,6 @@ volumes:
   pgdata:
   media:
   backups:
+  clamdb:
   pgadmin:
   caddy:

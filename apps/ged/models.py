@@ -97,6 +97,9 @@ class Documento(ModeloBase):
     num_versao.fget.short_description = "versão"
 
     def adicionar_versao(self, arquivo, comentario="", usuario=None):
+        from apps.seguranca import antivirus
+
+        situacao_av = antivirus.garantir(arquivo)       # levanta ValidationError se houver ameaça ou o antivírus falhar
         numero = self.num_versao + 1
         sha = hashlib.sha256()
         for chunk in arquivo.chunks():
@@ -104,7 +107,9 @@ class Documento(ModeloBase):
         arquivo.seek(0)
         return Versao.objects.create(documento=self, numero=numero, arquivo=arquivo, comentario=comentario,
                                      tamanho=arquivo.size, hash_sha256=sha.hexdigest(),
-                                     enviado_por=usuario or usuario_atual(), nome_original=arquivo.name[:200])
+                                     enviado_por=usuario or usuario_atual(), nome_original=arquivo.name[:200],
+                                     av_situacao=situacao_av,
+                                     av_verificado_em=timezone.now() if situacao_av == "limpo" else None)
 
     @classmethod
     def visiveis_para(cls, user):
@@ -124,6 +129,11 @@ class Versao(models.Model):
     comentario = models.CharField("comentário", max_length=300, blank=True)
     enviado_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     data = models.DateTimeField(auto_now_add=True)
+    SITUACOES_AV = [("nao_verificado", "Não verificado"), ("limpo", "Sem ameaças"), ("infectado", "Ameaça detectada"),
+                    ("erro", "Não foi possível verificar")]
+    av_situacao = models.CharField("antivírus", max_length=14, choices=SITUACOES_AV, default="nao_verificado", db_index=True)
+    av_verificado_em = models.DateTimeField(null=True, blank=True)
+    av_detalhe = models.CharField("detalhe do antivírus", max_length=200, blank=True)
 
     class Meta:
         verbose_name = "versão"

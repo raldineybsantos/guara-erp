@@ -28,6 +28,10 @@ def importar_nfe(arquivo, empresa=None):
     from apps.core.validators import validar_xml
 
     validar_xml(arquivo)
+    from apps.seguranca import antivirus
+
+    antivirus.garantir(arquivo)
+    arquivo.seek(0)
     conteudo = arquivo.read()
     raiz = ET.fromstring(conteudo)
     inf = raiz.find(".//n:infNFe", NS)

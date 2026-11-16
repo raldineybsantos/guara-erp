@@ -37,6 +37,7 @@ arquivos ou nos pacotes instalados.
 | PostgreSQL 16 | PostgreSQL License |
 | pgAdmin 4 | PostgreSQL License |
 | Caddy 2 (opcional) | Apache-2.0 |
+| ClamAV (antivírus dos uploads) | GPL-2.0 |
 | Python 3.12 slim | PSF-2.0 (Python) / Debian |
 
 ## Identidade visual

@@ -2,14 +2,15 @@ from django import forms
 
 from apps.core.crud import Crud, FormBase
 from apps.core.validators import validar_arquivo_seguro
+from apps.seguranca.antivirus import validador as validar_antivirus
 
 from .models import Documento, Pasta
 
 
 class DocumentoForm(FormBase):
     precisa_request = True
-    arquivo = forms.FileField(label="Arquivo", required=False, validators=[validar_arquivo_seguro],
-                              help_text="Na edição, enviar um arquivo cria uma nova versão.")
+    arquivo = forms.FileField(label="Arquivo", required=False, validators=[validar_arquivo_seguro, validar_antivirus],
+                              help_text="Na edição, enviar um arquivo cria uma nova versão. O arquivo passa pelo antivírus antes de ser guardado.")
     comentario_versao = forms.CharField(label="Comentário da versão", required=False, max_length=300)
 
     class Meta:

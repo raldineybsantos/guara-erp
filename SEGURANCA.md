@@ -138,7 +138,6 @@ Os instaladores ajudam nisso:
 
 ## 5. Pendências recomendadas (fora do escopo desta versão)
 
-- Antivírus nos uploads do GED (ex.: ClamAV).
 - Teste de invasão por terceiro antes de expor o sistema à internet.
 
 ## Verificação em duas etapas e backup
@@ -168,6 +167,21 @@ do servidor. Retenção avô-pai-filho. Nenhum comando passa por shell; o downlo
 para a auditoria. **O `.env` e a `BACKUP_SENHA` não estão no backup: guarde-os em outro lugar.** Durante a geração há,
 por segundos, um dump em texto claro numa pasta temporária (`0700`) que é apagada ao final — em servidor compartilhado,
 aponte `TMPDIR` para um disco cifrado.
+
+## Antivírus dos uploads (ClamAV)
+
+- **Onde:** GED (novas versões), contratos do Jurídico e importação de XML da NF-e, antes de gravar em disco. Arquivos gerados
+  pelo próprio sistema (assinatura digital, minuta de demonstração) não precisam passar de novo.
+- **Falha fechada:** ClamAV fora do ar, resposta de erro ou arquivo acima do limite → o envio é **recusado** (nunca "aceita
+  sem verificar") e registrado na auditoria; os administradores são avisados.
+- **Ameaça:** o envio é recusado e fica na auditoria (`seguranca.antivirus`). Arquivo antigo que a varredura acusa fica com o
+  **download bloqueado**.
+- **Protocolo:** `INSTREAM` do `clamd` por TCP ou socket Unix, sem biblioteca de terceiros. A porta 3310 não tem autenticação nem
+  cifra: no Docker ela só existe na rede interna; em instalação nativa deixe-a em `127.0.0.1`.
+- **Limites honestos:** antivírus por assinatura não pega tudo (ameaças novas, arquivos cifrados com senha, bombas de compressão
+  além dos limites do clamd); é uma camada, não uma garantia. Não varre os certificados `.pfx` (são lidos só em memória).
+  Eu não consegui testar contra um ClamAV real neste ambiente: os testes usam um clamd simulado que fala o protocolo. Rode
+  **Testar detecção (EICAR)** na sua instalação.
 
 ## Login corporativo (LDAP/AD e SSO)
 

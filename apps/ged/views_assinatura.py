@@ -93,7 +93,9 @@ def _assinar(request, pk):
             if eh_pdf:
                 assinado = ass.assinar_pdf(original, pfx, senha, ass.nome_campo_unico(original),
                                            registro.motivo, registro.local)
-                nova = doc.adicionar_versao(ContentFile(assinado, name=versao.nome_original),
+                conteudo = ContentFile(assinado, name=versao.nome_original)
+                conteudo._antivirus_ok = True   # gerado aqui a partir de uma versão já aceita; não vem de fora
+                nova = doc.adicionar_versao(conteudo,
                                             f"Assinado digitalmente por {dados.titular}", request.user)
                 registro.tipo, registro.versao_resultante, registro.hash_sha256 = "pades", nova, ass.sha256(assinado)
                 registro.save()

@@ -19,6 +19,10 @@ def download(request, pk):
     versao = get_object_or_404(Versao.objects.select_related("documento__pasta"), pk=pk)
     if not Documento.visiveis_para(request.user).filter(pk=versao.documento_id).exists():
         raise Http404
+    if versao.av_situacao == "infectado":
+        LogAuditoria.registrar("seguranca", versao.documento, descricao=f"Download BLOQUEADO (ameaça detectada): {versao}")
+        messages.error(request, "Este arquivo foi marcado pelo antivírus como ameaça e não pode ser baixado. Avise o administrador.")
+        return redirect(versao.documento.get_absolute_url())
     try:
         arquivo = versao.arquivo.open("rb")
     except FileNotFoundError:
@@ -44,7 +48,11 @@ def nova_versao(request, pk):
         except ValidationError as e:
             messages.error(request, e.messages[0])
             return redirect(doc.get_absolute_url())
-        v = doc.adicionar_versao(request.FILES["arquivo"], request.POST.get("comentario", ""), request.user)
+        try:
+            v = doc.adicionar_versao(request.FILES["arquivo"], request.POST.get("comentario", ""), request.user)
+        except ValidationError as e:        # antivírus: ameaça ou verificação impossível
+            messages.error(request, e.messages[0])
+            return redirect(doc.get_absolute_url())
         messages.success(request, f"Versão {v.numero} enviada.")
     else:
         messages.error(request, "Selecione um arquivo.")

@@ -187,6 +187,13 @@ BACKUP_INCLUIR_MEDIA = env_bool("BACKUP_INCLUIR_MEDIA", True)
 BACKUP_RETENCAO_DIARIOS = int(os.getenv("BACKUP_RETENCAO_DIARIOS", "7"))
 BACKUP_RETENCAO_SEMANAIS = int(os.getenv("BACKUP_RETENCAO_SEMANAIS", "4"))
 BACKUP_RETENCAO_MENSAIS = int(os.getenv("BACKUP_RETENCAO_MENSAIS", "12"))
+# Antivírus (ClamAV via clamd). Falha fechada: se o ClamAV não responder, o upload é recusado.
+ANTIVIRUS_ATIVO = env_bool("ANTIVIRUS_ATIVO", True) and "test" not in sys.argv
+CLAMAV_HOST = os.getenv("CLAMAV_HOST", "localhost")
+CLAMAV_PORT = int(os.getenv("CLAMAV_PORT", "3310"))
+CLAMAV_SOCKET = os.getenv("CLAMAV_SOCKET", "")            # alternativa ao TCP (Linux), ex.: /var/run/clamav/clamd.ctl
+ANTIVIRUS_TIMEOUT = int(os.getenv("ANTIVIRUS_TIMEOUT", "120"))
+ANTIVIRUS_LIMITE_MB = int(os.getenv("ANTIVIRUS_LIMITE_MB", "100"))   # deve ser <= StreamMaxLength do clamd
 # Só ative se o ERP estiver atrás de um proxy reverso (nginx/Caddy/Traefik) que define o cabeçalho
 CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 

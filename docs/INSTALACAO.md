@@ -14,6 +14,9 @@ solução de problemas. Para as decisões de segurança, veja [SEGURANCA.md](../
 | Média | até 60 | 4 núcleos | 8 GB | 100 GB SSD |
 | Maior | 60 ou mais | 8 núcleos | 16 GB | 200 GB SSD + disco de backup |
 
+**Antivírus (ClamAV):** o serviço `clamav` do Docker usa cerca de **2 GB de RAM** além dos valores acima e baixa as
+assinaturas na primeira subida (alguns minutos; até lá os uploads são recusados).
+
 O espaço em disco cresce principalmente com os arquivos do **GED** e os XMLs fiscais. Reserve
 o mesmo tamanho em outro disco ou NAS para os backups.
 
@@ -430,6 +433,27 @@ Alternativa sem o sistema de backup do Guará (só banco, sem cifra, crontab do 
 ```
 
 ---
+
+## 5.3 Antivírus dos uploads (ClamAV)
+
+Todo arquivo enviado ao **GED**, ao **Jurídico** (contratos) e a **importação de XML** passa pelo ClamAV antes de ser guardado.
+
+- **Docker:** já vem o serviço `clamav` (imagem oficial `clamav/clamav`), só acessível pela rede interna. Nada a configurar.
+  Veja o status em **Administração → Antivírus** e use **Testar detecção (EICAR)** para provar que está pegando.
+- **Instalação nativa (Linux):** `sudo apt install clamav-daemon` e, no `.env`, `CLAMAV_HOST=localhost` (com `TCPSocket 3310`
+  e `TCPAddr 127.0.0.1` no `clamd.conf`) ou `CLAMAV_SOCKET=/var/run/clamav/clamd.ctl`. Mantenha o `freshclam` rodando.
+  **Windows nativo:** instale o ClamAV para Windows, configure o `clamd.conf` com `TCPSocket 3310` e `TCPAddr 127.0.0.1`
+  e rode o `clamd` como serviço. Nunca exponha a porta 3310 na rede: ela não tem autenticação.
+- **Se o ClamAV cair:** os envios são **recusados** (falha fechada), os superusuários recebem aviso (no máximo 1 por hora) e
+  a página do antivírus mostra "fora do ar". Os downloads e o resto do sistema continuam.
+- **Arquivos grandes:** o ERP aceita até `ARQUIVO_MAX_MB` (50 MB) e o antivírus verifica até `ANTIVIRUS_LIMITE_MB` (100 MB, igual ao
+  `StreamMaxLength` do clamd). Acima do limite do antivírus o envio é **recusado** com a orientação de dividir/compactar. Para aceitar
+  arquivos maiores, aumente `ARQUIVO_MAX_MB` **e** `ANTIVIRUS_LIMITE_MB` **e** os limites do clamd (`CLAMD_LIMITE_MB` no Docker, ou
+  `StreamMaxLength`, `MaxFileSize` e `MaxScanSize` no `clamd.conf`); os três têm de andar juntos.
+- **Arquivos que já estavam no GED:** `python manage.py antivirus_varrer` (ou o botão **Verificar pendentes**) examina os que nunca
+  foram verificados; `--tudo` reexamina todos. A rotina diária também verifica até 200 pendentes. Arquivo com ameaça tem o
+  **download bloqueado** e os administradores são avisados.
+- Desligar (não recomendado): `ANTIVIRUS_ATIVO=0`.
 
 ## 6. Atualização
 
