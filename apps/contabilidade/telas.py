@@ -1,6 +1,7 @@
 from apps.core.crud import Crud
 
-from .models import ContaContabil, Lancamento, RegraContabil
+from .models import (MESES, Bem, ContaContabil, Depreciacao, Lancamento, LinhaOrcamento, Orcamento,
+                     RegraContabil)
 
 
 class ContaContabilCrud(Crud):
@@ -39,3 +40,37 @@ class LancamentoCrud(Crud):
     menu = "Contabilidade"
     menu_label = "Lançamentos (diário)"
     menu_order = 2
+
+
+class BemCrud(Crud):
+    model = Bem
+    fields = ["empresa", "codigo", "descricao", "categoria", "data_aquisicao", "valor_aquisicao", "valor_residual",
+              "vida_util_meses", "inicio_depreciacao", "centro_custo", "fornecedor", "contrapartida", "localizacao",
+              "observacoes"]
+    list_display = ("codigo", "descricao", "categoria", "valor_aquisicao", "depreciacao_acumulada", "valor_contabil",
+                    "status")
+    search_fields = ("codigo", "descricao", "localizacao")
+    filter_fields = ("categoria", "status", "centro_custo")
+    detail_fields = ["codigo", "descricao", "categoria", "status", "data_aquisicao", "valor_aquisicao",
+                     "valor_residual", "vida_util_meses", "inicio_depreciacao", "parcela_mensal",
+                     "depreciacao_acumulada", "valor_contabil", "centro_custo", "fornecedor", "contrapartida",
+                     "localizacao", "data_baixa", "valor_venda", "motivo_baixa", "observacoes", "empresa"]
+    related = (("depreciacoes", "Depreciações lançadas", ["competencia", "valor"]),)
+    actions = (("contabilidade:bem_baixar", "Baixar bem", "box-arrow-down", "contabilidade.change_bem"),)
+    icon = "building-gear"
+    menu = "Contabilidade"
+    menu_label = "Ativo fixo"
+    menu_order = 12
+
+
+class OrcamentoCrud(Crud):
+    model = Orcamento
+    fields = ["empresa", "nome", "ano", "controle", "responsavel", "ativo", "observacoes"]
+    inline = (LinhaOrcamento, ["tipo", "centro_custo", "plano_conta", "valor_anual", *MESES], 3)
+    list_display = ("nome", "ano", "controle", "responsavel", "ativo")
+    filter_fields = ("ano", "controle", "ativo")
+    actions = (("contabilidade:orcado_realizado", "Orçado × realizado", "bar-chart-steps", "contabilidade.view_orcamento"),)
+    icon = "calculator"
+    menu = "Contabilidade"
+    menu_label = "Orçamentos"
+    menu_order = 13

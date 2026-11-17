@@ -4,6 +4,10 @@
   {% if perms.juridico.aprovar_contrato and object.status == "aprovado" %}<a href="{% url 'juridico:assinatura_manual' object.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-pen"></i> Registrar assinatura em papel/externa</a>{% endif %}
   {% if perms.juridico.change_contrato and object.status == "vigente" %}
     {% if object.fim_vigencia %}<a href="{% url 'juridico:renovar' object.pk %}" class="btn btn-sm btn-success"><i class="bi bi-arrow-repeat"></i> Renovar</a>{% endif %}
+    <a href="{% url 'juridico:reajustar' object.pk %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-graph-up-arrow"></i> Reajustar</a>
+    <a href="{% url 'juridico:medicao_create' %}?contrato={{ object.pk }}&next={{ object.get_absolute_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-rulers"></i> Medição</a>
+    <a href="{% url 'juridico:caucao_create' %}?contrato={{ object.pk }}&next={{ object.get_absolute_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-shield-check"></i> Garantia</a>
+    <a href="{% url 'juridico:paralisacao_create' %}?contrato={{ object.pk }}&next={{ object.get_absolute_url }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pause-circle"></i> Paralisar</a>
     <a href="{% url 'juridico:aditivo_create' %}?contrato={{ object.pk }}&next={{ object.get_absolute_url }}" class="btn btn-sm btn-outline-primary"><i class="bi bi-file-earmark-plus"></i> Aditivo</a>
   {% endif %}
   {% if perms.juridico.change_contrato and object.status in "vigente aprovado" %}<a href="{% url 'juridico:encerrar' object.pk %}" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-octagon"></i> Encerrar / rescindir</a>{% endif %}

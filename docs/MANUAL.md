@@ -744,6 +744,43 @@ divergente, frete, nota pendente) e deve ser analisado.
 O plano de contas inicial é enxuto e serve de ponto de partida. Peça ao seu contador para adequá-lo. Esta
 versão não gera ECD/ECF (SPED contábil).
 
+### 15.3 Ativo imobilizado e depreciação
+
+Em **Contabilidade → Ativo fixo**, cadastre cada bem (máquina, veículo, computador, móvel,
+imóvel, software): data e valor de aquisição, valor residual, **vida útil** (sugerida pela categoria),
+início da depreciação, centro de custo e fornecedor.
+
+- **Aquisição:** ao salvar, o ERP lança *Imobilizado (D) × contrapartida (C)*. Informe a contrapartida
+  (caixa, banco ou fornecedores) para o lançamento sair completo.
+- **Depreciação:** linear, mensal, mês cheio. Rode em **Contabilidade → Depreciar mês** (ou
+  `python manage.py depreciar_bens`, opcionalmente com `--ate AAAA-MM`). O ERP recupera meses atrasados e
+  não duplica: cada bem tem uma depreciação por competência. Lança *Despesa de depreciação (D) × (-)
+  Depreciação acumulada (C)*. O estorno só vale para o último mês lançado.
+- **Baixa:** em **Baixar**, informe a data, o motivo (venda, perda, sucata) e o valor da venda. O ERP
+  deprecia até o mês anterior e lança a baixa, com **ganho ou perda** na venda. A baixa não pode ser
+  desfeita.
+- **Travas:** depois da primeira depreciação, valor, vida útil e datas do bem não mudam.
+
+A depreciação **não** roda sozinha no agendador: a rotina mensal fica com o contador. O ERP não faz
+CIAP, nem controla depreciação fiscal diferente da contábil.
+
+### 15.4 Orçamento e orçado × realizado (Controladoria)
+
+Em **Contabilidade → Orçamentos**, crie um orçamento por ano com linhas por **categoria (plano de
+contas)** e/ou **centro de custo**, tipo *receita* ou *despesa*. Informe o valor anual (distribuído em
+12 parcelas iguais) ou ajuste mês a mês.
+
+- **Orçado × realizado:** abra o orçamento e clique em **Orçado × realizado**. O realizado vem dos
+  títulos a pagar e a receber (competência, ou emissão se não houver; cancelados ficam de fora; o rateio
+  por centro de custo é respeitado). A linha mais específica (categoria + centro) vence; a categoria
+  inclui as subcategorias.
+- **Controle de orçamento:** no orçamento, escolha *Nenhum*, *Alertar* ou *Bloquear*. Compara o acumulado
+  do ano com o orçado: *alertar* notifica o responsável quando um novo título estoura; *bloquear*
+  impede o lançamento da conta a pagar na tela.
+- **Limites:** o bloqueio vale para o cadastro pela tela (não para importações e integrações); o
+  realizado é gerencial, não contábil.
+
+
 ## 16. Cobrança
 
 ![Cobrança com PIX](img/cobranca.jpg)
@@ -1053,6 +1090,39 @@ Todo dia às 08:00, o sistema verifica os contratos (no Docker, pelo serviço `a
   registro na linha do tempo.
 
 Na lista de contratos, o filtro **Vencimento** mostra os que vencem em 30, 60 ou 90 dias e os vencidos.
+
+### 20.4 Índices e reajuste
+
+Em **Jurídico → Índices (IPCA, IGP-M, INPC)**, digite a variação mensal (%) de cada índice quando for
+divulgada (IBGE/FGV). No contrato, **Reajustar** sugere o percentual acumulado dos 12 meses anteriores
+(composto, não soma). Se faltar algum mês, o ERP lista quais faltam. Você pode editar o percentual antes
+de aplicar. O reajuste atualiza valor mensal e total, cria um **aditivo de reajuste** e registra na linha
+do tempo. O ERP **não** baixa os índices da internet: a digitação é manual.
+
+### 20.5 Medições
+
+Em **Medições de contratos** (ou pelo botão **Medição** no contrato vigente), lance o período, o valor
+medido, as **multas/glosas** (descontos) e as **bonificações** (acréscimos). Líquido = valor − multas +
+bonificações. O número da medição é sequencial por contrato.
+
+1. **Aprovar** (perfil com permissão de aprovar contrato): confere se o contrato está vigente, se o
+   período cabe na vigência e se a soma das medições aprovadas não passa do **valor total** do contrato
+   (se passar, formalize um aditivo de valor).
+2. **Gerar título:** contrato com fornecedor gera **conta a pagar**; com cliente, **conta a receber**
+   (documento `CT-AAAA-NNNN/Mn`). Contratos com "outra parte" não geram título.
+3. **Cancelar:** cancela também o título, desde que não tenha pagamento (estorne antes).
+
+Medição aprovada não se edita; cancele e lance outra.
+
+### 20.6 Garantias, cauções e paralisações
+
+- **Cauções e garantias:** registre tipo (dinheiro, seguro-garantia, fiança...), valor, emissor, apólice e
+  validade. Marque como **devolvida** ou **executada**. A rotina diária cria um cartão no Kanban 30 dias
+  antes do vencimento de cada garantia ativa.
+- **Paralisações:** *Paralisar* abre uma suspensão (uma por vez). Ao **Retomar**, o ERP conta os dias
+  parados e, se marcado, **prorroga a vigência** na mesma quantidade, com aditivo de prazo.
+  A paralisação não bloqueia medições automaticamente: confira o período ao aprovar.
+
 
 ---
 

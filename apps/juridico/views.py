@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.core.crud import BootstrapMixin
 
-from .models import Contrato, Evento
+from .models import Caucao, Contrato, Evento, Medicao, Paralisacao
 
 
 class RenovarForm(BootstrapMixin, forms.Form):
@@ -107,6 +107,95 @@ def encerrar(request, pk):
         return _executar(request, c, lambda: c.encerrar(request.user, d["motivo"], d["rescisao"]), "Contrato encerrado.")
     return render(request, "form_simples.html", {"form": form, "titulo": f"Encerrar contrato {c.numero}",
                                                  "icone": "x-octagon"})
+
+
+class ReajusteForm(BootstrapMixin, forms.Form):
+    percentual = forms.DecimalField(label="Reajuste (%)", max_digits=7, decimal_places=2,
+                                    min_value=Decimal("-50"), max_value=Decimal("200"))
+    descricao = forms.CharField(label="Observação", widget=forms.Textarea, required=False)
+
+
+@login_required
+@permission_required("juridico.change_contrato", raise_exception=True)
+def reajustar(request, pk):
+    c = _contrato(pk)
+    inicial, ajuda = {}, ""
+    try:
+        inicial["percentual"] = c.sugestao_reajuste()
+        ajuda = f"Sugestão: {inicial['percentual']}% ({c.get_indice_reajuste_display()} acumulado em 12 meses)."
+    except ValidationError as e:
+        ajuda = " ".join(e.messages)
+    form = ReajusteForm(request.POST or None, initial=inicial)
+    form.fields["percentual"].help_text = ajuda
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        return _executar(request, c, lambda: c.reajustar(request.user, d["percentual"], d["descricao"]), "Reajuste aplicado.")
+    return render(request, "form_simples.html", {"form": form, "titulo": f"Reajustar contrato {c.numero}", "icone": "graph-up-arrow"})
+
+
+def _acao_post(request, obj, titulo, mensagem, func, ok, voltar):
+    if request.method != "POST":
+        return render(request, "confirmar.html", {"titulo": titulo, "voltar": voltar, "mensagem": mensagem})
+    try:
+        func()
+        messages.success(request, ok)
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    return redirect(voltar)
+
+
+@login_required
+@permission_required("juridico.aprovar_contrato", raise_exception=True)
+def medicao_aprovar(request, pk):
+    m = get_object_or_404(Medicao, pk=pk)
+    return _acao_post(request, m, "Aprovar medição", f"Aprovar a medição {m} (líquido {m.valor_liquido})?",
+                      lambda: m.aprovar(request.user), "Medição aprovada.", m.get_absolute_url())
+
+
+@login_required
+@permission_required("juridico.change_contrato", raise_exception=True)
+def medicao_faturar(request, pk):
+    m = get_object_or_404(Medicao, pk=pk)
+    return _acao_post(request, m, "Gerar título", f"Gerar o título financeiro da medição {m} (líquido {m.valor_liquido})?",
+                      lambda: m.gerar_titulo(request.user), "Título gerado no financeiro.", m.get_absolute_url())
+
+
+@login_required
+@permission_required("juridico.change_contrato", raise_exception=True)
+def medicao_cancelar(request, pk):
+    m = get_object_or_404(Medicao, pk=pk)
+    return _acao_post(request, m, "Cancelar medição", f"Cancelar a medição {m}? O título gerado também será cancelado.",
+                      lambda: m.cancelar(request.user), "Medição cancelada.", m.get_absolute_url())
+
+
+@login_required
+@permission_required("juridico.change_contrato", raise_exception=True)
+def caucao_devolver(request, pk):
+    g = get_object_or_404(Caucao, pk=pk)
+    return _acao_post(request, g, "Devolver garantia", f"Marcar a garantia {g} como devolvida/liberada?",
+                      lambda: g.liberar(request.user), "Garantia devolvida.", g.get_absolute_url())
+
+
+@login_required
+@permission_required("juridico.change_contrato", raise_exception=True)
+def caucao_executar(request, pk):
+    g = get_object_or_404(Caucao, pk=pk)
+    return _acao_post(request, g, "Executar garantia", f"Registrar a execução da garantia {g}?",
+                      lambda: g.liberar(request.user, executar=True), "Garantia executada.", g.get_absolute_url())
+
+
+class RetomadaForm(BootstrapMixin, forms.Form):
+    fim = forms.DateField(label="Último dia parado", initial=timezone.localdate)
+
+
+@login_required
+@permission_required("juridico.change_contrato", raise_exception=True)
+def paralisacao_retomar(request, pk):
+    p = get_object_or_404(Paralisacao, pk=pk)
+    form = RetomadaForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        return _executar(request, p.contrato, lambda: p.retomar(request.user, form.cleaned_data["fim"]), "Contrato retomado.")
+    return render(request, "form_simples.html", {"form": form, "titulo": f"Retomar {p.contrato.numero}", "icone": "play-circle"})
 
 
 @login_required

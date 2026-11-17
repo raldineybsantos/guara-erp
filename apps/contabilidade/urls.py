@@ -6,12 +6,16 @@ from . import telas, views
 
 app_name = "contabilidade"
 
-urlpatterns = crud_urls(telas.LancamentoCrud, telas.ContaContabilCrud, telas.RegraContabilCrud) + [
+urlpatterns = crud_urls(telas.LancamentoCrud, telas.ContaContabilCrud, telas.RegraContabilCrud, telas.BemCrud,
+                          telas.OrcamentoCrud) + [
     path("lancar/", views.lancar_manual, name="lancar_manual"),
     path("lancamento/<int:pk>/estornar/", views.estornar, name="estornar"),
     path("balancete/", views.balancete, name="balancete"),
     path("razao/", views.razao, name="razao"),
     path("dre/", views.dre, name="dre"),
     path("balanco/", views.balanco, name="balanco"),
+    path("bens/depreciar/", views.depreciar, name="depreciar"),
+    path("bens/<int:pk>/baixar/", views.bem_baixar, name="bem_baixar"),
+    path("orcamento/<int:pk>/orcado-realizado/", views.orcado_realizado, name="orcado_realizado"),
     path("periodos/", views.periodos, name="periodos"),
 ]

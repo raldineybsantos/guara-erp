@@ -13,4 +13,12 @@ urlpatterns = [
     path("contrato/<int:pk>/assinatura-manual/", views.assinatura_manual, name="assinatura_manual"),
     path("contrato/<int:pk>/renovar/", views.renovar, name="renovar"),
     path("contrato/<int:pk>/encerrar/", views.encerrar, name="encerrar"),
-] + crud_urls(telas.ContratoCrud, telas.AditivoCrud)
+    path("contrato/<int:pk>/reajustar/", views.reajustar, name="reajustar"),
+    path("medicao/<int:pk>/aprovar/", views.medicao_aprovar, name="medicao_aprovar"),
+    path("medicao/<int:pk>/faturar/", views.medicao_faturar, name="medicao_faturar"),
+    path("medicao/<int:pk>/cancelar/", views.medicao_cancelar, name="medicao_cancelar"),
+    path("caucao/<int:pk>/devolver/", views.caucao_devolver, name="caucao_devolver"),
+    path("caucao/<int:pk>/executar/", views.caucao_executar, name="caucao_executar"),
+    path("paralisacao/<int:pk>/retomar/", views.paralisacao_retomar, name="paralisacao_retomar"),
+] + crud_urls(telas.ContratoCrud, telas.AditivoCrud, telas.ValorIndiceCrud, telas.MedicaoCrud, telas.CaucaoCrud,
+              telas.ParalisacaoCrud)

@@ -13,7 +13,7 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
-from apps.core.models import Empresa, ModeloBase
+from apps.core.models import Empresa, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 
 ZERO = Decimal("0")
@@ -42,6 +42,12 @@ EVENTOS = [
     ("despesa_avulsa", "Saída bancária sem título"),
     ("retencao_tributo", "Tributo retido na fonte ao pagar fornecedor"),
     ("recolhimento_tributo", "Recolhimento de tributo retido (guia)"),
+    ("aquisicao_bem", "Aquisição ou implantação de bem do imobilizado"),
+    ("depreciacao", "Depreciação mensal do imobilizado"),
+    ("baixa_bem_depreciacao", "Baixa de bem: depreciação acumulada"),
+    ("baixa_bem_venda", "Baixa de bem: valor recebido na venda"),
+    ("baixa_bem_perda", "Baixa de bem: perda"),
+    ("baixa_bem_ganho", "Baixa de bem: ganho"),
 ]
 
 
@@ -196,3 +202,207 @@ class Partida(models.Model):
     @property
     def credito(self):
         return self.valor if self.tipo == "C" else None
+
+
+# --------------------------------------------------------------------------- ativo fixo
+CATEGORIAS_BEM = [  # (código, nome, vida útil sugerida em meses)
+    ("moveis", "Móveis e utensílios", 120), ("maquinas", "Máquinas e equipamentos", 120),
+    ("informatica", "Computadores e periféricos", 60), ("veiculos", "Veículos", 60),
+    ("instalacoes", "Instalações", 120), ("edificacoes", "Edificações", 300), ("outros", "Outros", 60),
+]
+VIDA_SUGERIDA = {c: v for c, _, v in CATEGORIAS_BEM}
+
+
+class Bem(ModeloBase, PorEmpresaMixin):
+    """Bem do imobilizado com depreciação linear mensal. A vida útil sugerida por categoria é só um ponto de
+    partida: o contador define a vida útil e o valor residual."""
+
+    STATUS = [("ativo", "Em uso"), ("baixado", "Baixado")]
+    codigo = models.CharField("código (plaqueta)", max_length=30, unique=True)
+    descricao = models.CharField("descrição", max_length=200)
+    categoria = models.CharField(max_length=12, choices=[(c, n) for c, n, _ in CATEGORIAS_BEM], default="moveis")
+    data_aquisicao = models.DateField("data de aquisição", default=timezone.localdate)
+    valor_aquisicao = models.DecimalField("valor de aquisição", max_digits=14, decimal_places=2)
+    valor_residual = models.DecimalField("valor residual", max_digits=14, decimal_places=2, default=0)
+    vida_util_meses = models.PositiveSmallIntegerField("vida útil (meses)", default=0,
+                                                       help_text="Em branco/zero = sugestão da categoria.")
+    inicio_depreciacao = models.DateField("início da depreciação", null=True, blank=True,
+                                          help_text="Em branco = mês da aquisição. Depreciação por mês cheio.")
+    centro_custo = models.ForeignKey("financeiro.CentroCusto", verbose_name="centro de custo", null=True, blank=True,
+                                     on_delete=models.PROTECT, related_name="+")
+    fornecedor = models.ForeignKey("core.Fornecedor", null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="+")
+    contrapartida = models.ForeignKey(
+        ContaContabil, verbose_name="contrapartida da aquisição", null=True, blank=True, on_delete=models.PROTECT,
+        related_name="+", limit_choices_to={"sintetica": False},
+        help_text="Conta creditada ao lançar o bem no imobilizado. Em branco = a aquisição não é contabilizada aqui "
+                  "(use quando o bem já foi lançado por outro caminho). Em implantação, use o patrimônio líquido.")
+    localizacao = models.CharField("localização", max_length=120, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default="ativo", editable=False, db_index=True)
+    data_baixa = models.DateField("data da baixa", null=True, blank=True, editable=False)
+    valor_venda = models.DecimalField("valor recebido na baixa", max_digits=14, decimal_places=2, default=0,
+                                      editable=False)
+    motivo_baixa = models.CharField("motivo da baixa", max_length=200, blank=True, editable=False)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "bem do ativo fixo"
+        verbose_name_plural = "ativo fixo (bens)"
+        ordering = ["codigo"]
+
+    def __str__(self):
+        return f"{self.codigo} — {self.descricao}"
+
+    def clean(self):
+        erros = {}
+        if self.valor_aquisicao is not None and self.valor_aquisicao <= 0:
+            erros["valor_aquisicao"] = "O valor de aquisição deve ser maior que zero."
+        if (self.valor_residual is not None and self.valor_aquisicao is not None
+                and self.valor_residual >= self.valor_aquisicao):
+            erros["valor_residual"] = "O valor residual deve ser menor que o de aquisição."
+        if self.pk:
+            antes = Bem.objects.filter(pk=self.pk).first()
+            if antes and antes.status == "baixado":
+                raise ValidationError("Bem baixado não pode ser alterado.")
+            if antes and antes.depreciacoes.exists():
+                for campo in ("valor_aquisicao", "valor_residual", "vida_util_meses", "inicio_depreciacao",
+                              "data_aquisicao"):
+                    novo = getattr(self, campo) or None
+                    if novo is not None and novo != getattr(antes, campo):
+                        erros[campo] = "Já há depreciação lançada: estorne-a antes de alterar este dado."
+        if erros:
+            raise ValidationError(erros)
+
+    def save(self, *args, **kwargs):
+        if not self.vida_util_meses:
+            self.vida_util_meses = VIDA_SUGERIDA.get(self.categoria, 60)
+        self.inicio_depreciacao = (self.inicio_depreciacao or self.data_aquisicao).replace(day=1)
+        novo = self._state.adding
+        super().save(*args, **kwargs)
+        if novo:
+            from . import patrimonio
+            patrimonio.contabilizar_aquisicao(self)
+
+    @property
+    def base_depreciavel(self):
+        return self.valor_aquisicao - self.valor_residual
+
+    @property
+    def parcela_mensal(self):
+        return (self.base_depreciavel / self.vida_util_meses).quantize(Decimal("0.01"))
+    parcela_mensal.fget.short_description = "depreciação mensal"
+
+    @property
+    def depreciacao_acumulada(self):
+        return self.depreciacoes.aggregate(t=Sum("valor"))["t"] or ZERO
+    depreciacao_acumulada.fget.short_description = "depreciação acumulada"
+
+    @property
+    def valor_contabil(self):
+        return self.valor_aquisicao - self.depreciacao_acumulada
+    valor_contabil.fget.short_description = "valor contábil"
+
+
+class Depreciacao(models.Model):
+    bem = models.ForeignKey(Bem, on_delete=models.CASCADE, related_name="depreciacoes")
+    competencia = models.DateField("competência", help_text="Primeiro dia do mês.")
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        verbose_name = "depreciação"
+        verbose_name_plural = "depreciações"
+        ordering = ["-competencia", "bem__codigo"]
+        constraints = [models.UniqueConstraint(fields=["bem", "competencia"], name="depreciacao_por_mes")]
+
+    def __str__(self):
+        return f"{self.bem.codigo} {self.competencia:%m/%Y}: {self.valor}"
+
+
+# --------------------------------------------------------------------------- orçamento
+MESES = [f"m{i:02d}" for i in range(1, 13)]
+
+
+class Orcamento(ModeloBase, PorEmpresaMixin):
+    CONTROLES = [("nenhum", "Só acompanhar"), ("alertar", "Avisar o responsável ao estourar"),
+                 ("bloquear", "Bloquear novo título que estoure")]
+    nome = models.CharField(max_length=100)
+    ano = models.PositiveSmallIntegerField()
+    controle = models.CharField("controle das despesas", max_length=10, choices=CONTROLES, default="nenhum",
+                                help_text="Vale para contas a pagar, comparando o acumulado do ano até o mês do "
+                                          "título com o orçado. O bloqueio atua nas telas de cadastro.")
+    responsavel = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="responsável", null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="+")
+    ativo = models.BooleanField(default=True)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "orçamento"
+        verbose_name_plural = "orçamentos"
+        ordering = ["-ano", "nome"]
+
+    def __str__(self):
+        return f"{self.nome} ({self.ano})"
+
+
+class LinhaOrcamento(models.Model):
+    TIPOS = [("despesa", "Despesa"), ("receita", "Receita")]
+    orcamento = models.ForeignKey(Orcamento, on_delete=models.CASCADE, related_name="linhas")
+    tipo = models.CharField(max_length=8, choices=TIPOS, default="despesa")
+    centro_custo = models.ForeignKey("financeiro.CentroCusto", verbose_name="centro de custo", null=True, blank=True,
+                                     on_delete=models.PROTECT, related_name="+",
+                                     help_text="Em branco = qualquer centro de custo.")
+    plano_conta = models.ForeignKey("financeiro.PlanoConta", verbose_name="categoria", null=True, blank=True,
+                                    on_delete=models.PROTECT, related_name="+",
+                                    help_text="Inclui as categorias filhas. Em branco = qualquer categoria.")
+    valor_anual = models.DecimalField("valor anual", max_digits=14, decimal_places=2, default=0,
+                                      help_text="Se os meses ficarem em branco, divide por igual nos 12 meses.")
+    m01 = models.DecimalField("jan", max_digits=14, decimal_places=2, default=0)
+    m02 = models.DecimalField("fev", max_digits=14, decimal_places=2, default=0)
+    m03 = models.DecimalField("mar", max_digits=14, decimal_places=2, default=0)
+    m04 = models.DecimalField("abr", max_digits=14, decimal_places=2, default=0)
+    m05 = models.DecimalField("mai", max_digits=14, decimal_places=2, default=0)
+    m06 = models.DecimalField("jun", max_digits=14, decimal_places=2, default=0)
+    m07 = models.DecimalField("jul", max_digits=14, decimal_places=2, default=0)
+    m08 = models.DecimalField("ago", max_digits=14, decimal_places=2, default=0)
+    m09 = models.DecimalField("set", max_digits=14, decimal_places=2, default=0)
+    m10 = models.DecimalField("out", max_digits=14, decimal_places=2, default=0)
+    m11 = models.DecimalField("nov", max_digits=14, decimal_places=2, default=0)
+    m12 = models.DecimalField("dez", max_digits=14, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = "linha do orçamento"
+        verbose_name_plural = "linhas do orçamento"
+        ordering = ["tipo", "centro_custo__codigo", "plano_conta__codigo", "pk"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()}: {self.centro_custo or 'todos os centros'} / {self.plano_conta or 'todas as categorias'}"
+
+    def clean(self):
+        if self.centro_custo_id is None and self.plano_conta_id is None:
+            raise ValidationError("Informe um centro de custo, uma categoria ou os dois.")
+        if self.plano_conta_id and self.plano_conta.tipo != self.tipo:
+            raise ValidationError({"plano_conta": "A categoria é de outro tipo (receita × despesa)."})
+
+    def save(self, *args, **kwargs):
+        meses = self.valores()
+        if self.valor_anual and not any(meses):
+            base = (Decimal(self.valor_anual) / 12).quantize(Decimal("0.01"))
+            for m in MESES[:-1]:
+                setattr(self, m, base)
+            self.m12 = Decimal(self.valor_anual) - base * 11
+        super().save(*args, **kwargs)
+
+    def valores(self):
+        return [getattr(self, m) or ZERO for m in MESES]
+
+    @property
+    def total(self):
+        return sum(self.valores(), ZERO)
+    total.fget.short_description = "total do ano"
+
+    def ate_mes(self, mes):
+        return sum(self.valores()[:mes], ZERO)
+
+    @property
+    def especificidade(self):
+        return (self.centro_custo_id is not None) + (self.plano_conta_id is not None)

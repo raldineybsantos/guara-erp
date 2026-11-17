@@ -266,6 +266,298 @@ class Aditivo(ModeloBase):
         return f"{self.get_tipo_display()} de {self.data:%d/%m/%Y}"
 
 
+INDICES_ECONOMICOS = [("ipca", "IPCA"), ("igpm", "IGP-M"), ("inpc", "INPC")]
+
+
+class ValorIndice(ModeloBase):
+    """Variação mensal (%) de um índice econômico, digitada a partir da divulgação oficial (IBGE / FGV)."""
+
+    indice = models.CharField("índice", max_length=5, choices=INDICES_ECONOMICOS)
+    competencia = models.DateField("mês de referência", help_text="Qualquer dia do mês; fica gravado o dia 1.")
+    variacao = models.DecimalField("variação no mês (%)", max_digits=8, decimal_places=4,
+                                   help_text="Ex.: 0,4500 para 0,45%. Pode ser negativa (deflação).")
+
+    class Meta:
+        verbose_name = "valor de índice"
+        verbose_name_plural = "valores de índices"
+        ordering = ["indice", "-competencia"]
+        constraints = [models.UniqueConstraint(fields=["indice", "competencia"], name="valorindice_unico")]
+
+    def __str__(self):
+        return f"{self.get_indice_display()} {self.competencia:%m/%Y}: {self.variacao}%"
+
+    def save(self, *args, **kwargs):
+        self.competencia = self.competencia.replace(day=1)
+        super().save(*args, **kwargs)
+
+    @staticmethod
+    def acumulado(indice, ate, meses=12):
+        """Variação acumulada (%) dos `meses` meses que terminam em `ate` (inclusive).
+
+        Compõe os índices mensais (produtório). Se faltar algum mês, levanta ValidationError listando-os."""
+        fim = ate.replace(day=1)
+        competencias = [somar_meses(fim, -i) for i in range(meses - 1, -1, -1)]
+        achados = {v.competencia: v.variacao for v in ValorIndice.objects.filter(indice=indice, competencia__in=competencias)}
+        faltam = [c for c in competencias if c not in achados]
+        if faltam:
+            raise ValidationError("Faltam valores do índice para: " + ", ".join(f"{c:%m/%Y}" for c in faltam) + ".")
+        fator = Decimal(1)
+        for c in competencias:
+            fator *= 1 + achados[c] / Decimal(100)
+        return ((fator - 1) * 100).quantize(Decimal("0.01"))
+
+
+def _reajustar(self, usuario, percentual, descricao="", data=None):
+    """Aplica um reajuste (%) ao valor mensal e total do contrato vigente e registra o aditivo."""
+    if self.status != "vigente":
+        raise ValidationError("Só contratos vigentes podem ser reajustados.")
+    percentual = Decimal(percentual or 0)
+    if percentual <= Decimal("-100"):
+        raise ValidationError("Percentual inválido.")
+    with transaction.atomic():
+        anterior = self.valor_mensal
+        fator = 1 + percentual / Decimal(100)
+        self.valor_mensal = (self.valor_mensal * fator).quantize(Decimal("0.01"))
+        self.valor_total = (self.valor_total * fator).quantize(Decimal("0.01"))
+        self.save()
+        aditivo = Aditivo.objects.create(
+            contrato=self, tipo="reajuste", data=data or timezone.localdate(), valor_anterior=anterior,
+            novo_valor_mensal=self.valor_mensal, percentual_reajuste=percentual, criado_por=usuario,
+            descricao=descricao or f"Reajuste de {percentual}%" + (f" pelo {self.get_indice_reajuste_display()}" if self.indice_reajuste else ""))
+        Evento.objects.create(contrato=self, tipo="reajuste", usuario=usuario,
+                              descricao=f"Reajuste de {percentual}%: {anterior} → {self.valor_mensal}.")
+    return aditivo
+
+
+def _sugestao_reajuste(self, ate=None):
+    """Percentual sugerido pelo índice do contrato (acumulado de 12 meses até o mês anterior a `ate`).
+
+    Levanta ValidationError se o contrato não usa índice oficial ou faltam meses cadastrados."""
+    if self.indice_reajuste not in dict(INDICES_ECONOMICOS):
+        raise ValidationError("O contrato não tem índice oficial de reajuste (IPCA, IGP-M ou INPC).")
+    ate = ate or timezone.localdate()
+    return ValorIndice.acumulado(self.indice_reajuste, somar_meses(ate.replace(day=1), -1))
+
+
+Contrato.reajustar = _reajustar
+Contrato.sugestao_reajuste = _sugestao_reajuste
+
+
+class Medicao(ModeloBase):
+    """Medição periódica de serviços/fornecimento de um contrato; aprovada, vira conta a pagar ou a receber."""
+
+    STATUS = [("rascunho", "Rascunho"), ("aprovada", "Aprovada"), ("faturada", "Faturada"), ("cancelada", "Cancelada")]
+
+    contrato = models.ForeignKey(Contrato, on_delete=models.PROTECT, related_name="medicoes")
+    numero = models.PositiveIntegerField("nº da medição", editable=False)
+    periodo_inicio = models.DateField("início do período")
+    periodo_fim = models.DateField("fim do período")
+    descricao = models.CharField("descrição / serviços medidos", max_length=250, blank=True)
+    valor = models.DecimalField("valor medido", max_digits=14, decimal_places=2)
+    multas = models.DecimalField("multas / glosas", max_digits=14, decimal_places=2, default=0,
+                                 help_text="Descontos por descumprimento (atraso, SLA, qualidade).")
+    bonificacoes = models.DecimalField("bonificações / acréscimos", max_digits=14, decimal_places=2, default=0)
+    vencimento = models.DateField("vencimento do título", null=True, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default="rascunho", editable=False, db_index=True)
+    data_aprovacao = models.DateField(null=True, blank=True, editable=False)
+    aprovada_por = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, editable=False,
+                                     on_delete=models.SET_NULL, related_name="+")
+    contapagar = models.ForeignKey("financeiro.ContaPagar", null=True, blank=True, editable=False,
+                                   on_delete=models.SET_NULL, related_name="medicoes")
+    contareceber = models.ForeignKey("financeiro.ContaReceber", null=True, blank=True, editable=False,
+                                     on_delete=models.SET_NULL, related_name="medicoes")
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "medição"
+        verbose_name_plural = "medições"
+        ordering = ["contrato", "-numero"]
+        constraints = [models.UniqueConstraint(fields=["contrato", "numero"], name="medicao_numero_unico")]
+
+    def __str__(self):
+        return f"{self.contrato.numero} / M{self.numero}"
+
+    @property
+    def valor_liquido(self):
+        return (self.valor or 0) - (self.multas or 0) + (self.bonificacoes or 0)
+
+    @property
+    def titulo(self):
+        return self.contapagar or self.contareceber
+
+    def clean(self):
+        erros = {}
+        if self.periodo_inicio and self.periodo_fim and self.periodo_fim < self.periodo_inicio:
+            erros["periodo_fim"] = "O fim do período não pode ser anterior ao início."
+        if self.valor is not None and self.valor <= 0:
+            erros["valor"] = "O valor medido deve ser positivo."
+        if (self.multas or 0) < 0 or (self.bonificacoes or 0) < 0:
+            erros["multas"] = "Multas e bonificações devem ser informadas como valores positivos."
+        elif self.valor is not None and self.multas and self.multas > self.valor + (self.bonificacoes or 0):
+            erros["multas"] = "As multas não podem superar o valor medido."
+        if self.pk and self.status != "rascunho":
+            erros["valor"] = "Medição já aprovada não pode ser alterada: cancele e lance outra."
+        if erros:
+            raise ValidationError(erros)
+
+    def save(self, *args, **kwargs):
+        if not self.numero:
+            with transaction.atomic():
+                ultimo = (Medicao.objects.select_for_update().filter(contrato_id=self.contrato_id)
+                          .aggregate(m=Max("numero"))["m"] or 0)
+                self.numero = ultimo + 1
+                super().save(*args, **kwargs)
+            return
+        super().save(*args, **kwargs)
+
+    def _medido_aprovado(self):
+        qs = Medicao.objects.filter(contrato_id=self.contrato_id, status__in=["aprovada", "faturada"]).exclude(pk=self.pk)
+        return qs.aggregate(t=models.Sum("valor"))["t"] or Decimal(0)
+
+    @transaction.atomic
+    def aprovar(self, usuario):
+        if self.status != "rascunho":
+            raise ValidationError("Só medições em rascunho podem ser aprovadas.")
+        c = self.contrato
+        if c.status != "vigente":
+            raise ValidationError("O contrato precisa estar vigente.")
+        if self.periodo_inicio < c.inicio_vigencia or (c.fim_vigencia and self.periodo_fim > c.fim_vigencia):
+            raise ValidationError("O período medido está fora da vigência do contrato.")
+        if c.valor_total and self._medido_aprovado() + self.valor > c.valor_total:
+            raise ValidationError(
+                f"Esta medição estoura o valor do contrato: já medido {self._medido_aprovado()} + {self.valor} "
+                f"> {c.valor_total}. Formalize um aditivo de valor antes.")
+        self.status, self.data_aprovacao, self.aprovada_por = "aprovada", timezone.localdate(), usuario
+        self.save()
+        Evento.objects.create(contrato=c, tipo="medicao", usuario=usuario, descricao=f"Medição {self.numero} aprovada ({self.valor_liquido}).")
+
+    @transaction.atomic
+    def gerar_titulo(self, usuario=None):
+        from apps.financeiro.models import ContaPagar, ContaReceber
+
+        if self.status != "aprovada":
+            raise ValidationError("Só medições aprovadas geram título.")
+        c = self.contrato
+        if self.valor_liquido <= 0:
+            raise ValidationError("O valor líquido da medição é zero: não há o que cobrar ou pagar.")
+        dados = dict(descricao=f"Medição {self.numero} — {c.titulo}"[:200], documento=f"{c.numero}/M{self.numero}",
+                     valor=self.valor_liquido, competencia=self.periodo_fim.replace(day=1),
+                     vencimento=self.vencimento or self.periodo_fim + datetime.timedelta(days=30), empresa=c.empresa,
+                     observacoes=f"Gerado da medição {self.numero} do contrato {c.numero}.")
+        if c.tipo == "fornecedor":
+            self.contapagar = ContaPagar.objects.create(fornecedor=c.fornecedor, **dados)
+        elif c.tipo == "cliente":
+            self.contareceber = ContaReceber.objects.create(cliente=c.cliente, **dados)
+        else:
+            raise ValidationError("Contratos com 'outra parte' não geram título automático.")
+        self.status = "faturada"
+        self.save()
+        Evento.objects.create(contrato=c, tipo="medicao", usuario=usuario, descricao=f"Medição {self.numero} faturada: título {self.titulo.documento}.")
+        return self.titulo
+
+    @transaction.atomic
+    def cancelar(self, usuario=None):
+        if self.status == "cancelada":
+            raise ValidationError("Medição já cancelada.")
+        t = self.titulo
+        if t is not None:
+            t.cancelar()  # barra se já houver pagamento
+        self.status = "cancelada"
+        self.save()
+        Evento.objects.create(contrato=self.contrato, tipo="medicao", usuario=usuario, descricao=f"Medição {self.numero} cancelada.")
+
+
+class Caucao(ModeloBase):
+    """Garantia contratual (caução em dinheiro, seguro-garantia, fiança...)."""
+
+    TIPOS = [("dinheiro", "Caução em dinheiro"), ("seguro", "Seguro-garantia"), ("fianca", "Fiança bancária"),
+             ("titulo", "Título / outra garantia")]
+    STATUS = [("ativa", "Ativa"), ("devolvida", "Devolvida / liberada"), ("executada", "Executada")]
+
+    contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name="caucoes")
+    tipo = models.CharField(max_length=10, choices=TIPOS, default="seguro")
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    emissao = models.DateField("emissão", default=timezone.localdate)
+    validade = models.DateField("validade", null=True, blank=True)
+    emissor = models.CharField("seguradora / banco", max_length=120, blank=True)
+    apolice = models.CharField("nº da apólice / documento", max_length=60, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS, default="ativa", editable=False)
+    ultimo_alerta = models.DateField(null=True, blank=True, editable=False)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "caução / garantia"
+        verbose_name_plural = "cauções e garantias"
+        ordering = ["validade", "-pk"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} de {self.valor} — {self.contrato.numero}"
+
+    def clean(self):
+        if self.validade and self.emissao and self.validade < self.emissao:
+            raise ValidationError({"validade": "A validade não pode ser anterior à emissão."})
+        if self.valor is not None and self.valor <= 0:
+            raise ValidationError({"valor": "O valor deve ser positivo."})
+
+    def liberar(self, usuario=None, executar=False):
+        if self.status != "ativa":
+            raise ValidationError("A garantia não está ativa.")
+        self.status = "executada" if executar else "devolvida"
+        self.save()
+        Evento.objects.create(contrato=self.contrato, tipo="caucao", usuario=usuario,
+                              descricao=f"Garantia {self.get_tipo_display()} {'executada' if executar else 'devolvida'}.")
+
+
+class Paralisacao(ModeloBase):
+    """Suspensão do contrato; ao retomar, pode estender o prazo pelos dias parados."""
+
+    contrato = models.ForeignKey(Contrato, on_delete=models.CASCADE, related_name="paralisacoes")
+    inicio = models.DateField("início da paralisação")
+    fim = models.DateField("retomada (último dia parado)", null=True, blank=True, editable=False)
+    motivo = models.TextField()
+    estende_prazo = models.BooleanField("estender a vigência pelos dias parados", default=True)
+    dias = models.PositiveIntegerField("dias parados", default=0, editable=False)
+
+    class Meta:
+        verbose_name = "paralisação"
+        verbose_name_plural = "paralisações"
+        ordering = ["-inicio"]
+
+    def __str__(self):
+        return f"{self.contrato.numero}: parado desde {self.inicio:%d/%m/%Y}"
+
+    @property
+    def ativa(self):
+        return self.fim is None
+
+    def clean(self):
+        if self.contrato_id and not self.pk:
+            if self.contrato.status != "vigente":
+                raise ValidationError("Só contratos vigentes podem ser paralisados.")
+            if self.contrato.paralisacoes.filter(fim__isnull=True).exists():
+                raise ValidationError("Já existe uma paralisação em aberto neste contrato.")
+
+    @transaction.atomic
+    def retomar(self, usuario, fim):
+        if not self.ativa:
+            raise ValidationError("Esta paralisação já foi encerrada.")
+        if fim < self.inicio:
+            raise ValidationError("A retomada não pode ser anterior ao início.")
+        self.fim, self.dias = fim, (fim - self.inicio).days + 1
+        self.save()
+        c = self.contrato
+        if self.estende_prazo and c.fim_vigencia:
+            anterior = c.fim_vigencia
+            c.fim_vigencia = anterior + datetime.timedelta(days=self.dias)
+            c.ultimo_alerta_para = None
+            c.save()
+            Aditivo.objects.create(contrato=c, tipo="prazo", data=timezone.localdate(), fim_anterior=anterior,
+                                   nova_data_fim=c.fim_vigencia, criado_por=usuario,
+                                   descricao=f"Prorrogação por paralisação de {self.dias} dia(s): {self.motivo}"[:500])
+        Evento.objects.create(contrato=c, tipo="paralisacao", usuario=usuario,
+                              descricao=f"Contrato retomado após {self.dias} dia(s) de paralisação.")
+
+
 class Evento(models.Model):
     """Linha do tempo do contrato."""
 
@@ -317,5 +609,20 @@ def processar_vencimentos(hoje=None):
             c.ultimo_alerta_para = c.fim_vigencia
             c.save(update_fields=["ultimo_alerta_para"])
             Evento.objects.create(contrato=c, tipo="alerta", descricao=f"Alerta de vencimento criado no quadro de tarefas ({dias} dias).")
+            alertas += 1
+    # garantias a vencer
+    for g in Caucao.objects.filter(status="ativa", validade__isnull=False, contrato__status="vigente").select_related("contrato"):
+        c = g.contrato
+        dias = (g.validade - hoje).days
+        if dias <= 30 and g.ultimo_alerta != g.validade:
+            a = Atividade(titulo=f"Garantia a vencer: {c.numero} — {g.get_tipo_display()}"[:200],
+                          descricao=f"A garantia ({g.get_tipo_display()}, {g.valor}) do contrato {c} vence em {g.validade:%d/%m/%Y}. Renove ou substitua.",
+                          prioridade="urgente" if dias <= 10 else "alta", prazo=max(g.validade, hoje),
+                          responsavel=c.responsavel, grupo=None if c.responsavel else juridico,
+                          departamento=c.departamento, etiquetas="contrato, garantia")
+            a.vinculo = c
+            a.save()
+            g.ultimo_alerta = g.validade
+            g.save(update_fields=["ultimo_alerta"])
             alertas += 1
     return alertas, renovados

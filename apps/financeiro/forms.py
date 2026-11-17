@@ -61,6 +61,23 @@ class ContaPagarForm(ParcelamentoMixin, FormBase):
         model = ContaPagar
         fields = ["fornecedor"] + CAMPOS_TITULO[:-1] + ["codigo_barras", "aprovado", "observacoes"]
 
+    def clean(self):
+        dados = super().clean()
+        # Orçamento com controle "bloquear": não deixa cadastrar título que estoure o orçado.
+        if not self.errors and dados.get("valor") and dados.get("data_emissao") and dados.get("vencimento"):
+            from apps.contabilidade import orcamento
+
+            inst = self.instance
+            for k in ("valor", "competencia", "data_emissao", "plano_conta", "centro_custo", "empresa"):
+                if k in dados:
+                    setattr(inst, k, dados[k])
+            e = orcamento.estouro(inst)
+            if e and e["orcamento"].controle == "bloquear":
+                raise forms.ValidationError(
+                    f"Estoura o orçamento “{e['orcamento']}” ({e['linha']}): orçado até o mês R$ {e['orcado']}, "
+                    f"com este título R$ {e['realizado']}. Peça ajuste do orçamento ou ratifique com o responsável.")
+        return dados
+
 
 class ContaReceberForm(ParcelamentoMixin, FormBase):
     class Meta:

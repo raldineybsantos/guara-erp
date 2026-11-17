@@ -11,7 +11,7 @@ from apps.core.crud import Crud, FormBase
 from apps.core.validators import validar_arquivo_seguro
 from apps.seguranca.antivirus import validador as validar_antivirus
 
-from .models import Aditivo, Contrato
+from .models import Aditivo, Caucao, Contrato, Medicao, Paralisacao, ValorIndice
 
 TERMOS_TRAVADOS = ["tipo", "fornecedor", "cliente", "outra_parte", "objeto", "valor_total", "valor_mensal",
                    "inicio_vigencia", "fim_vigencia", "indice_reajuste"]
@@ -97,7 +97,10 @@ class ContratoCrud(Crud):
                      "prazo_renovacao_meses", "aviso_previo_dias", "multa_rescisoria", "data_assinatura",
                      "assinaturas_necessarias", "responsavel", "departamento", "status", "motivo_status", "observacoes"]
     related = (("aditivos", "Aditivos e renovações", ["data", "tipo", "descricao", "nova_data_fim", "novo_valor_mensal",
-                                                       "percentual_reajuste"]),)
+                                                       "percentual_reajuste"]),
+               ("medicoes", "Medições", ["numero", "periodo_inicio", "periodo_fim", "valor", "multas", "bonificacoes", "valor_liquido", "status"]),
+               ("caucoes", "Garantias / cauções", ["tipo", "valor", "validade", "emissor", "status"]),
+               ("paralisacoes", "Paralisações", ["inicio", "fim", "dias", "motivo"]))
     icon = "file-earmark-ruled"
     menu = "Jurídico"
     menu_order = 1
@@ -149,3 +152,88 @@ class AditivoCrud(Crud):
     menu_label = "Aditivos e renovações"
     menu_order = 2
     can_edit = can_delete = False
+
+
+class ValorIndiceCrud(Crud):
+    model = ValorIndice
+    list_display = ("indice", "competencia", "variacao")
+    filter_fields = ("indice",)
+    icon = "graph-up-arrow"
+    menu = "Jurídico"
+    menu_label = "Índices (IPCA, IGP-M, INPC)"
+    menu_order = 5
+    can_delete = True
+
+
+class MedicaoForm(FormBase):
+    class Meta:
+        model = Medicao
+        fields = ["contrato", "periodo_inicio", "periodo_fim", "descricao", "valor", "multas", "bonificacoes",
+                  "vencimento", "observacoes"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["contrato"].queryset = Contrato.objects.filter(status="vigente")
+        if self.instance.pk:
+            self.fields["contrato"].disabled = True
+
+
+class MedicaoCrud(Crud):
+    model = Medicao
+    form_class = MedicaoForm
+    list_display = ("contrato", "numero", "periodo_inicio", "periodo_fim", "valor", "multas", "bonificacoes", "valor_liquido", "status")
+    search_fields = ("contrato__numero", "contrato__titulo", "descricao")
+    filter_fields = ("status", "contrato")
+    detail_fields = ["contrato", "numero", "periodo_inicio", "periodo_fim", "descricao", "valor", "multas", "bonificacoes",
+                     "valor_liquido", "vencimento", "status", "data_aprovacao", "aprovada_por", "contapagar", "contareceber",
+                     "observacoes"]
+    actions = (
+        ("juridico:medicao_aprovar", "Aprovar medição", "check2-circle", "juridico.aprovar_contrato"),
+        ("juridico:medicao_faturar", "Gerar título (a pagar / a receber)", "receipt", "juridico.change_contrato"),
+        ("juridico:medicao_cancelar", "Cancelar", "x-circle", "juridico.change_contrato"),
+    )
+    icon = "rulers"
+    menu = "Jurídico"
+    menu_label = "Medições de contratos"
+    menu_order = 3
+    can_delete = False
+
+
+class CaucaoCrud(Crud):
+    model = Caucao
+    list_display = ("contrato", "tipo", "valor", "emissor", "validade", "status")
+    search_fields = ("contrato__numero", "emissor", "apolice")
+    filter_fields = ("status", "tipo")
+    actions = (
+        ("juridico:caucao_devolver", "Devolver / liberar", "arrow-return-left", "juridico.change_contrato"),
+        ("juridico:caucao_executar", "Executar a garantia", "exclamation-octagon", "juridico.change_contrato"),
+    )
+    icon = "shield-check"
+    menu = "Jurídico"
+    menu_label = "Cauções e garantias"
+    menu_order = 4
+    can_delete = True
+
+
+class ParalisacaoForm(FormBase):
+    class Meta:
+        model = Paralisacao
+        fields = ["contrato", "inicio", "motivo", "estende_prazo"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["contrato"].queryset = Contrato.objects.filter(status="vigente")
+
+
+class ParalisacaoCrud(Crud):
+    model = Paralisacao
+    form_class = ParalisacaoForm
+    list_display = ("contrato", "inicio", "fim", "dias", "estende_prazo")
+    search_fields = ("contrato__numero", "motivo")
+    filter_fields = ("estende_prazo",)
+    actions = (("juridico:paralisacao_retomar", "Retomar contrato", "play-circle", "juridico.change_contrato"),)
+    icon = "pause-circle"
+    menu = "Jurídico"
+    menu_label = "Paralisações"
+    menu_order = 6
+    can_delete = False

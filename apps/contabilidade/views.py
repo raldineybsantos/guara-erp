@@ -14,7 +14,9 @@ from apps.core.models import Empresa
 from apps.financeiro.models import CentroCusto
 
 from . import servicos
-from .models import ContaContabil, Lancamento, Partida, PeriodoFechado
+from . import orcamento as orc_servico
+from . import patrimonio
+from .models import Bem, ContaContabil, Lancamento, Orcamento, Partida, PeriodoFechado
 
 ZERO = Decimal("0")
 VER = "contabilidade.view_lancamento"
@@ -234,3 +236,74 @@ def periodos(request):
                 return redirect("contabilidade:periodos")
     return render(request, "contabilidade/periodos.html", {"titulo": "Fechamento de períodos", "icone": "lock",
                                                            "form": form, "periodos": PeriodoFechado.objects.all()})
+
+
+# --------------------------------------------------------------------------- ativo fixo
+class DepreciarForm(BootstrapMixin, forms.Form):
+    ano = forms.IntegerField(min_value=2000, max_value=2100)
+    mes = forms.IntegerField(label="mês", min_value=1, max_value=12)
+    acao = forms.ChoiceField(label="o que fazer", choices=[("depreciar", "Depreciar até este mês"),
+                                                           ("estornar", "Estornar a depreciação deste mês")])
+
+
+@login_required
+@permission_required("contabilidade.add_depreciacao", raise_exception=True)
+def depreciar(request):
+    hoje = timezone.localdate()
+    form = DepreciarForm(request.POST or None, initial={"ano": hoje.year, "mes": hoje.month, "acao": "depreciar"})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        comp = datetime.date(d["ano"], d["mes"], 1)
+        try:
+            if d["acao"] == "depreciar":
+                n = patrimonio.depreciar_ate(comp)
+                messages.success(request, f"{n} depreciação(ões) lançada(s) até {comp:%m/%Y}." if n
+                                 else "Nada a depreciar: os bens já estão em dia.")
+            else:
+                n = patrimonio.estornar_depreciacao(comp)
+                messages.success(request, f"{n} depreciação(ões) de {comp:%m/%Y} estornada(s).")
+            return redirect("contabilidade:bem_list")
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+    return render(request, "form_simples.html", {"form": form, "titulo": "Depreciação mensal", "icone": "calendar-check"})
+
+
+class BaixaBemForm(BootstrapMixin, forms.Form):
+    data = forms.DateField(label="data da baixa", initial=timezone.localdate)
+    valor_venda = forms.DecimalField(label="valor recebido (venda)", max_digits=14, decimal_places=2, min_value=0,
+                                     initial=0, help_text="Zero para descarte/perda. Entra em Caixa e bancos.")
+    motivo = forms.CharField(max_length=200, required=False)
+
+
+@login_required
+@permission_required("contabilidade.change_bem", raise_exception=True)
+def bem_baixar(request, pk):
+    bem = get_object_or_404(Bem, pk=pk)
+    form = BaixaBemForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        try:
+            r = patrimonio.baixar_bem(bem, **form.cleaned_data)
+            messages.success(request, "Bem baixado. " + (f"Perda de R$ {r}." if r > 0 else
+                                                          f"Ganho de R$ {-r}." if r < 0 else "Sem ganho nem perda."))
+            return redirect(bem.get_absolute_url())
+        except ValidationError as e:
+            form.add_error(None, e)
+    return render(request, "form_simples.html", {"form": form, "icone": "box-arrow-down",
+                                                 "titulo": f"Baixar {bem} — valor contábil R$ {bem.valor_contabil}"})
+
+
+# --------------------------------------------------------------------------- orçado × realizado
+@login_required
+@permission_required("contabilidade.view_orcamento", raise_exception=True)
+def orcado_realizado(request, pk):
+    orc = get_object_or_404(Orcamento, pk=pk)
+    hoje = timezone.localdate()
+    try:
+        ate = int(request.GET.get("ate", hoje.month if hoje.year == orc.ano else 12))
+    except ValueError:
+        ate = 12
+    ate = min(max(ate, 1), 12)
+    linhas = orc_servico.quadro(orc, ate)
+    return render(request, "contabilidade/orcado_realizado.html", {
+        "titulo": f"Orçado × realizado — {orc}", "icone": "bar-chart-steps", "orc": orc, "linhas": linhas,
+        "totais": orc_servico.totais(linhas), "ate": ate, "meses": list(range(1, 13))})

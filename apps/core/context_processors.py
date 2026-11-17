@@ -45,6 +45,7 @@ LINKS_EXTRAS = [
     ("Service Desk", "Fila de atendimento", "servicedesk:fila", "inboxes", "servicedesk.change_chamado", 0),
     ("Administração", "Avisos", "avisos", "bell", None, 0),
     ("Contabilidade", "Novo lançamento", "contabilidade:lancar_manual", "journal-plus", "contabilidade.add_lancamento", 1),
+    ("Contabilidade", "Depreciar mês", "contabilidade:depreciar", "calendar-check", "contabilidade.add_depreciacao", 2),
     ("Contabilidade", "Balancete", "contabilidade:balancete", "table", "contabilidade.view_lancamento", 3),
     ("Contabilidade", "Razão", "contabilidade:razao", "journal-bookmark", "contabilidade.view_lancamento", 4),
     ("Contabilidade", "DRE", "contabilidade:dre", "graph-up-arrow", "contabilidade.view_lancamento", 5),

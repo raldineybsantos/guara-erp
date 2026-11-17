@@ -95,6 +95,8 @@ PLANO_CONTABIL = [
     ("1", "Ativo", "ativo", True), ("1.1", "Ativo circulante", "ativo", True),
     ("1.1.1", "Caixa e bancos", "ativo", False), ("1.1.2", "Clientes", "ativo", False),
     ("1.1.3", "Estoques", "ativo", False),
+    ("1.2", "Ativo não circulante", "ativo", True), ("1.2.1", "Imobilizado", "ativo", False),
+    ("1.2.2", "(-) Depreciação acumulada", "ativo", False),
     ("2", "Passivo e patrimônio líquido", "passivo", True), ("2.1", "Passivo circulante", "passivo", True),
     ("2.1.1", "Fornecedores", "passivo", False), ("2.1.2", "Compras a faturar", "passivo", False),
     ("2.1.3", "Impostos a recolher", "passivo", False),
@@ -107,6 +109,7 @@ PLANO_CONTABIL = [
     ("4.2", "Despesas operacionais", "despesa", False), ("4.3", "Consumo de materiais", "despesa", False),
     ("4.4", "Ajustes de inventário", "despesa", False), ("4.5", "Despesas financeiras", "despesa", False),
     ("4.6", "Descontos concedidos", "despesa", False), ("4.7", "Outras despesas", "despesa", False),
+    ("4.8", "Depreciação", "despesa", False),
 ]
 # evento: (debitar, creditar)
 REGRAS_CONTABEIS = {
@@ -118,6 +121,9 @@ REGRAS_CONTABEIS = {
     "consumo_estoque": ("4.3", "1.1.3"), "ajuste_estoque_entrada": ("1.1.3", "4.4"),
     "ajuste_estoque_saida": ("4.4", "1.1.3"), "receita_avulsa": ("1.1.1", "3.4"), "despesa_avulsa": ("4.7", "1.1.1"),
     "retencao_tributo": ("2.1.1", "2.1.3"), "recolhimento_tributo": ("2.1.3", "1.1.1"),
+    "aquisicao_bem": ("1.2.1", "2.3.1"), "depreciacao": ("4.8", "1.2.2"),
+    "baixa_bem_depreciacao": ("1.2.2", "1.2.1"), "baixa_bem_venda": ("1.1.1", "1.2.1"),
+    "baixa_bem_perda": ("4.7", "1.2.1"), "baixa_bem_ganho": ("1.2.1", "3.4"),
 }
 
 # Pontos de partida para as retenções na fonte: o contador confere alíquotas, códigos e prazos.
@@ -210,6 +216,11 @@ class Command(BaseCommand):
 
         if not ContaContabil.objects.exists():  # só na primeira vez: depois o plano é do contador
             for codigo, nome, natureza, sintetica in PLANO_CONTABIL:
+                ContaContabil.objects.create(
+                    codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
+                    superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())
+        for codigo, nome, natureza, sintetica in PLANO_CONTABIL:   # contas criadas depois da primeira instalação
+            if codigo in ("1.2", "1.2.1", "1.2.2", "4.8") and not ContaContabil.objects.filter(codigo=codigo).exists():
                 ContaContabil.objects.create(
                     codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
                     superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())
