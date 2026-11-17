@@ -34,7 +34,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 25. [Auditoria e logs de erro](#25-auditoria-e-logs-de-erro)
 26. [Recursos Humanos](#26-recursos-humanos)
 27. [Segurança da conta e backups](#27-segurança-da-conta-e-backups)
-28. [Login corporativo: LDAP/AD e login único (Microsoft, Google)](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
+28. [Login corporativo: LDAP/AD, login único (OIDC, SAML) e SCIM](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
 29. [Antivírus nos uploads](#29-antivírus-nos-uploads)
 30. [Boleto e PIX com baixa automática](#30-boleto-e-pix-com-baixa-automática)
 
@@ -1461,6 +1461,35 @@ ERP para Administradores/Financeiro, marque *exigir também o 2FA do ERP* no pro
 aberta no ERP continua até expirar (8 horas) e o ERP só consulta o provedor no momento do login.
 
 ---
+
+### 28.3 SAML 2.0 (Entra ID, Okta, ADFS, Keycloak...)
+
+Para provedores que usam SAML em vez de OpenID Connect. **Administração → Login corporativo → SAML 2.0 → Adicionar.**
+
+1. No provedor, crie um aplicativo SAML e informe os dois endereços que o ERP mostra na tela: **Entity ID** (identificador do
+   serviço) e **ACS** (endereço de retorno, método POST). Se o provedor aceitar, importe os **metadados XML** (link na tela).
+2. Copie do provedor: o **Entity ID/Issuer**, o **endereço de login (SSO URL)** e o **certificado de assinatura** (PEM) e
+   cole no ERP. Na troca de certificado, cole os dois, um após o outro.
+3. No provedor, mande o **e-mail** do usuário como NameID ou atributo (`email`/`mail`), e assine a **asserção** com **SHA-256**
+   (SHA-1 é recusado). **Não** ative a cifragem da asserção (não é suportada).
+4. Defina domínios permitidos, se vai criar usuários no primeiro acesso e o grupo dos novos — a mesma lógica do §28.2.
+
+Só funciona o login iniciado pelo ERP (botão na tela de login); o ERP recusa resposta que ele não pediu, assinatura
+inválida, asserção expirada/repetida ou destinada a outro sistema. O relógio do servidor precisa estar certo (tolerância de 2 min).
+
+### 28.4 Provisionamento automático (SCIM 2.0)
+
+O provedor de identidade pode **criar, atualizar e desativar usuários sozinho** (quando alguém entra ou sai da empresa).
+
+1. **Administração → Login corporativo → Provisionamento → Novo token.** Dê um nome e, se quiser, o grupo dos usuários criados.
+   O token aparece **uma única vez**: copie.
+2. No provedor (ex.: Entra ID → *Provisioning*), use como URL base o endereço `…/scim/v2` mostrado na tela, e o token como
+   *Secret Token*.
+3. O que o SCIM faz: cria usuários (sem senha), atualiza nome/e-mail e **desativa** quem saiu (nunca apaga: o histórico fica).
+   Quando o usuário provisionado faz o primeiro login por SSO (OIDC ou SAML), ele é ligado automaticamente pelo e-mail.
+4. O que o SCIM **não** faz: não mexe em administradores nem em usuários que já existiam no ERP (responde conflito), não
+   define senha, não sincroniza grupos (o acesso aos módulos é decidido dentro do ERP) e só dá o grupo padrão do token.
+5. Para cortar o acesso do provedor, **revogue o token** na mesma tela.
 
 ## 29. Antivírus nos uploads
 

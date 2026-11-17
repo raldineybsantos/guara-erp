@@ -155,10 +155,11 @@ class LoginView(auth_views.LoginView):
         return super().post(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
-        from apps.identidade.models import ConfiguracaoLDAP, ProvedorOIDC
+        from apps.identidade.models import ConfiguracaoLDAP, ProvedorOIDC, ProvedorSAML
 
         ctx = super().get_context_data(**kwargs)
         ctx["provedores_sso"] = ProvedorOIDC.objects.filter(ativo=True)
+        ctx["provedores_saml"] = ProvedorSAML.objects.filter(ativo=True)
         ctx["tem_ldap"] = ConfiguracaoLDAP.objects.filter(ativo=True).exists()
         return ctx
 

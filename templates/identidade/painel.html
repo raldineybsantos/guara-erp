@@ -26,5 +26,29 @@
     <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="{% url 'identidade:oidc_editar' p.pk %}">Editar</a>
       <form method="post" action="{% url 'identidade:excluir' 'oidc' p.pk %}" class="d-inline" onsubmit="return confirm('Remover este provedor?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Remover</button></form></td></tr>
     {% empty %}<tr><td colspan="5" class="text-muted">Nenhum provedor configurado.</td></tr>{% endfor %}</tbody></table></div>
+<div class="d-flex justify-content-between align-items-center mb-2 mt-4"><h5 class="mb-0">SAML 2.0 (Entra ID, Okta, ADFS, Keycloak...)</h5>
+  <a class="btn btn-sm btn-primary" href="{% url 'identidade:saml_novo' %}"><i class="bi bi-plus-lg"></i> Adicionar</a></div>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Botão</th><th>Cadastre no provedor</th><th>Ativo</th><th></th></tr></thead>
+  <tbody>{% for s in samls %}<tr><td>{{ s.p.nome }}</td>
+    <td class="small">Entity ID: <code class="user-select-all">{{ s.entity_id }}</code><br>ACS (POST): <code class="user-select-all">{{ s.acs }}</code>
+      <br><a href="{% url 'identidade:saml_metadata' s.p.slug %}" target="_blank" rel="noopener">metadados XML</a></td>
+    <td>{% if s.p.ativo %}Sim{% else %}Não{% endif %}</td>
+    <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="{% url 'identidade:saml_editar' s.p.pk %}">Editar</a>
+      <form method="post" action="{% url 'identidade:excluir' 'saml' s.p.pk %}" class="d-inline" onsubmit="return confirm('Remover este provedor?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Remover</button></form></td></tr>
+    {% empty %}<tr><td colspan="4" class="text-muted">Nenhum provedor SAML configurado.</td></tr>{% endfor %}</tbody></table></div>
+
+<div class="d-flex justify-content-between align-items-center mb-2 mt-4"><h5 class="mb-0">Provisionamento automático (SCIM 2.0)</h5>
+  <a class="btn btn-sm btn-primary" href="{% url 'identidade:token_novo' %}"><i class="bi bi-plus-lg"></i> Novo token</a></div>
+{% if token_novo %}<div class="alert alert-warning"><strong>Token "{{ token_novo.nome }}" — copie agora, ele não será mostrado de novo:</strong><br>
+  <code class="user-select-all fs-6">{{ token_novo.token }}</code></div>{% endif %}
+<p class="small text-muted mb-2">No provedor de identidade use a URL base <code class="user-select-all">{{ scim_url }}</code> e o token como <em>Bearer</em>.
+  O SCIM cria, atualiza e desativa só usuários que ele mesmo criou; nunca altera administradores nem usuários locais, e não apaga ninguém (desativa).</p>
+<div class="table-responsive"><table class="table table-sm align-middle">
+  <thead><tr><th>Token</th><th>Grupo dos criados</th><th>Último uso</th><th>Situação</th><th></th></tr></thead>
+  <tbody>{% for t in tokens %}<tr><td>{{ t.nome }}</td><td>{{ t.grupo_padrao|default:"—" }}</td><td>{{ t.ultimo_uso|date:"d/m/Y H:i"|default:"nunca" }}</td>
+    <td>{% if t.ativo %}<span class="badge text-bg-success">Ativo</span>{% else %}<span class="badge text-bg-secondary">Revogado</span>{% endif %}</td>
+    <td class="text-end">{% if t.ativo %}<form method="post" action="{% url 'identidade:token_revogar' t.pk %}" class="d-inline" onsubmit="return confirm('Revogar este token?')">{% csrf_token %}<button class="btn btn-sm btn-outline-danger">Revogar</button></form>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5" class="text-muted">Nenhum token criado.</td></tr>{% endfor %}</tbody></table></div>
 <p class="small text-muted">Se <code>ERP_URL_BASE</code> estiver definido no <code>.env</code>, o endereço de retorno usa esse endereço (obrigatório atrás de proxy/HTTPS). Passo a passo no manual (§28).</p>
 {% endblock %}

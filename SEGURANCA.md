@@ -227,6 +227,19 @@ aponte `TMPDIR` para um disco cifrado.
   aberta (até 8 h) — desative também no ERP; (2) o grupo vindo do LDAP é sincronizado a cada login, não em tempo real;
   (3) SAML e SCIM (provisionamento/desprovisionamento automático) não estão implementados; (4) o LDAP usa o login como
   identificador, então reaproveitar um login de alguém que saiu cria a ligação com o antigo usuário do ERP.
+- **SAML 2.0 (signxml):** ERP como *Service Provider*, só SP-initiated. Defesas: XML sem DOCTYPE/entidades; assinatura XML
+  verificada contra o certificado configurado (SHA-256+; SHA-1 recusado) numa **cópia isolada**, usando só o elemento
+  assinado e exigindo **exatamente uma asserção** (anti *signature wrapping*); IDs únicos; Issuer, Audience, Destination,
+  Recipient, `InResponseTo` e janela de validade (±2 min) conferidos; asserção de uso único (tabela de IDs usados);
+  asserção cifrada recusada. O pedido fica no banco (o POST do provedor vem de outro site e o cookie de sessão `Lax` não
+  o acompanha); `RelayState` aleatório de uso único e, em HTTPS, um **cookie de amarração `SameSite=None; Secure`** prende
+  a resposta ao navegador que iniciou o login (anti *login CSRF*). Testado só com um provedor simulado em software.
+- **SCIM 2.0:** token Bearer (só o SHA-256 fica no banco; aparece uma vez; revogável). O SCIM enxerga e altera **apenas
+  usuários que ele mesmo criou**, nunca superusuário/`is_staff`, nunca define senha nem grupos além do padrão do token,
+  responde 409 se o `userName`/e-mail já pertencem a um usuário local (sem sequestro de conta) e **DELETE só desativa**.
+  Filtros aceitos são só `userName eq`/`externalId eq` com regex estrita (sem injeção); corpo limitado a 200 KB; toda
+  operação e toda falha de token vão para a auditoria. Grupos SCIM não são sincronizados (de propósito).
+  Quem recebe o token pode criar usuários **sem acesso** (ou só com o grupo padrão): escolha um grupo de menor privilégio.
 
 ## Certificado A1 da empresa (transmissão fiscal)
 

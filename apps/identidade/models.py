@@ -183,3 +183,128 @@ class IdentidadeExterna(models.Model):
 
     def __str__(self):
         return f"{self.usuario} ← {self.origem}"
+
+
+class ProvedorSAML(models.Model):
+    """Login único por SAML 2.0 (Entra ID, Okta, ADFS, Keycloak, Google Workspace SAML...). O ERP é o *Service Provider*.
+    Só aceita resposta com assinatura válida do certificado do provedor, para um pedido que o ERP fez (sem IdP-initiated)."""
+
+    nome = models.CharField("nome no botão", max_length=60)
+    slug = models.SlugField(unique=True, editable=False)
+    ativo = models.BooleanField(default=True)
+    idp_entity_id = models.CharField("identificador do provedor (Entity ID / Issuer)", max_length=300)
+    idp_sso_url = models.URLField("endereço de login do provedor (SSO URL, binding Redirect)", max_length=500)
+    idp_certificados = models.TextField(
+        "certificado(s) de assinatura do provedor (PEM)",
+        help_text="Cole o certificado público que o provedor usa para assinar. Pode colar dois (troca de certificado), um após o outro.")
+    atributo_email = models.CharField("atributo do e-mail", max_length=200, blank=True,
+                                      help_text="Em branco: tenta e-mail/mail/emailaddress e, por último, o NameID.")
+    atributo_nome = models.CharField("atributo do nome", max_length=200, blank=True)
+    dominios_permitidos = models.CharField("domínios de e-mail permitidos", max_length=300, blank=True)
+    criar_usuarios = models.BooleanField("criar usuários no primeiro acesso", default=False)
+    vincular_por_email = models.BooleanField("vincular a usuário local pelo e-mail", default=False)
+    grupo_padrao = models.ForeignKey(Group, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+                                     verbose_name="grupo dos novos usuários")
+    exigir_2fa_erp = models.BooleanField("exigir também o 2FA do ERP", default=False)
+
+    class Meta:
+        verbose_name = "provedor SAML 2.0"
+        verbose_name_plural = "provedores SAML 2.0"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.nome) or "saml"
+            slug, i = base, 2
+            while ProvedorSAML.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug, i = f"{base}-{i}", i + 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    @property
+    def dominios(self):
+        return {d.strip().lower().lstrip("@") for d in self.dominios_permitidos.split(",") if d.strip()}
+
+    @property
+    def certificados(self):
+        """Lista de PEMs (um por bloco BEGIN/END)."""
+        import re
+
+        return re.findall(r"-----BEGIN CERTIFICATE-----.+?-----END CERTIFICATE-----", self.idp_certificados or "", re.S)
+
+    def clean(self):
+        erros = {}
+        if not (self.idp_sso_url or "").startswith("https://"):
+            erros["idp_sso_url"] = "O endereço de login precisa começar com https://."
+        if not self.certificados:
+            erros["idp_certificados"] = "Cole o certificado PEM (-----BEGIN CERTIFICATE-----...)."
+        else:
+            from cryptography import x509
+
+            for pem in self.certificados:
+                try:
+                    x509.load_pem_x509_certificate(pem.encode())
+                except ValueError:
+                    erros["idp_certificados"] = "Certificado inválido."
+        if self.criar_usuarios and not self.dominios:
+            erros["dominios_permitidos"] = "Para criar usuários automaticamente informe os domínios permitidos."
+        if erros:
+            raise ValidationError(erros)
+
+
+class PedidoSAML(models.Model):
+    """Pedido de login em andamento. Fica no banco (e não na sessão) porque o provedor devolve o usuário por POST de outro
+    site, e o cookie de sessão (SameSite=Lax) não acompanha esse POST."""
+
+    relay = models.CharField(max_length=64, unique=True)
+    id_pedido = models.CharField(max_length=64)
+    provedor = models.ForeignKey(ProvedorSAML, on_delete=models.CASCADE, related_name="+")
+    proximo = models.CharField(max_length=300, default="/")
+    vinculo = models.CharField("segredo do navegador", max_length=64)
+    expira_em = models.DateTimeField(db_index=True)
+
+
+class AssercaoSAML(models.Model):
+    """IDs de asserções já aceitas: uma asserção só vale uma vez (impede reenvio de resposta capturada)."""
+
+    id_assercao = models.CharField(max_length=200, unique=True)
+    expira_em = models.DateTimeField(db_index=True)
+
+
+class TokenSCIM(models.Model):
+    """Credencial que o provedor de identidade (Entra ID, Okta...) usa para criar/atualizar/desativar usuários por SCIM 2.0.
+    Só a impressão digital (SHA-256) fica guardada; o token aparece uma única vez, ao ser criado."""
+
+    nome = models.CharField(max_length=80)
+    impressao = models.CharField(max_length=64, unique=True, editable=False)
+    ativo = models.BooleanField(default=True)
+    grupo_padrao = models.ForeignKey(Group, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+                                     verbose_name="grupo dos usuários criados",
+                                     help_text="Sem grupo, o usuário criado não tem acesso a nenhum módulo até um administrador liberar.")
+    criado_em = models.DateTimeField(default=timezone.now, editable=False)
+    ultimo_uso = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "token SCIM"
+        verbose_name_plural = "tokens SCIM"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+    @staticmethod
+    def impressao_de(token: str) -> str:
+        import hashlib
+
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    @classmethod
+    def novo(cls, nome, grupo=None):
+        """Devolve (objeto, token_em_texto)."""
+        import secrets
+
+        token = "scim_" + secrets.token_urlsafe(36)
+        return cls.objects.create(nome=nome, impressao=cls.impressao_de(token), grupo_padrao=grupo), token

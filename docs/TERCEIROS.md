@@ -30,6 +30,7 @@ arquivos ou nos pacotes instalados.
 | ldap3 (login LDAP/AD) | LGPL-3.0 |
 | PyJWT (validação do ID token do SSO) | MIT |
 | py_webauthn (chaves de segurança FIDO2) | BSD-3-Clause |
+| signxml (assinatura XML do SAML) | Apache-2.0 |
 
 ## Serviços usados no Docker (imagens, não redistribuídas)
 

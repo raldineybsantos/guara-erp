@@ -41,6 +41,7 @@ urlpatterns = [
     path("rh/", include("apps.rh.urls")),
     path("seguranca/", include("apps.seguranca.urls")),
     path("identidade/", include("apps.identidade.urls")),
+    path("scim/v2/", include("apps.identidade.urls_scim")),
     path("relatorios/", include("apps.relatorios.urls")),
     path("assistente/", include("apps.assistente.urls")),
     path("bancos/", include("apps.bancario.urls")),

@@ -167,6 +167,11 @@ def _email_verificado(prov, claims):
     return claims.get("email_verified") in (True, "true")
 
 
+def vinculavel_por_scim(user) -> bool:
+    """Usuário criado por SCIM (provisionado pelo próprio provedor de identidade) pode ser ligado ao primeiro login SSO."""
+    return IdentidadeExterna.objects.filter(usuario=user, origem__startswith="scim:").exists()
+
+
 def resolver_usuario(prov, claims):
     """Decide quem é o usuário do ERP para esta identidade. Levanta OIDCErro se não puder entrar."""
     origem, subject = f"oidc:{prov.slug}", str(claims["sub"])
@@ -187,7 +192,7 @@ def resolver_usuario(prov, claims):
         if len(candidatos) > 1:
             raise OIDCErro("há mais de um usuário com este e-mail; peça ajuda a um administrador")
         if candidatos:
-            if not prov.vincular_por_email:
+            if not (prov.vincular_por_email or vinculavel_por_scim(candidatos[0])):
                 raise OIDCErro("já existe um usuário com este e-mail que não está ligado a este provedor; "
                                "peça a um administrador para liberar")
             user = candidatos[0]

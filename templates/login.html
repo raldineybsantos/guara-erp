@@ -20,9 +20,11 @@
         <button class="btn btn-primary btn-lg w-100">Entrar</button>
         {% if tem_ldap %}<div class="form-text text-center mt-2">Use o mesmo usuário e senha da rede da empresa.</div>{% endif %}
       </form>
-      {% if provedores_sso %}<div class="text-center text-muted small my-3">ou</div>
+      {% if provedores_sso or provedores_saml %}<div class="text-center text-muted small my-3">ou</div>
       {% for p in provedores_sso %}<a class="btn btn-outline-secondary w-100 mb-2" href="{% url 'identidade:entrar' p.slug %}{% if next %}?next={{ next|urlencode }}{% endif %}">
-        <i class="bi bi-{% if p.tipo == 'microsoft' %}microsoft{% elif p.tipo == 'google' %}google{% else %}box-arrow-in-right{% endif %} me-1"></i> Entrar com {{ p.nome }}</a>{% endfor %}{% endif %}
+        <i class="bi bi-{% if p.tipo == 'microsoft' %}microsoft{% elif p.tipo == 'google' %}google{% else %}box-arrow-in-right{% endif %} me-1"></i> Entrar com {{ p.nome }}</a>{% endfor %}
+      {% for p in provedores_saml %}<a class="btn btn-outline-secondary w-100 mb-2" href="{% url 'identidade:saml_entrar' p.slug %}{% if next %}?next={{ next|urlencode }}{% endif %}">
+        <i class="bi bi-box-arrow-in-right me-1"></i> Entrar com {{ p.nome }}</a>{% endfor %}{% endif %}
     </div></div>
     <div class="login-rodape">Software livre · <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPL-3.0</a> · Desenvolvido no Brasil</div>
   </div>

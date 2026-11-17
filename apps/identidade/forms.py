@@ -5,7 +5,7 @@ from django import forms
 
 from apps.core.crud import BootstrapMixin
 
-from .models import ConfiguracaoLDAP, ProvedorOIDC
+from .models import ConfiguracaoLDAP, ProvedorOIDC, ProvedorSAML, TokenSCIM
 
 
 class LDAPForm(BootstrapMixin, forms.ModelForm):
@@ -49,3 +49,16 @@ class OIDCForm(BootstrapMixin, forms.ModelForm):
         if commit:
             obj.save()
         return obj
+
+
+class SAMLForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = ProvedorSAML
+        exclude = ["slug"]
+        widgets = {"idp_certificados": forms.Textarea(attrs={"rows": 8, "spellcheck": "false"})}
+
+
+class TokenSCIMForm(BootstrapMixin, forms.ModelForm):
+    class Meta:
+        model = TokenSCIM
+        fields = ["nome", "grupo_padrao"]
