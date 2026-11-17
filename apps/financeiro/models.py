@@ -1,5 +1,5 @@
 import datetime
-from decimal import Decimal
+from decimal import ROUND_DOWN, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import models, transaction
@@ -98,7 +98,8 @@ class TituloQuerySet(models.QuerySet):
 class Titulo(ModeloBase, PorEmpresaMixin):
     """Base comum para contas a pagar e a receber."""
 
-    STATUS = [("aberto", "Em aberto"), ("parcial", "Pago parcialmente"), ("pago", "Pago"), ("cancelado", "Cancelado")]
+    STATUS = [("aberto", "Em aberto"), ("parcial", "Pago parcialmente"), ("pago", "Pago"), ("cancelado", "Cancelado"),
+              ("renegociado", "Renegociado")]
 
     descricao = models.CharField("descrição", max_length=200)
     documento = models.CharField("nº documento", max_length=60, blank=True)
@@ -119,7 +120,7 @@ class Titulo(ModeloBase, PorEmpresaMixin):
                                        on_delete=models.PROTECT, related_name="+")
     parcela = models.PositiveSmallIntegerField(default=1)
     total_parcelas = models.PositiveSmallIntegerField("total de parcelas", default=1)
-    status = models.CharField(max_length=10, choices=STATUS, default="aberto", db_index=True, editable=False)
+    status = models.CharField(max_length=12, choices=STATUS, default="aberto", db_index=True, editable=False)
     observacoes = models.TextField("observações", blank=True)
 
     objects = TituloQuerySet.as_manager()
@@ -157,7 +158,7 @@ class Titulo(ModeloBase, PorEmpresaMixin):
             raise ValidationError({"valor": "O valor deve ser maior que zero."})
 
     def atualizar_status(self):
-        if self.status == "cancelado":
+        if self.status in ("cancelado", "renegociado"):
             return
         if self.valor_pago <= 0:
             self.status = "aberto"
@@ -170,8 +171,8 @@ class Titulo(ModeloBase, PorEmpresaMixin):
     def baixar(self, valor, data, conta_bancaria, forma_pagamento="", observacao=""):
         """Registra pagamento/recebimento (total ou parcial) e gera a movimentação bancária."""
         valor = Decimal(valor)
-        if self.status in ("pago", "cancelado"):
-            raise ValidationError("Título já está pago ou cancelado.")
+        if self.status in ("pago", "cancelado", "renegociado"):
+            raise ValidationError("Título já está pago, cancelado ou renegociado.")
         if valor <= 0 or valor > self.saldo:
             raise ValidationError(f"Valor deve estar entre 0,01 e {self.saldo}.")
         partes = self._partes_retencao(valor)
@@ -213,8 +214,16 @@ class Titulo(ModeloBase, PorEmpresaMixin):
     def _antes_de_estornar(self):
         pass
 
+    def _compensacoes_ativas(self):
+        campo = "conta_pagar" if self._meta.model_name == "contapagar" else "conta_receber"
+        return Compensacao.objects.filter(**{campo: self, "status": "ativa"})
+
     @transaction.atomic
     def estornar(self):
+        if self.status == "renegociado":
+            raise ValidationError("Título renegociado: desfaça a renegociação em vez de estornar.")
+        if self._compensacoes_ativas().exists():
+            raise ValidationError("Parte deste título foi quitada por compensação. Estorne a compensação primeiro.")
         self._antes_de_estornar()
         for mov in self.movimentacoes.all():
             mov.delete()
@@ -228,6 +237,8 @@ class Titulo(ModeloBase, PorEmpresaMixin):
         pass
 
     def cancelar(self):
+        if self.status == "renegociado":
+            raise ValidationError("Título renegociado: desfaça a renegociação para cancelá-lo.")
         if self.valor_pago > 0:
             raise ValidationError("Estorne os pagamentos antes de cancelar.")
         self.status = "cancelado"
@@ -307,6 +318,8 @@ class ContaPagar(Titulo):
 class ContaReceber(Titulo):
     cliente = models.ForeignKey(Cliente, null=True, blank=True, on_delete=models.PROTECT,
                                 related_name="contas_receber")
+    renegociacao = models.ForeignKey("Renegociacao", verbose_name="renegociação de origem", null=True, blank=True,
+                                     on_delete=models.PROTECT, related_name="novos_titulos", editable=False)
     tipo_movimento = "entrada"
 
     class Meta(Titulo.Meta):
@@ -540,3 +553,224 @@ def definir_rateio(titulo, linhas):
         titulo.rateios.all().delete()
         for c, p in linhas:
             RateioTitulo.objects.create(centro_custo=c, percentual=p, **{campo: titulo})
+
+
+# --------------------------------------------------------------------------- compensação e renegociação
+def _tem_retencao_pendente(titulo):
+    return hasattr(titulo, "_pendente_de_reter") and bool(titulo._pendente_de_reter())
+
+
+class Compensacao(ModeloBase, PorEmpresaMixin):
+    """Encontro de contas: quita, sem passar pelo banco, uma conta a pagar e uma a receber do mesmo parceiro
+    (a empresa é ao mesmo tempo cliente e fornecedor). Contabilmente baixa Fornecedores contra Clientes."""
+
+    STATUS = [("ativa", "Ativa"), ("estornada", "Estornada")]
+    data = models.DateField(default=timezone.localdate)
+    conta_pagar = models.ForeignKey(ContaPagar, verbose_name="conta a pagar", on_delete=models.PROTECT,
+                                    related_name="compensacoes")
+    conta_receber = models.ForeignKey(ContaReceber, verbose_name="conta a receber", on_delete=models.PROTECT,
+                                      related_name="compensacoes")
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    status = models.CharField(max_length=10, choices=STATUS, default="ativa", editable=False)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "compensação"
+        verbose_name_plural = "compensações"
+        ordering = ["-data", "-pk"]
+
+    def __str__(self):
+        return f"Compensação nº {self.pk} — {self.valor}"
+
+    @staticmethod
+    def mesmo_parceiro(pagar, receber):
+        f, c = pagar.fornecedor, receber.cliente
+        if f is None or c is None:
+            return False
+        if f.parceironegocio_id == c.parceironegocio_id:
+            return True
+        return bool(f.documento) and f.documento == c.documento
+
+    @classmethod
+    def maximo(cls, pagar, receber):
+        return min(pagar.saldo, receber.saldo)
+
+    @classmethod
+    @transaction.atomic
+    def compensar(cls, conta_pagar, conta_receber, valor, data=None, observacoes=""):
+        from apps.contabilidade import servicos
+
+        valor = Decimal(valor)
+        data = data or timezone.localdate()
+        pagar = ContaPagar.objects.select_for_update().get(pk=conta_pagar.pk)
+        receber = ContaReceber.objects.select_for_update().get(pk=conta_receber.pk)
+        for t in (pagar, receber):
+            if t.status not in ("aberto", "parcial"):
+                raise ValidationError(f"“{t}” não está em aberto ({t.get_status_display().lower()}).")
+        if pagar.empresa_id != receber.empresa_id:
+            raise ValidationError("Os títulos são de empresas diferentes.")
+        if not cls.mesmo_parceiro(pagar, receber):
+            raise ValidationError("O fornecedor e o cliente não são o mesmo parceiro (mesmo CPF/CNPJ).")
+        if _tem_retencao_pendente(pagar):
+            raise ValidationError("A conta a pagar tem tributos a reter na fonte: pague-a pela baixa normal.")
+        if valor <= 0 or valor > cls.maximo(pagar, receber):
+            raise ValidationError(f"O valor deve estar entre 0,01 e {cls.maximo(pagar, receber)} "
+                                  f"(o menor dos saldos).")
+        comp = cls.objects.create(empresa=pagar.empresa, data=data, conta_pagar=pagar, conta_receber=receber,
+                                  valor=valor, observacoes=observacoes)
+        quita_pagar = pagar.valor_pago + valor >= pagar.valor_total
+        quita_receber = receber.valor_pago + valor >= receber.valor_total
+        for t in (pagar, receber):
+            t.valor_pago += valor
+            t.data_pagamento = data
+            t.atualizar_status()
+            t.save()
+        parceiro = pagar.fornecedor
+        servicos.lancar("compensacao", valor, data, f"Compensação: {pagar} × {receber} — {parceiro}", comp,
+                        pagar.centro_custo, empresa=pagar.empresa)
+        for t, quita, ev_juros, ev_desc in ((pagar, quita_pagar, "juros_pagos", "desconto_obtido"),
+                                            (receber, quita_receber, "juros_recebidos", "desconto_concedido")):
+            if quita and t.juros:
+                servicos.lancar(ev_juros, t.juros, data, f"Juros/multa: {t}", comp, t.centro_custo,
+                                empresa=t.empresa)
+            if quita and t.desconto:
+                servicos.lancar(ev_desc, t.desconto, data, f"Desconto: {t}", comp, t.centro_custo,
+                                empresa=t.empresa)
+        return comp
+
+    @transaction.atomic
+    def estornar(self):
+        from apps.contabilidade import servicos
+
+        if self.status != "ativa":
+            raise ValidationError("Esta compensação já foi estornada.")
+        for modelo, pk in ((ContaPagar, self.conta_pagar_id), (ContaReceber, self.conta_receber_id)):
+            t = modelo.objects.select_for_update().get(pk=pk)
+            if t.status == "cancelado":
+                raise ValidationError("Um dos títulos foi cancelado; não é possível estornar.")
+            t.valor_pago = max(t.valor_pago - self.valor, Decimal("0"))
+            if t.valor_pago == 0:
+                t.data_pagamento = None
+            t.status = "aberto"
+            t.atualizar_status()
+            t.save()
+        servicos.estornar_de(self, motivo="Compensação estornada.")
+        self.status = "estornada"
+        self.save()
+
+
+class Renegociacao(ModeloBase, PorEmpresaMixin):
+    """Confissão/renegociação de dívida: agrupa títulos vencidos de um cliente e os substitui por novas parcelas,
+    com acréscimo (juros/multa) ou desconto. Os títulos originais ficam “renegociados” e preservam o histórico."""
+
+    STATUS = [("ativa", "Ativa"), ("desfeita", "Desfeita")]
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, related_name="renegociacoes")
+    data = models.DateField(default=timezone.localdate)
+    total_original = models.DecimalField("saldo renegociado", max_digits=14, decimal_places=2, editable=False)
+    acrescimo = models.DecimalField("juros/multa", max_digits=14, decimal_places=2, default=0)
+    desconto = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_novo = models.DecimalField("total negociado", max_digits=14, decimal_places=2, editable=False)
+    parcelas = models.PositiveSmallIntegerField(default=1)
+    primeiro_vencimento = models.DateField("1º vencimento")
+    intervalo_dias = models.PositiveSmallIntegerField("intervalo (dias)", default=30)
+    status = models.CharField(max_length=10, choices=STATUS, default="ativa", editable=False)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "renegociação"
+        verbose_name_plural = "renegociações"
+        ordering = ["-data", "-pk"]
+
+    def __str__(self):
+        return f"Renegociação nº {self.pk} — {self.cliente}"
+
+    @classmethod
+    @transaction.atomic
+    def efetivar(cls, titulos, primeiro_vencimento, parcelas=1, intervalo_dias=30, acrescimo=0, desconto=0,
+                 data=None, observacoes=""):
+        from apps.contabilidade import servicos
+        from apps.contabilidade.servicos import _conta_da_categoria
+
+        titulos = [ContaReceber.objects.select_for_update().get(pk=t.pk) for t in titulos]
+        acrescimo, desconto = Decimal(acrescimo or 0), Decimal(desconto or 0)
+        data = data or timezone.localdate()
+        if not titulos:
+            raise ValidationError("Selecione ao menos um título.")
+        if len({t.cliente_id for t in titulos}) != 1 or titulos[0].cliente_id is None:
+            raise ValidationError("Todos os títulos devem ser do mesmo cliente.")
+        if len({t.empresa_id for t in titulos}) != 1:
+            raise ValidationError("Os títulos são de empresas diferentes.")
+        for t in titulos:
+            if t.status not in ("aberto", "parcial"):
+                raise ValidationError(f"“{t}” não está em aberto ({t.get_status_display().lower()}).")
+        if acrescimo < 0 or desconto < 0:
+            raise ValidationError("Juros e desconto não podem ser negativos.")
+        if not 1 <= int(parcelas) <= 120:
+            raise ValidationError("O número de parcelas deve estar entre 1 e 120.")
+        total = sum((t.saldo for t in titulos), Decimal("0"))
+        novo = total + acrescimo - desconto
+        if novo <= 0:
+            raise ValidationError("O total negociado deve ser maior que zero.")
+        reneg = cls.objects.create(
+            empresa=titulos[0].empresa, cliente=titulos[0].cliente, data=data, total_original=total,
+            acrescimo=acrescimo, desconto=desconto, total_novo=novo, parcelas=int(parcelas),
+            primeiro_vencimento=primeiro_vencimento, intervalo_dias=intervalo_dias, observacoes=observacoes)
+        for t in titulos:
+            item = ItemRenegociacao.objects.create(renegociacao=reneg, titulo=t, saldo=t.saldo)
+            # Fecha a provisão original contra a receita (a das novas parcelas reconhece o valor renegociado).
+            servicos.lancar("renegociacao_baixa", item.saldo, data, f"Renegociação nº {reneg.pk}: {t}", item,
+                            t.centro_custo, debito=_conta_da_categoria(t), empresa=t.empresa)
+            t.cobrancas.filter(status__in=["gerada", "enviada"]).update(status="cancelada")
+            t.status = "renegociado"
+            t.save()
+        n = int(parcelas)
+        base = (novo / n).quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+        primeira = novo - base * (n - 1)
+        centros = {t.centro_custo_id for t in titulos}
+        for i in range(1, n + 1):
+            ContaReceber.objects.create(
+                empresa=titulos[0].empresa, cliente=titulos[0].cliente,
+                descricao=f"Renegociação nº {reneg.pk}", documento=f"RENEG-{reneg.pk}",
+                plano_conta=titulos[0].plano_conta, centro_custo=titulos[0].centro_custo if len(centros) == 1 else None,
+                valor=primeira if i == 1 else base, data_emissao=data,
+                vencimento=primeiro_vencimento + datetime.timedelta(days=int(intervalo_dias) * (i - 1)),
+                parcela=i, total_parcelas=n, renegociacao=reneg,
+                observacoes=f"Originários: {', '.join(str(t) for t in titulos)}"[:500])
+        return reneg
+
+    @transaction.atomic
+    def desfazer(self):
+        from apps.contabilidade import servicos
+
+        if self.status != "ativa":
+            raise ValidationError("Esta renegociação já foi desfeita.")
+        novos = list(self.novos_titulos.select_for_update())
+        for t in novos:
+            if t.valor_pago > 0 or t.compensacoes.filter(status="ativa").exists():
+                raise ValidationError("Já houve pagamento de parcelas da renegociação. "
+                                      "Estorne os pagamentos antes de desfazer.")
+        for t in novos:
+            t.cobrancas.filter(status__in=["gerada", "enviada"]).update(status="cancelada")
+            t.cancelar()
+        for item in self.itens.select_related("titulo"):
+            servicos.estornar_de(item, motivo=f"Renegociação nº {self.pk} desfeita.")
+            t = ContaReceber.objects.get(pk=item.titulo_id)
+            t.status = "aberto"
+            t.atualizar_status()
+            t.save()
+        self.status = "desfeita"
+        self.save()
+
+
+class ItemRenegociacao(models.Model):
+    renegociacao = models.ForeignKey(Renegociacao, on_delete=models.CASCADE, related_name="itens")
+    titulo = models.ForeignKey(ContaReceber, verbose_name="título original", on_delete=models.PROTECT,
+                               related_name="itens_renegociacao")
+    saldo = models.DecimalField("saldo renegociado", max_digits=14, decimal_places=2)
+
+    class Meta:
+        verbose_name = "título renegociado"
+        verbose_name_plural = "títulos renegociados"
+
+    def __str__(self):
+        return f"{self.titulo} — {self.saldo}"

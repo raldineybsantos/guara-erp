@@ -46,6 +46,8 @@ EVENTOS = [
     ("depreciacao", "Depreciação mensal do imobilizado"),
     ("baixa_bem_depreciacao", "Baixa de bem: depreciação acumulada"),
     ("baixa_bem_venda", "Baixa de bem: valor recebido na venda"),
+    ("compensacao", "Compensação entre contas a pagar e a receber"),
+    ("renegociacao_baixa", "Renegociação: baixa do título original"),
     ("baixa_bem_perda", "Baixa de bem: perda"),
     ("baixa_bem_ganho", "Baixa de bem: ganho"),
 ]

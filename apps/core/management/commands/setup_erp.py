@@ -124,6 +124,7 @@ REGRAS_CONTABEIS = {
     "aquisicao_bem": ("1.2.1", "2.3.1"), "depreciacao": ("4.8", "1.2.2"),
     "baixa_bem_depreciacao": ("1.2.2", "1.2.1"), "baixa_bem_venda": ("1.1.1", "1.2.1"),
     "baixa_bem_perda": ("4.7", "1.2.1"), "baixa_bem_ganho": ("1.2.1", "3.4"),
+    "compensacao": ("2.1.1", "1.1.2"), "renegociacao_baixa": ("3.1", "1.1.2"),
 }
 
 # Pontos de partida para as retenções na fonte: o contador confere alíquotas, códigos e prazos.

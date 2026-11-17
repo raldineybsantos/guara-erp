@@ -730,6 +730,40 @@ recolhimento baixa essa conta contra o banco. Conciliação de extrato, borderô
 valor líquido (o borderô paga o líquido; o extrato é casado pelo líquido). **O ERP não gera DARF nem o
 arquivo da DCTFWeb/EFD-Reinf**: a guia é o controle interno do que recolher.
 
+### 14.8 Compensação entre contas a pagar e a receber
+
+Quando um parceiro é ao mesmo tempo cliente e fornecedor (mesmo CPF/CNPJ), as duas dívidas podem ser
+quitadas por **encontro de contas**, sem mexer no banco.
+
+1. Abra a conta a pagar (ou a receber) e clique em **Compensar**.
+2. Escolha o título do mesmo parceiro e confirme o valor. O máximo é o **menor dos dois saldos**; a baixa
+   pode ser parcial nos dois.
+3. Os dois títulos recebem a baixa (ficam *pagos* ou *pagos parcialmente*), sem movimentação bancária. A
+   contabilidade debita Fornecedores e credita Clientes; juros e descontos são reconhecidos quando o título
+   é quitado, como numa baixa normal.
+4. **Financeiro → Compensações** lista os encontros. **Estornar compensação** devolve o valor aos dois títulos.
+
+Regras: os títulos precisam estar em aberto, ser da mesma empresa e do mesmo parceiro; conta a pagar com
+tributos a reter na fonte deve ser paga pela baixa normal. Enquanto houver compensação ativa, o título não
+pode ser estornado pela baixa normal (estorne a compensação antes).
+
+### 14.9 Renegociação de títulos a receber
+
+Para cobrar um cliente inadimplente por um acordo, em vez de manter os títulos vencidos:
+
+1. Abra um dos títulos do cliente e clique em **Renegociar títulos do cliente**. Os vencidos já vêm marcados.
+2. Informe 1º vencimento, número de parcelas, intervalo, **juros/multa** a cobrar e **desconto** concedido.
+3. Os títulos originais ficam **Renegociados** (o histórico é preservado), as cobranças pendentes deles são
+   canceladas e nascem as novas parcelas (documento `RENEG-nº`), somando o saldo + juros − desconto.
+   Título parcialmente pago entra pelo saldo.
+4. **Financeiro → Renegociações** mostra o acordo, os originais e as novas parcelas.
+5. **Desfazer renegociação** cancela as novas parcelas e reabre os originais — só se nenhuma parcela nova foi
+   paga.
+
+Contabilmente o título original é baixado contra a receita e as novas parcelas a reconhecem de novo; o efeito
+líquido na receita é só o juros menos o desconto. **Limite:** boletos já registrados em banco ou gateway não
+são cancelados lá — cancele-os no próprio banco.
+
 ## 15. Contabilidade
 
 A contabilidade do Guará é um **razão único**: ninguém "roda a contabilização" no fim do mês. Cada evento

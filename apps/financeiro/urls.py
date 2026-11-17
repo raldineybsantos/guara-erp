@@ -19,7 +19,13 @@ urlpatterns = [
     path("guias/<int:pk>/recolher/", views.recolher_guia, name="guia_recolher"),
     path("guias/<int:pk>/estornar/", views.estornar_guia, name="guia_estornar"),
     path("relatorios/centro-custo/", views.relatorio_centro_custo, name="relatorio_centro_custo"),
+    path("pagar/<int:pk>/compensar/", views.compensar, {"tipo": "pagar"}, name="compensar_pagar"),
+    path("receber/<int:pk>/compensar/", views.compensar, {"tipo": "receber"}, name="compensar_receber"),
+    path("compensacoes/<int:pk>/estornar/", views.estornar_compensacao, name="compensacao_estornar"),
+    path("receber/<int:pk>/renegociar/", views.renegociar, name="renegociar"),
+    path("renegociacoes/<int:pk>/desfazer/", views.desfazer_renegociacao, name="renegociacao_desfazer"),
     path("pagar/<int:pk>/cancelar/", views.cancelar, {"tipo": "pagar"}, name="titulo_cancelar_pagar"),
     path("receber/<int:pk>/cancelar/", views.cancelar, {"tipo": "receber"}, name="titulo_cancelar_receber"),
 ] + crud_urls(telas.ContaPagarCrud, telas.ContaReceberCrud, telas.MovimentacaoCrud, telas.ContaBancariaCrud,
-              telas.PlanoContaCrud, telas.CentroCustoCrud, telas.RegraRetencaoCrud, telas.GuiaTributoCrud)
+              telas.PlanoContaCrud, telas.CentroCustoCrud, telas.RegraRetencaoCrud, telas.GuiaTributoCrud,
+              telas.CompensacaoCrud, telas.RenegociacaoCrud)

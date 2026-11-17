@@ -2,7 +2,7 @@ from apps.core.crud import Crud
 
 from .filtros import ContaPagarFilter, ContaReceberFilter
 from .forms import ContaPagarForm, ContaReceberForm
-from .models import (CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
+from .models import (Compensacao, ItemRenegociacao, Renegociacao, CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
                      RegraRetencao)
 
 DETALHE_TITULO = ["descricao", "documento", "parcela", "total_parcelas", "plano_conta", "centro_custo",
@@ -55,11 +55,13 @@ class ContaPagarCrud(Crud):
     detail_fields = ["fornecedor"] + DETALHE_TITULO[:-2] + ["codigo_barras", "aprovado", "criado_por", "criado_em"]
     related = (
         ("movimentacoes", "Pagamentos", ["data", "conta_bancaria", "valor"]),
+        ("compensacoes", "Compensações", ["data", "conta_receber", "valor", "status"]),
         ("retencoes", "Tributos retidos na fonte", ["regra", "base", "aliquota", "valor", "retido"]),
         ("rateios", "Rateio por centro de custo", ["centro_custo", "percentual"]),
     )
     actions = (
         ("financeiro:titulo_baixar_pagar", "Pagar", "cash-coin", "financeiro.baixar_contapagar"),
+        ("financeiro:compensar_pagar", "Compensar com contas a receber", "arrow-left-right", "financeiro.add_compensacao"),
         ("financeiro:titulo_retencoes", "Tributos retidos", "percent", "financeiro.change_contapagar"),
         ("financeiro:titulo_ratear_pagar", "Ratear por centro de custo", "diagram-3", "financeiro.change_contapagar"),
         ("financeiro:titulo_estornar_pagar", "Estornar pagamentos", "arrow-counterclockwise", "financeiro.baixar_contapagar"),
@@ -81,12 +83,15 @@ class ContaReceberCrud(Crud):
     detail_fields = ["cliente"] + DETALHE_TITULO
     related = (
         ("movimentacoes", "Recebimentos", ["data", "conta_bancaria", "valor"]),
+        ("compensacoes", "Compensações", ["data", "conta_pagar", "valor", "status"]),
         ("cobrancas", "Cobranças", ["tipo", "vencimento", "valor", "status"]),
         ("rateios", "Rateio por centro de custo", ["centro_custo", "percentual"]),
     )
     actions = (
         ("financeiro:titulo_baixar_receber", "Receber", "cash-coin", "financeiro.baixar_contareceber"),
         ("financeiro:titulo_ratear_receber", "Ratear por centro de custo", "diagram-3", "financeiro.change_contareceber"),
+        ("financeiro:compensar_receber", "Compensar com contas a pagar", "arrow-left-right", "financeiro.add_compensacao"),
+        ("financeiro:renegociar", "Renegociar títulos do cliente", "arrow-repeat", "financeiro.add_renegociacao"),
         ("cobranca:gerar_cobranca", "Gerar cobrança", "receipt", "cobranca.add_cobranca"),
         ("financeiro:titulo_estornar_receber", "Estornar recebimentos", "arrow-counterclockwise", "financeiro.baixar_contareceber"),
         ("financeiro:titulo_cancelar_receber", "Cancelar título", "x-octagon", "financeiro.change_contareceber"),
@@ -140,3 +145,41 @@ class GuiaTributoCrud(Crud):
     menu = "Financeiro"
     menu_label = "Guias de tributos retidos"
     menu_order = 14
+
+
+class CompensacaoCrud(Crud):
+    model = Compensacao
+    list_display = ("data", "conta_pagar", "conta_receber", "valor", "status")
+    search_fields = ("conta_pagar__descricao", "conta_receber__descricao", "conta_pagar__fornecedor__nome")
+    filter_fields = ("status",)
+    detail_fields = ["data", "conta_pagar", "conta_receber", "valor", "status", "observacoes", "criado_por",
+                     "criado_em"]
+    actions = (("financeiro:compensacao_estornar", "Estornar compensação", "arrow-counterclockwise",
+                "financeiro.change_compensacao"),)
+    can_create = False
+    can_edit = False
+    can_delete = False
+    icon = "arrow-left-right"
+    menu = "Financeiro"
+    menu_order = 7
+
+
+class RenegociacaoCrud(Crud):
+    model = Renegociacao
+    list_display = ("data", "cliente", "total_original", "acrescimo", "desconto", "total_novo", "parcelas", "status")
+    search_fields = ("cliente__nome", "cliente__nome_fantasia")
+    filter_fields = ("status",)
+    detail_fields = ["cliente", "data", "total_original", "acrescimo", "desconto", "total_novo", "parcelas",
+                     "primeiro_vencimento", "intervalo_dias", "status", "observacoes", "criado_por", "criado_em"]
+    related = (
+        ("itens", "Títulos renegociados", ["titulo", "saldo"]),
+        ("novos_titulos", "Novas parcelas", ["parcela", "vencimento", "valor", "status"]),
+    )
+    actions = (("financeiro:renegociacao_desfazer", "Desfazer renegociação", "arrow-counterclockwise",
+                "financeiro.change_renegociacao"),)
+    can_create = False
+    can_edit = False
+    can_delete = False
+    icon = "arrow-repeat"
+    menu = "Financeiro"
+    menu_order = 8

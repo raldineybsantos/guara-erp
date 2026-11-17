@@ -127,3 +127,37 @@ class RateioLinhaForm(BootstrapMixin, forms.Form):
 class RecolhimentoForm(BootstrapMixin, forms.Form):
     conta_bancaria = forms.ModelChoiceField(ContaBancaria.objects.filter(ativa=True), label="Conta bancária")
     data = forms.DateField(label="Data do recolhimento", initial=timezone.localdate)
+
+
+class CompensacaoForm(BootstrapMixin, forms.Form):
+    contraparte = forms.ModelChoiceField(ContaReceber.objects.none(), label="Título a compensar")
+    valor = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0.01"))
+    data = forms.DateField(initial=timezone.localdate)
+    observacoes = forms.CharField(widget=forms.Textarea, required=False, label="Observações")
+
+    def __init__(self, *args, titulo=None, contrapartes=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["contraparte"].queryset = contrapartes
+        self.fields["contraparte"].label_from_instance = lambda t: (
+            f"{t} — venc. {t.vencimento:%d/%m/%Y} — saldo {t.saldo}")
+        self.titulo = titulo
+
+
+class RenegociacaoForm(BootstrapMixin, forms.Form):
+    titulos = forms.ModelMultipleChoiceField(ContaReceber.objects.none(), label="Títulos a renegociar",
+                                             widget=forms.CheckboxSelectMultiple)
+    primeiro_vencimento = forms.DateField(label="1º vencimento")
+    parcelas = forms.IntegerField(min_value=1, max_value=120, initial=1)
+    intervalo_dias = forms.IntegerField(label="Intervalo entre parcelas (dias)", min_value=1, max_value=365,
+                                        initial=30)
+    acrescimo = forms.DecimalField(label="Juros/multa a cobrar", max_digits=14, decimal_places=2,
+                                   min_value=Decimal("0"), initial=Decimal("0"), required=False)
+    desconto = forms.DecimalField(label="Desconto concedido", max_digits=14, decimal_places=2,
+                                  min_value=Decimal("0"), initial=Decimal("0"), required=False)
+    observacoes = forms.CharField(widget=forms.Textarea, required=False, label="Observações / acordo")
+
+    def __init__(self, *args, abertos=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["titulos"].queryset = abertos
+        self.fields["titulos"].label_from_instance = lambda t: (
+            f"{t} — venc. {t.vencimento:%d/%m/%Y} — saldo {t.saldo}" + (" (vencido)" if t.vencido else ""))

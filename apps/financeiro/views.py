@@ -7,15 +7,15 @@ from django.forms import formset_factory
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.db.models import Sum
+from django.db.models import Q as models_q, Sum
 from django.db.models.functions import TruncMonth
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.core.crud import restringir_por_empresa
 
-from .forms import BaixaForm, RateioLinhaForm, RecolhimentoForm, RetencaoForm, TransferenciaForm
-from .models import (ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, Retencao,
+from .forms import BaixaForm, CompensacaoForm, RenegociacaoForm, RateioLinhaForm, RecolhimentoForm, RetencaoForm, TransferenciaForm
+from .models import (Compensacao, ContaBancaria, ContaPagar, Renegociacao, ContaReceber, GuiaTributo, Movimentacao, Retencao,
                      definir_rateio, partes_por_centro)
 
 MODELOS = {"pagar": ContaPagar, "receber": ContaReceber}
@@ -292,3 +292,104 @@ def relatorio_centro_custo(request):
     return render(request, "financeiro/relatorio_centro_custo.html", {
         "titulo": "Resultado por centro de custo", "icone": "bullseye", "linhas": ordenadas, "total": total,
         "de": de, "ate": ate, "tipo": tipo})
+
+
+# --------------------------------------------------------------------------- compensação e renegociação
+@login_required
+def compensar(request, tipo, pk):
+    modelo = _modelo(tipo)
+    titulo = get_object_or_404(modelo, pk=pk)
+    if not request.user.has_perm("financeiro.add_compensacao"):
+        messages.error(request, "Você não tem permissão para compensar títulos.")
+        return redirect(titulo.get_absolute_url())
+    if titulo.status not in ("aberto", "parcial"):
+        messages.error(request, "O título precisa estar em aberto.")
+        return redirect(titulo.get_absolute_url())
+    outro = ContaReceber if tipo == "pagar" else ContaPagar
+    parceiro = titulo.fornecedor if tipo == "pagar" else titulo.cliente
+    candidatos = outro.objects.none()
+    if parceiro is not None:
+        campo = "cliente" if tipo == "pagar" else "fornecedor"
+        filtro = models_q(**{f"{campo}__parceironegocio_id": parceiro.parceironegocio_id})
+        if parceiro.documento:
+            filtro |= models_q(**{f"{campo}__documento": parceiro.documento})
+        candidatos = restringir_por_empresa(outro.objects.em_aberto().filter(filtro, empresa_id=titulo.empresa_id),
+                                            outro, request.user)
+    form = CompensacaoForm(request.POST or None, titulo=titulo, contrapartes=candidatos)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        contra = d["contraparte"]
+        pagar, receber = (titulo, contra) if tipo == "pagar" else (contra, titulo)
+        try:
+            comp = Compensacao.compensar(pagar, receber, d["valor"], d["data"], d["observacoes"])
+            messages.success(request, f"Compensação nº {comp.pk} registrada.")
+            return redirect(titulo.get_absolute_url())
+        except ValidationError as e:
+            form.add_error(None, e)
+    elif request.method == "GET" and candidatos.exists():
+        form.fields["valor"].initial = titulo.saldo
+    return render(request, "financeiro/compensar.html", {
+        "form": form, "titulo_obj": titulo, "tipo": tipo, "titulo": "Compensar com título do mesmo parceiro",
+        "icone": "arrow-left-right", "sem_candidatos": not candidatos.exists()})
+
+
+@login_required
+@permission_required("financeiro.change_compensacao", raise_exception=True)
+def estornar_compensacao(request, pk):
+    comp = get_object_or_404(Compensacao, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {"titulo": "Estornar compensação", "voltar": comp.get_absolute_url(),
+                                                  "mensagem": f"Estornar a compensação nº {comp.pk}? Os dois títulos "
+                                                              f"voltam a ter o valor compensado em aberto."})
+    try:
+        comp.estornar()
+        messages.success(request, "Compensação estornada.")
+    except ValidationError as e:
+        messages.error(request, e.messages[0])
+    return redirect(comp.get_absolute_url())
+
+
+@login_required
+def renegociar(request, pk):
+    origem = get_object_or_404(ContaReceber, pk=pk)
+    if not request.user.has_perm("financeiro.add_renegociacao"):
+        messages.error(request, "Você não tem permissão para renegociar títulos.")
+        return redirect(origem.get_absolute_url())
+    if origem.cliente_id is None or origem.status not in ("aberto", "parcial"):
+        messages.error(request, "O título precisa estar em aberto e ter cliente.")
+        return redirect(origem.get_absolute_url())
+    abertos = restringir_por_empresa(
+        ContaReceber.objects.em_aberto().filter(cliente_id=origem.cliente_id, empresa_id=origem.empresa_id),
+        ContaReceber, request.user)
+    selecionados = [t.pk for t in abertos if t.vencido or t.pk == origem.pk]
+    form = RenegociacaoForm(request.POST or None, abertos=abertos, initial={
+        "titulos": selecionados, "primeiro_vencimento": timezone.localdate() + datetime.timedelta(days=30)})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            reneg = Renegociacao.efetivar(
+                list(d["titulos"]), d["primeiro_vencimento"], d["parcelas"], d["intervalo_dias"],
+                d["acrescimo"] or 0, d["desconto"] or 0, observacoes=d["observacoes"])
+            messages.success(request, f"Renegociação nº {reneg.pk} registrada: {reneg.parcelas} nova(s) parcela(s).")
+            return redirect(reneg.get_absolute_url())
+        except ValidationError as e:
+            form.add_error(None, e)
+    return render(request, "form_simples.html", {
+        "form": form, "titulo": f"Renegociar títulos de {origem.cliente}", "icone": "arrow-repeat"})
+
+
+@login_required
+@permission_required("financeiro.change_renegociacao", raise_exception=True)
+def desfazer_renegociacao(request, pk):
+    reneg = get_object_or_404(Renegociacao, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {
+            "titulo": "Desfazer renegociação", "voltar": reneg.get_absolute_url(),
+            "mensagem": f"Desfazer a renegociação nº {reneg.pk}? As novas parcelas serão canceladas e os títulos "
+                        f"originais voltam a ficar em aberto."})
+    try:
+        reneg.desfazer()
+        messages.success(request, "Renegociação desfeita.")
+    except ValidationError as e:
+        messages.error(request, e.messages[0])
+    return redirect(reneg.get_absolute_url())

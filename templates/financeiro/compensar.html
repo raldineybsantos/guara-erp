@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="card mb-3" style="max-width:900px"><div class="card-body small">
+  <div class="row">
+    <div class="col-md-6"><span class="text-secondary">Título:</span> <a href="{{ titulo_obj.get_absolute_url }}">{{ titulo_obj }}</a></div>
+    <div class="col-md-3"><span class="text-secondary">Vencimento:</span> {{ titulo_obj.vencimento|date:"d/m/Y" }}</div>
+    <div class="col-md-3"><span class="text-secondary">Saldo:</span> <strong>{{ titulo_obj.saldo|moeda }}</strong></div>
+  </div>
+  <div class="text-secondary mt-2">Encontro de contas: quita os dois títulos sem movimentar o banco. O valor máximo é o menor dos dois saldos; os dois precisam ser do mesmo CPF/CNPJ.</div>
+</div></div>
+{% if sem_candidatos %}
+<div class="alert alert-warning" style="max-width:900px">Não há título em aberto do mesmo parceiro para compensar.</div>
+<a href="{{ titulo_obj.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+{% else %}
+<form method="post" novalidate style="max-width:900px">{% csrf_token %}
+  <div class="card mb-3"><div class="card-body">{% include "crud/_campos.html" %}</div></div>
+  <button class="btn btn-success"><i class="bi bi-arrow-left-right"></i> Confirmar compensação</button>
+  <a href="{{ titulo_obj.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endif %}
+{% endblock %}
