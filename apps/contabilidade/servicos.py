@@ -7,6 +7,7 @@ from decimal import Decimal
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.middleware import usuario_atual
@@ -141,6 +142,9 @@ def sincronizar_titulo(titulo):
 
 def baixa(mov):
     """Movimentação bancária: pagamento, recebimento ou avulsa. Transferências entre contas não contabilizam."""
+    if getattr(mov, "guia_id", None):
+        lancar("recolhimento_tributo", mov.valor, mov.data, mov.descricao, mov, mov.centro_custo)
+        return
     titulo = mov.contapagar or mov.contareceber
     if titulo is None:
         if not getattr(mov, "transferencia", False):
@@ -151,7 +155,12 @@ def baixa(mov):
     sincronizar_titulo(titulo)
     lancar("pagamento" if pagar else "recebimento", mov.valor, mov.data, mov.descricao, mov, mov.centro_custo)
     # Na baixa que quita o título, reconhece juros e descontos (a provisão foi feita pelo valor original).
-    if titulo.valor_pago + mov.valor >= titulo.valor_total:
+    # O título é quitado pelo valor bruto: o dinheiro que saiu (mov.valor) é menor quando há tributo retido.
+    bruto = getattr(mov, "_bruto", None)
+    if bruto is None:
+        bruto = mov.valor + (mov.retencoes_baixa.aggregate(t=Sum("valor"))["t"] or Decimal("0")
+                             if mov.pk else Decimal("0"))
+    if titulo.valor_pago + bruto >= titulo.valor_total:
         if titulo.juros:
             lancar("juros_pagos" if pagar else "juros_recebidos", titulo.juros, mov.data,
                    f"Juros/multa: {titulo}", mov, mov.centro_custo)

@@ -345,7 +345,8 @@ total em aberto e o valor **ponderado** (valor × probabilidade do estágio: 10%
 ### 7.2 Pedido de venda
 
 1. **Vendas → Pedidos de venda → Novo:** cliente, condição de pagamento (`0`, `30` ou `30/60/90`), itens
-   (o preço vem do cadastro do produto; o desconto por item tem limite, padrão 10%).
+   (o preço vem da **tabela de preço** do pedido ou, sem ela, do cadastro do produto — veja 7.3; o desconto
+   por item tem limite, padrão 10%).
 2. **Confirmar:** o ERP confere o **estoque disponível** e o **limite de crédito** do cliente (títulos em
    aberto + pedidos aprovados + este pedido). Dentro do limite, o pedido fica *Aprovado*. Acima, fica
    *Bloqueado (crédito)*.
@@ -356,6 +357,35 @@ total em aberto e o valor **ponderado** (valor × probabilidade do estágio: 10%
    transmissão da NF-e à SEFAZ é feita pelo seu emissor.
 
 Pedido faturado não pode ser alterado. Para devolução, emita a nota de devolução.
+
+### 7.3 Tabelas de preço
+
+**Vendas → Tabelas de preço → Nova.** Cada tabela tem vigência (início e, se quiser, fim) e uma lista de
+preços por produto. Para dar desconto por volume, cadastre o mesmo produto com mais de uma **faixa de
+quantidade** (ex.: R$ 150 a partir de 1 unidade e R$ 120 a partir de 10): vale a maior faixa que a
+quantidade do item alcança.
+
+- **Tabela padrão:** marque "tabela padrão" e deixe os clientes em branco; vale para quem não tem tabela própria.
+- **Tabela exclusiva:** escolha os clientes em "exclusiva dos clientes". Para esses clientes, ela vence a padrão.
+- Ao salvar o pedido, o ERP escolhe a tabela vigente na data do pedido (você pode trocá-la no pedido).
+  O item sem preço digitado recebe o da tabela; **produto que não está na tabela usa o preço do cadastro**.
+- O preço é gravado no item na hora: mudar a tabela depois **não altera pedidos já lançados**.
+- Um preço digitado à mão no item sempre prevalece sobre a tabela.
+
+### 7.4 Comissão de vendedores
+
+1. **Vendas → Regras de comissão** (Financeiro): informe o percentual e **quando a comissão é devida** —
+   *no faturamento* ou *conforme o cliente paga*. Uma regra **sem vendedor** é a geral; a regra de um
+   vendedor vale sobre a geral. Sem regra (ou com regra inativa), não há comissão.
+2. Ao **faturar** o pedido, o ERP cria a comissão do vendedor do pedido: base = total dos itens (sem o
+   frete), percentual da regra vigente naquele momento.
+3. No modo *conforme o cliente paga*, a parte **devida** cresce na proporção do que o cliente já pagou
+   dos títulos do pedido (e diminui se um recebimento for estornado).
+4. **Vendas → Comissões → Lançar no contas a pagar** (Financeiro): cria a conta a pagar do que já é devido e
+   ainda não foi lançado. Pode ser repetido a cada novo recebimento, sem duplicar. A conta a pagar segue o
+   fluxo normal (aprovação, borderô, baixa).
+
+O **vendedor vê só as próprias comissões**; a lista completa e o lançamento ficam com o Financeiro.
 
 ## 8. Estoque
 
@@ -589,6 +619,11 @@ Mostra, mês a mês:
 - **Plano de contas:** classifica receitas e despesas em níveis (ex.: `2.02.01 Aluguel`).
   Use códigos com pontos para a hierarquia.
 - **Centros de custo:** separam as despesas por área, normalmente ligadas a um departamento.
+- **Rateio:** num título que atende a várias áreas, use **Ratear por centro de custo** e divida em
+  percentuais que somem 100% (deixe em branco para remover). O rateio alimenta **Financeiro → Resultado por
+  centro de custo**, que soma despesas ou receitas por centro no período (pelo vencimento; cancelados ficam
+  de fora; título sem rateio entra inteiro no centro do título). É uma análise **gerencial**: os lançamentos
+  contábeis continuam no centro de custo do próprio título.
 
 ---
 
@@ -627,6 +662,30 @@ Cadastros necessários: na **conta bancária**, código do banco, agência, cont
 > O arquivo segue o padrão FEBRABAN CNAB 240. Cada banco tem particularidades e **exige homologação**:
 > antes de usar de verdade, envie um arquivo de teste ao seu gerente e valide o retorno. PIX por arquivo e
 > contas de consumo (código de 48 dígitos) ainda não entram na remessa.
+
+### 14.7 Tributos retidos na fonte (contas a pagar)
+
+Ao pagar um fornecedor de serviços, a empresa pode ter de **reter** IRRF, PIS, COFINS e CSLL e recolhê-los
+ao Fisco. O ERP controla isso assim:
+
+1. **Regras de retenção** (Financeiro): vêm cadastradas IRRF 1,5% (código 1708) e PIS 0,65%, COFINS 3% e CSLL
+   1% (código 5952), todos com vencimento no dia 20 do mês seguinte. **São pontos de partida: a alíquota, o
+   código de receita, o prazo e a base mínima dependem do tipo de serviço e do fornecedor, e quem confere
+   é o contador.** Altere na tela, sem mexer no sistema.
+2. No título a pagar, **Tributos retidos → marque o que se aplica** e informe a base de cálculo. Só dá para
+   definir antes do primeiro pagamento; refazer substitui o que estava marcado.
+3. Ao **pagar**, informe o valor do título que está sendo quitado: o dinheiro que sai da conta é menor (valor
+   menos a retenção) e o tributo vai para uma **guia a recolher**. Pagamento parcial retém na proporção, e o
+   último pagamento leva o que sobrou, sem perder centavo.
+4. **Financeiro → Guias de tributos retidos:** uma guia por mês e código de receita (PIS, COFINS e CSLL
+   caem juntos no 5952). **Registrar recolhimento** lança a saída no banco.
+5. **Estornar** o pagamento desfaz a retenção e ajusta a guia — exceto se a guia já foi recolhida: estorne
+   antes o recolhimento.
+
+A contabilidade acompanha: a retenção debita Fornecedores e credita *Impostos a recolher* (2.1.3), e o
+recolhimento baixa essa conta contra o banco. Conciliação de extrato, borderô e retorno CNAB já tratam o
+valor líquido (o borderô paga o líquido; o extrato é casado pelo líquido). **O ERP não gera DARF nem o
+arquivo da DCTFWeb/EFD-Reinf**: a guia é o controle interno do que recolher.
 
 ## 15. Contabilidade
 

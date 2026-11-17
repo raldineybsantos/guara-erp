@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="card mb-3" style="max-width:700px"><div class="card-body small">
+  <div><span class="text-secondary">Título:</span> <a href="{{ titulo_obj.get_absolute_url }}">{{ titulo_obj }}</a> · valor {{ titulo_obj.valor|moeda }}</div>
+  <div class="text-secondary mt-2">Os percentuais devem somar 100%. Deixe tudo em branco para remover o rateio. O rateio serve à análise gerencial por centro de custo.</div>
+</div></div>
+<form method="post" novalidate style="max-width:700px">{% csrf_token %}
+  {{ fs.management_form }}
+  <div class="card mb-3"><div class="card-body">
+    {% for f in fs %}
+    <div class="row g-2 mb-2">
+      <div class="col-8">{{ f.centro_custo }}{% for e in f.centro_custo.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+      <div class="col-4">{{ f.percentual }}{% for e in f.percentual.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}</div>
+    </div>
+    {% endfor %}
+  </div></div>
+  <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar rateio</button>
+  <a href="{{ titulo_obj.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}

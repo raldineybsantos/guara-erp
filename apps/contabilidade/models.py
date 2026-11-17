@@ -40,6 +40,8 @@ EVENTOS = [
     ("ajuste_estoque_saida", "Ajuste de estoque para menos"),
     ("receita_avulsa", "Entrada bancária sem título"),
     ("despesa_avulsa", "Saída bancária sem título"),
+    ("retencao_tributo", "Tributo retido na fonte ao pagar fornecedor"),
+    ("recolhimento_tributo", "Recolhimento de tributo retido (guia)"),
 ]
 
 

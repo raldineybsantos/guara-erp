@@ -45,7 +45,9 @@ GRUPOS = {
                    "core.change_fornecedor", "core.add_cliente", "core.change_cliente", "core.change_parceironegocio",
                    "fiscal.view_*", "compras.view_pedidocompra", "compras.view_itempedido",
                    "compras.view_recebimentocompra", "vendas.view_pedidovenda", "vendas.view_itempedidovenda",
-                   "vendas.liberar_credito_pedidovenda", "contabilidade.view_lancamento", "contabilidade.view_partida",
+                   "vendas.liberar_credito_pedidovenda", "vendas.view_comissao", "vendas.pagar_comissao",
+                   "vendas.view_regracomissao", "vendas.add_regracomissao", "vendas.change_regracomissao",
+                   "contabilidade.view_lancamento", "contabilidade.view_partida",
                    "contabilidade.view_contacontabil"],
     "Fiscal": ["fiscal.*", "vendas.view_pedidovenda", "vendas.view_itempedidovenda", "vendas.change_pedidovenda", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
@@ -115,7 +117,16 @@ REGRAS_CONTABEIS = {
     "compra_estoque": ("1.1.3", "2.1.2"), "compra_despesa": ("4.2", "2.1.2"), "cmv": ("4.1", "1.1.3"),
     "consumo_estoque": ("4.3", "1.1.3"), "ajuste_estoque_entrada": ("1.1.3", "4.4"),
     "ajuste_estoque_saida": ("4.4", "1.1.3"), "receita_avulsa": ("1.1.1", "3.4"), "despesa_avulsa": ("4.7", "1.1.1"),
+    "retencao_tributo": ("2.1.1", "2.1.3"), "recolhimento_tributo": ("2.1.3", "1.1.1"),
 }
+
+# Pontos de partida para as retenções na fonte: o contador confere alíquotas, códigos e prazos.
+REGRAS_RETENCAO = [
+    ("IRRF", "IRRF sobre serviços de pessoa jurídica", "1.5", "1708"),
+    ("PIS", "PIS retido (contribuições sociais)", "0.65", "5952"),
+    ("COFINS", "COFINS retida (contribuições sociais)", "3", "5952"),
+    ("CSLL", "CSLL retida (contribuições sociais)", "1", "5952"),
+]
 
 PLANO = [
     ("1", "Receitas", "receita", None), ("1.01", "Receita de vendas", "receita", "1"),
@@ -186,8 +197,11 @@ class Command(BaseCommand):
                 # Chamados de RH, Financeiro etc. podem ser sensíveis: cada equipe vê só os da sua área.
                 perms = [p for p in perms if p.codename != "ver_todos_chamado"]
             if nome == "Vendas":
-                # ... e quem vende não libera o próprio crédito (fica com o Financeiro).
-                perms = [p for p in perms if p.codename != "liberar_credito_pedidovenda"]
+                # ... e quem vende não libera o próprio crédito (fica com o Financeiro) nem mexe na sua comissão:
+                # só consulta as próprias (a tela filtra por vendedor).
+                perms = [p for p in perms if p.codename != "liberar_credito_pedidovenda"
+                         and not (p.content_type.app_label == "vendas" and p.content_type.model in (
+                             "comissao", "regracomissao") and p.codename != "view_comissao")]
             g.permissions.set(perms)
             grupos[nome] = g
             self.stdout.write(f"Grupo {nome}: {g.permissions.count()} permissões")
@@ -203,6 +217,12 @@ class Command(BaseCommand):
             d, c = (ContaContabil.objects.filter(codigo=x, sintetica=False).first() for x in (deb, cred))
             if d and c:
                 RegraContabil.objects.get_or_create(evento=evento, defaults={"conta_debito": d, "conta_credito": c})
+
+        from apps.financeiro.models import RegraRetencao
+
+        for tributo, nome, aliquota, codigo in REGRAS_RETENCAO:
+            RegraRetencao.objects.get_or_create(tributo=tributo, nome=nome, defaults={
+                "aliquota": aliquota, "codigo_receita": codigo})
 
         por_codigo = {}
         for codigo, nome, tipo, sup in PLANO:

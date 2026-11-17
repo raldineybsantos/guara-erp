@@ -2,7 +2,8 @@ from apps.core.crud import Crud
 
 from .filtros import ContaPagarFilter, ContaReceberFilter
 from .forms import ContaPagarForm, ContaReceberForm
-from .models import CentroCusto, ContaBancaria, ContaPagar, ContaReceber, Movimentacao, PlanoConta
+from .models import (CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
+                     RegraRetencao)
 
 DETALHE_TITULO = ["descricao", "documento", "parcela", "total_parcelas", "plano_conta", "centro_custo",
                   "valor", "juros", "desconto", "valor_total", "valor_pago", "saldo", "data_emissao",
@@ -52,9 +53,15 @@ class ContaPagarCrud(Crud):
     search_fields = ("descricao", "documento", "fornecedor__nome", "fornecedor__nome_fantasia")
     filterset_class = ContaPagarFilter
     detail_fields = ["fornecedor"] + DETALHE_TITULO[:-2] + ["codigo_barras", "aprovado", "criado_por", "criado_em"]
-    related = (("movimentacoes", "Pagamentos", ["data", "conta_bancaria", "valor"]),)
+    related = (
+        ("movimentacoes", "Pagamentos", ["data", "conta_bancaria", "valor"]),
+        ("retencoes", "Tributos retidos na fonte", ["regra", "base", "aliquota", "valor", "retido"]),
+        ("rateios", "Rateio por centro de custo", ["centro_custo", "percentual"]),
+    )
     actions = (
         ("financeiro:titulo_baixar_pagar", "Pagar", "cash-coin", "financeiro.baixar_contapagar"),
+        ("financeiro:titulo_retencoes", "Tributos retidos", "percent", "financeiro.change_contapagar"),
+        ("financeiro:titulo_ratear_pagar", "Ratear por centro de custo", "diagram-3", "financeiro.change_contapagar"),
         ("financeiro:titulo_estornar_pagar", "Estornar pagamentos", "arrow-counterclockwise", "financeiro.baixar_contapagar"),
         ("financeiro:titulo_cancelar_pagar", "Cancelar título", "x-octagon", "financeiro.change_contapagar"),
         ("workflow:iniciar_aprovacao_pagar", "Enviar para aprovação", "diagram-2", "workflow.add_instancia"),
@@ -75,9 +82,11 @@ class ContaReceberCrud(Crud):
     related = (
         ("movimentacoes", "Recebimentos", ["data", "conta_bancaria", "valor"]),
         ("cobrancas", "Cobranças", ["tipo", "vencimento", "valor", "status"]),
+        ("rateios", "Rateio por centro de custo", ["centro_custo", "percentual"]),
     )
     actions = (
         ("financeiro:titulo_baixar_receber", "Receber", "cash-coin", "financeiro.baixar_contareceber"),
+        ("financeiro:titulo_ratear_receber", "Ratear por centro de custo", "diagram-3", "financeiro.change_contareceber"),
         ("cobranca:gerar_cobranca", "Gerar cobrança", "receipt", "cobranca.add_cobranca"),
         ("financeiro:titulo_estornar_receber", "Estornar recebimentos", "arrow-counterclockwise", "financeiro.baixar_contareceber"),
         ("financeiro:titulo_cancelar_receber", "Cancelar título", "x-octagon", "financeiro.change_contareceber"),
@@ -100,3 +109,34 @@ class MovimentacaoCrud(Crud):
     menu = "Financeiro"
     menu_label = "Extrato / movimentações"
     menu_order = 3
+
+
+class RegraRetencaoCrud(Crud):
+    model = RegraRetencao
+    fields = ["tributo", "nome", "aliquota", "codigo_receita", "dia_vencimento", "base_minima", "ativa"]
+    list_display = ("tributo", "nome", "aliquota", "codigo_receita", "dia_vencimento", "ativa")
+    search_fields = ("nome", "codigo_receita")
+    filter_fields = ("tributo", "ativa")
+    icon = "percent"
+    menu = "Financeiro"
+    menu_label = "Regras de retenção"
+    menu_order = 13
+
+
+class GuiaTributoCrud(Crud):
+    model = GuiaTributo
+    list_display = ("vencimento", "tributo", "codigo_receita", "competencia", "valor", "status")
+    filter_fields = ("tributo", "status")
+    detail_fields = ["tributo", "codigo_receita", "competencia", "vencimento", "valor", "status",
+                     "data_pagamento", "conta_bancaria", "empresa"]
+    related = (("itens", "Retenções que compõem a guia", ["retencao", "movimentacao", "valor"]),)
+    actions = (
+        ("financeiro:guia_recolher", "Registrar recolhimento", "bank", "financeiro.baixar_contapagar"),
+        ("financeiro:guia_estornar", "Estornar recolhimento", "arrow-counterclockwise",
+         "financeiro.baixar_contapagar"),
+    )
+    can_create = can_edit = can_delete = False
+    icon = "receipt-cutoff"
+    menu = "Financeiro"
+    menu_label = "Guias de tributos retidos"
+    menu_order = 14

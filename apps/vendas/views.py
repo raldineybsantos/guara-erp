@@ -1,12 +1,15 @@
+import datetime
+
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from apps.core.crud import BootstrapMixin
 
-from .models import PedidoVenda
+from .models import Comissao, PedidoVenda
 
 
 def _confirmar_e_executar(request, pk, titulo, mensagem, func, ok):
@@ -68,3 +71,25 @@ def liberar_credito(request, pk):
 @permission_required("vendas.change_pedidovenda", raise_exception=True)
 def cancelar(request, pk):
     return _com_motivo(request, pk, "Cancelar pedido", lambda p, m: p.cancelar(m), "Pedido cancelado.")
+
+
+class VencimentoForm(BootstrapMixin, forms.Form):
+    vencimento = forms.DateField(label="vencimento da conta a pagar")
+
+
+@login_required
+@permission_required("vendas.pagar_comissao", raise_exception=True)
+def lancar_comissao(request, pk):
+    c = get_object_or_404(Comissao, pk=pk)
+    form = VencimentoForm(request.POST or None,
+                          initial={"vencimento": timezone.localdate() + datetime.timedelta(days=30)})
+    if request.method == "POST" and form.is_valid():
+        try:
+            titulo = c.lancar_conta_pagar(form.cleaned_data["vencimento"])
+            messages.success(request, f"Conta a pagar criada: R$ {titulo.valor}.")
+            return redirect(c.get_absolute_url())
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+            return redirect(c.get_absolute_url())
+    return render(request, "form_simples.html", {
+        "form": form, "titulo": f"Lançar comissão — a lançar agora: R$ {c.a_lancar}", "icone": "cash-coin"})

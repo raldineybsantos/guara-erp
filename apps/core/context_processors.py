@@ -34,6 +34,7 @@ LINKS_EXTRAS = [
       "sst.ver_todos_incidente"), 4),
     ("Relatórios", "Service Desk", "relatorios:servicedesk", "headset", "servicedesk.change_chamado", 5),
     ("Financeiro", "Fluxo de caixa", "financeiro:fluxo_caixa", "graph-up", "financeiro.view_movimentacao", 4),
+    ("Financeiro", "Resultado por centro de custo", "financeiro:relatorio_centro_custo", "bullseye", "financeiro.view_centrocusto", 6),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),
     ("Cobrança", "Executar régua agora", "cobranca:executar_regua", "send", "cobranca.change_cobranca", 9),
     ("Jurídico", "Painel jurídico", "juridico:painel", "speedometer2", "juridico.view_contrato", 0),

@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="card mb-3" style="max-width:900px"><div class="card-body small">
+  <div><span class="text-secondary">Título:</span> <a href="{{ titulo_obj.get_absolute_url }}">{{ titulo_obj }}</a> · valor {{ titulo_obj.valor_total|moeda }}</div>
+  <div class="text-secondary mt-2">A retenção é descontada do dinheiro pago ao fornecedor, proporcionalmente a cada pagamento, e vira uma guia a recolher.
+    As alíquotas vêm das <a href="{% url 'financeiro:regraretencao_list' %}">regras de retenção</a>, que o contador deve conferir.</div>
+</div></div>
+<form method="post" novalidate style="max-width:900px">{% csrf_token %}
+  <div class="card mb-3"><div class="card-body">{% include "crud/_campos.html" with uma_coluna=True %}</div></div>
+  <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar retenções</button>
+  <a href="{{ titulo_obj.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}

@@ -106,13 +106,13 @@ class LinhaExtrato(models.Model):
     def titulos_sugeridos(self):
         """Títulos em aberto cujo saldo é exatamente o valor da linha."""
         modelo = ContaReceber if self.valor > 0 else ContaPagar
-        return [t for t in modelo.objects.em_aberto().order_by("vencimento")[:500] if t.saldo == abs(self.valor)][:5]
+        return [t for t in modelo.objects.em_aberto().order_by("vencimento")[:500] if t.saldo_liquido == abs(self.valor)][:5]
 
     @transaction.atomic
     def baixar_titulo(self, titulo):
         if self.movimentacao_id:
             raise ValidationError("Linha já conciliada.")
-        mov = titulo.baixar(abs(self.valor), self.data, self.conta_bancaria, observacao=f"Extrato: {self.descricao}")
+        mov = titulo.baixar(titulo.bruto_de_liquido(abs(self.valor)), self.data, self.conta_bancaria, observacao=f"Extrato: {self.descricao}")
         self.vincular(mov)
 
     @transaction.atomic
@@ -166,7 +166,7 @@ class Bordero(NumeradoMixin, ModeloBase):
         for c in contas:
             if c.pk not in ok:
                 raise ValidationError(f"{c} não está aprovado para pagamento, já foi pago ou está em outro borderô.")
-            ItemBordero.objects.create(bordero=self, conta_pagar=c, valor=c.saldo,
+            ItemBordero.objects.create(bordero=self, conta_pagar=c, valor=c.saldo_liquido,
                                        forma="titulo" if c.codigo_barras.strip() else "credito")
 
     @transaction.atomic
@@ -236,7 +236,7 @@ def processar_retorno(texto):
         if cod == "00":
             cp = item.conta_pagar
             if cp.status not in ("pago", "cancelado"):
-                cp.baixar(min(r["valor"] or item.valor, cp.saldo), r["data"] or item.bordero.data_pagamento,
+                cp.baixar(min(cp.bruto_de_liquido(r["valor"] or item.valor), cp.saldo), r["data"] or item.bordero.data_pagamento,
                           item.bordero.conta_bancaria, "ted" if item.forma == "credito" else "boleto",
                           f"Retorno CNAB {item.bordero.numero}")
             item.status = "pago"

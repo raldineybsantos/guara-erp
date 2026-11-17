@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.core.crud import BootstrapMixin, FormBase
 
-from .models import FORMAS_PAGAMENTO, ContaBancaria, ContaPagar, ContaReceber
+from .models import (FORMAS_PAGAMENTO, CentroCusto, ContaBancaria, ContaPagar, ContaReceber, RegraRetencao)
 
 CAMPOS_TITULO = ["descricao", "documento", "plano_conta", "centro_custo", "valor", "juros", "desconto",
                  "data_emissao", "competencia", "vencimento", "forma_pagamento", "conta_bancaria", "observacoes"]
@@ -89,3 +89,24 @@ class TransferenciaForm(BootstrapMixin, forms.Form):
         if dados.get("origem") and dados.get("origem") == dados.get("destino"):
             raise forms.ValidationError("Origem e destino devem ser contas diferentes.")
         return dados
+
+
+class RetencaoForm(BootstrapMixin, forms.Form):
+    base = forms.DecimalField(label="Base de cálculo", max_digits=14, decimal_places=2, min_value=Decimal("0.01"),
+                              help_text="Em geral o valor do título; pode ser menor se parte dele não sofre retenção.")
+    regras = forms.ModelMultipleChoiceField(
+        RegraRetencao.objects.filter(ativa=True), label="Tributos a reter", required=False,
+        widget=forms.CheckboxSelectMultiple,
+        help_text="Marque só o que se aplica a este fornecedor e a este serviço. Sem marcar nada, remove as retenções.")
+
+
+class RateioLinhaForm(BootstrapMixin, forms.Form):
+    centro_custo = forms.ModelChoiceField(CentroCusto.objects.filter(ativo=True), required=False,
+                                          label="Centro de custo")
+    percentual = forms.DecimalField(label="%", max_digits=6, decimal_places=2, required=False,
+                                    min_value=Decimal("0"), max_value=Decimal("100"))
+
+
+class RecolhimentoForm(BootstrapMixin, forms.Form):
+    conta_bancaria = forms.ModelChoiceField(ContaBancaria.objects.filter(ativa=True), label="Conta bancária")
+    data = forms.DateField(label="Data do recolhimento", initial=timezone.localdate)

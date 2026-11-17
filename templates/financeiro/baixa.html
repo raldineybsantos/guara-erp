@@ -6,6 +6,7 @@
     <div class="col-md-3"><span class="text-secondary">Vencimento:</span> {{ titulo_obj.vencimento|date:"d/m/Y" }}</div>
     <div class="col-md-3"><span class="text-secondary">Saldo:</span> <strong>{{ titulo_obj.saldo|moeda }}</strong></div>
   </div>
+  {% if retencao_prevista %}<div class="alert alert-info small mt-3 mb-0">Este título tem <strong>{{ retencao_prevista|moeda }}</strong> de tributos retidos na fonte a reter. O valor informado abaixo é o <strong>valor do título que está sendo quitado</strong>; o dinheiro que sai da conta será menor, e a retenção entra em uma guia a recolher.</div>{% endif %}
 </div></div>
 <form method="post" novalidate style="max-width:900px">{% csrf_token %}
   <div class="card mb-3"><div class="card-body">{% include "crud/_campos.html" %}</div></div>

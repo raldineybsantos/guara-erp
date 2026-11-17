@@ -29,6 +29,9 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     previsao_entrega = models.DateField("previsão de entrega", null=True, blank=True)
     condicao_pagamento = models.CharField("condição de pagamento", max_length=40, default="30",
                                           help_text="Dias após a nota, separados por barra. Ex.: 0, 30 ou 30/60/90.")
+    tabela_preco = models.ForeignKey("TabelaPreco", verbose_name="tabela de preço", null=True, blank=True,
+                                     on_delete=models.PROTECT, related_name="+",
+                                     help_text="Em branco = a tabela do cliente ou a padrão vigente.")
     armazem = models.ForeignKey("estoque.Armazem", verbose_name="armazém de saída", null=True, blank=True,
                                 on_delete=models.PROTECT, limit_choices_to={"tipo": "normal"},
                                 help_text="Em branco = armazém padrão.")
@@ -51,6 +54,8 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     def save(self, *args, **kwargs):
         if not self.pk and not self.vendedor_id:
             self.vendedor = usuario_atual()
+        if not self.tabela_preco_id and self.cliente_id and self.status in self.EDITAVEIS:
+            self.tabela_preco = TabelaPreco.para_cliente(self.cliente, self.data_pedido, self.empresa)
         super().save(*args, **kwargs)
 
     def recalcular(self):
@@ -159,7 +164,14 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         self.nota_fiscal = nota
         self.save(update_fields=["nota_fiscal"])
         self._mudar("faturado")
+        Comissao.gerar(self)
         return nota
+
+    def titulos(self):
+        from apps.financeiro.models import ContaReceber
+
+        return ContaReceber.objects.filter(observacoes=f"Pedido {self.numero}", cliente=self.cliente).exclude(
+            status="cancelado")
 
 
 class ItemPedidoVenda(models.Model):
@@ -168,7 +180,7 @@ class ItemPedidoVenda(models.Model):
     descricao = models.CharField("descrição", max_length=200, blank=True)
     quantidade = models.DecimalField(max_digits=14, decimal_places=4, default=1)
     valor_unitario = models.DecimalField("valor unitário", max_digits=14, decimal_places=4, default=0,
-                                         help_text="Em branco/zero = preço do cadastro do produto.")
+                                         help_text="Em branco/zero = preço da tabela de preço do pedido ou, sem ela, do cadastro do produto.")
     desconto_pct = models.DecimalField("desconto %", max_digits=5, decimal_places=2, default=0)
 
     class Meta:
@@ -183,7 +195,9 @@ class ItemPedidoVenda(models.Model):
         if not self.descricao:
             self.descricao = self.produto.descricao
         if not self.valor_unitario:
-            self.valor_unitario = self.produto.preco
+            tabela = self.pedido.tabela_preco
+            preco = tabela.preco_para(self.produto, self.quantidade, self.pedido.data_pedido) if tabela else None
+            self.valor_unitario = preco if preco is not None else self.produto.preco
         super().save(*args, **kwargs)
 
     def clean(self):
@@ -199,3 +213,186 @@ class ItemPedidoVenda(models.Model):
     @property
     def total(self):
         return (Decimal(str(self.quantidade)) * self.valor_unitario_liquido).quantize(D2)
+
+
+# --------------------------------------------------------------------------- tabela de preço
+class TabelaPreco(ModeloBase, PorEmpresaMixin):
+    """Preços por produto e faixa de quantidade, com vigência. Pode ser a padrão ou exclusiva de alguns clientes."""
+
+    nome = models.CharField(max_length=100)
+    inicio = models.DateField("vigência desde", default=timezone.localdate)
+    fim = models.DateField("vigência até", null=True, blank=True, help_text="Em branco = sem data de término.")
+    padrao = models.BooleanField("tabela padrão", default=False,
+                                 help_text="Usada quando o cliente não tem tabela própria.")
+    clientes = models.ManyToManyField(Cliente, blank=True, related_name="tabelas_preco",
+                                      verbose_name="exclusiva dos clientes",
+                                      help_text="Vazio = vale para qualquer cliente (se for a padrão).")
+    ativa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "tabela de preço"
+        verbose_name_plural = "tabelas de preço"
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+    def clean(self):
+        if self.fim and self.inicio and self.fim < self.inicio:
+            raise ValidationError({"fim": "O fim da vigência não pode ser anterior ao início."})
+
+    def vigente(self, data):
+        return self.ativa and self.inicio <= data and (self.fim is None or data <= self.fim)
+
+    @classmethod
+    def para_cliente(cls, cliente, data, empresa=None):
+        """A tabela exclusiva do cliente (a de vigência mais recente) ou, sem ela, a padrão vigente."""
+        base = cls.objects.filter(ativa=True, inicio__lte=data).filter(
+            models.Q(fim__isnull=True) | models.Q(fim__gte=data))
+        if empresa is not None:
+            base = base.filter(models.Q(empresa=empresa) | models.Q(empresa__isnull=True))
+        propria = base.filter(clientes=cliente).order_by("-inicio", "-pk").first()
+        if propria:
+            return propria
+        return base.filter(padrao=True, clientes__isnull=True).order_by("-inicio", "-pk").first()
+
+    def preco_para(self, produto, quantidade, data=None):
+        """Preço da faixa de maior quantidade mínima que a quantidade alcança; None se o produto não está na tabela."""
+        if not self.vigente(data or timezone.localdate()):
+            return None
+        q = Decimal(str(quantidade or 0))
+        item = (self.itens.filter(produto=produto, quantidade_minima__lte=q)
+                .order_by("-quantidade_minima").first())
+        return item.preco if item else None
+
+
+class ItemTabelaPreco(models.Model):
+    tabela = models.ForeignKey(TabelaPreco, on_delete=models.CASCADE, related_name="itens")
+    produto = models.ForeignKey("fiscal.Produto", on_delete=models.PROTECT, limit_choices_to={"ativo": True})
+    quantidade_minima = models.DecimalField("a partir de (qtd)", max_digits=14, decimal_places=4, default=1)
+    preco = models.DecimalField("preço", max_digits=14, decimal_places=4)
+
+    class Meta:
+        verbose_name = "preço"
+        verbose_name_plural = "preços"
+        ordering = ["produto__descricao", "quantidade_minima"]
+        constraints = [models.UniqueConstraint(fields=["tabela", "produto", "quantidade_minima"],
+                                               name="preco_unico_por_faixa")]
+
+    def __str__(self):
+        return f"{self.produto} — {self.preco}"
+
+    def clean(self):
+        if self.preco is not None and self.preco <= 0:
+            raise ValidationError({"preco": "O preço deve ser maior que zero."})
+        if self.quantidade_minima is not None and self.quantidade_minima <= 0:
+            raise ValidationError({"quantidade_minima": "A quantidade mínima deve ser maior que zero."})
+
+
+# --------------------------------------------------------------------------- comissão de vendedores
+MOMENTOS = [("faturamento", "Devida no faturamento"), ("recebimento", "Devida conforme o cliente paga")]
+
+
+class RegraComissao(ModeloBase):
+    """Percentual de comissão. A regra do vendedor vale sobre a geral (sem vendedor)."""
+
+    vendedor = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="vendedor", null=True, blank=True,
+                                 on_delete=models.CASCADE, related_name="+",
+                                 help_text="Em branco = regra geral, para quem não tem regra própria.")
+    percentual = models.DecimalField("percentual (%)", max_digits=5, decimal_places=2)
+    momento = models.CharField("quando a comissão é devida", max_length=12, choices=MOMENTOS, default="recebimento")
+    ativa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "regra de comissão"
+        verbose_name_plural = "regras de comissão"
+        ordering = ["vendedor__username"]
+        constraints = [models.UniqueConstraint(fields=["vendedor"], name="regra_comissao_por_vendedor")]
+
+    def __str__(self):
+        return f"{self.vendedor or 'Geral'}: {self.percentual}%"
+
+    def clean(self):
+        if self.percentual is not None and not (0 <= self.percentual <= 100):
+            raise ValidationError({"percentual": "Informe entre 0 e 100."})
+
+    @classmethod
+    def para(cls, vendedor):
+        base = cls.objects.filter(ativa=True)
+        return base.filter(vendedor=vendedor).first() or base.filter(vendedor__isnull=True).first()
+
+
+class Comissao(ModeloBase):
+    """Comissão de um pedido faturado: base, percentual e o que já foi liberado, lançado e pago."""
+
+    pedido = models.OneToOneField(PedidoVenda, on_delete=models.PROTECT, related_name="comissao")
+    vendedor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    base = models.DecimalField("base (itens do pedido)", max_digits=14, decimal_places=2)
+    percentual = models.DecimalField("percentual (%)", max_digits=5, decimal_places=2)
+    valor = models.DecimalField("comissão total", max_digits=14, decimal_places=2)
+    momento = models.CharField("quando é devida", max_length=12, choices=MOMENTOS)
+    valor_lancado = models.DecimalField("já lançado no contas a pagar", max_digits=14, decimal_places=2, default=0,
+                                        editable=False)
+
+    class Meta:
+        verbose_name = "comissão"
+        verbose_name_plural = "comissões"
+        ordering = ["-pk"]
+        permissions = [("pagar_comissao", "Pode lançar comissões no contas a pagar")]
+
+    def __str__(self):
+        return f"Comissão {self.pedido.numero} — {self.vendedor}"
+
+    @classmethod
+    def gerar(cls, pedido):
+        """Chamado ao faturar. Sem vendedor ou sem regra, não há comissão."""
+        if not pedido.vendedor_id or cls.objects.filter(pedido=pedido).exists():
+            return None
+        regra = RegraComissao.para(pedido.vendedor)
+        if regra is None or regra.percentual <= 0:
+            return None
+        base = pedido.valor_itens
+        valor = (base * regra.percentual / 100).quantize(D2)
+        if valor <= 0:
+            return None
+        return cls.objects.create(pedido=pedido, vendedor=pedido.vendedor, base=base,
+                                  percentual=regra.percentual, valor=valor, momento=regra.momento)
+
+    @property
+    def proporcao_recebida(self):
+        titulos = list(self.pedido.titulos())
+        total = sum((t.valor_total for t in titulos), Decimal("0"))
+        if not total:
+            return Decimal("0")
+        return min(sum((t.valor_pago for t in titulos), Decimal("0")) / total, Decimal("1"))
+
+    @property
+    def valor_devido(self):
+        """Quanto da comissão já pode ser paga ao vendedor."""
+        if self.momento == "faturamento":
+            return self.valor
+        return (self.valor * self.proporcao_recebida).quantize(D2)
+    valor_devido.fget.short_description = "devida até agora"
+
+    @property
+    def a_lancar(self):
+        return max(self.valor_devido - self.valor_lancado, Decimal("0"))
+    a_lancar.fget.short_description = "a lançar"
+
+    @transaction.atomic
+    def lancar_conta_pagar(self, vencimento):
+        """Cria a conta a pagar do que já é devido e ainda não foi lançado."""
+        from apps.financeiro.models import ContaPagar
+
+        c = Comissao.objects.select_for_update().get(pk=self.pk)
+        valor = c.a_lancar
+        if valor <= 0:
+            raise ValidationError("Não há comissão devida a lançar neste momento.")
+        titulo = ContaPagar.objects.create(
+            empresa=c.pedido.empresa, descricao=f"Comissão {c.pedido.numero} — {c.vendedor}"[:200],
+            documento=c.pedido.numero, valor=valor, vencimento=vencimento,
+            observacoes=f"Comissão do pedido {c.pedido.numero}: {c.percentual}% sobre {c.base}.")
+        c.valor_lancado += valor
+        c.save(update_fields=["valor_lancado", "atualizado_em"])
+        self.valor_lancado = c.valor_lancado
+        return titulo
