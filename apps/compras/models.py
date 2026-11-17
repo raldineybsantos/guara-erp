@@ -249,6 +249,9 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
                                      on_delete=models.PROTECT, related_name="+")
     plano_conta = models.ForeignKey("financeiro.PlanoConta", verbose_name="categoria (plano de contas)", null=True,
                                     blank=True, on_delete=models.PROTECT, related_name="+")
+    projeto = models.ForeignKey("projetos.Projeto", null=True, blank=True, on_delete=models.PROTECT,
+                                related_name="pedidos_compra",
+                                help_text="Compra feita para um projeto: o centro de custo do projeto é usado se este campo ficar vazio.")
     valor_frete = models.DecimalField("frete", max_digits=14, decimal_places=2, default=0)
     observacoes = models.TextField("observações ao fornecedor", blank=True)
     valor_itens = models.DecimalField("total dos itens", max_digits=14, decimal_places=2, default=0, editable=False)
@@ -273,6 +276,8 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
             self.comprador = usuario_atual()
         if not self.departamento_id and self.solicitacao_id:
             self.departamento_id = self.solicitacao.departamento_id
+        if self.projeto_id and not self.centro_custo_id:
+            self.centro_custo_id = self.projeto.centro_custo_id
         super().save(*args, **kwargs)
 
     def recalcular(self):

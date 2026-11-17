@@ -342,6 +342,19 @@ total em aberto e o valor **ponderado** (valor × probabilidade do estágio: 10%
   **pedido de venda em rascunho** é aberto para você incluir os itens.
 - **Perder:** informe o motivo (preço, prazo, concorrente). Esse motivo alimenta a análise de perdas.
 
+### 7.1.1 Metas de venda e campanhas
+
+- **Metas de venda** (CRM → Metas de venda): uma meta por vendedor e mês. A tela compara com o
+  **faturado** (pedidos faturados do vendedor naquele mês), mostra o **atingimento %** e o **pipeline
+  ponderado** (oportunidades abertas dele com fechamento previsto no mês × probabilidade). A projeção é o
+  realizado mais o pipeline. Não pode haver duas metas do mesmo vendedor no mesmo mês.
+- **Campanhas** (CRM → Campanhas): nome, canal (e-mail, evento, anúncio...), período, orçamento e custo
+  realizado. Em cada oportunidade, escolha a **campanha** que originou o contato. A campanha mostra
+  oportunidades, ganhas, **conversão %**, valor ganho, **custo por oportunidade** e o retorno (valor ganho ÷
+  custo). O custo realizado é digitado: o ERP não busca gasto em plataformas de anúncio.
+- **Fora do escopo:** televendas e telecobrança (discador, scripts) não existem; a régua de cobrança
+  cobre só o envio automático por e-mail.
+
 ### 7.2 Pedido de venda
 
 1. **Vendas → Pedidos de venda → Novo:** cliente, condição de pagamento (`0`, `30` ou `30/60/90`), itens
@@ -414,12 +427,26 @@ saídas acontecem no **faturamento**, no **consumo da produção**, nas **peças
 4. **Liberar** e, a cada lote pronto, **Apontar produção**. O ERP baixa os componentes pelo custo médio e
    dá entrada no produto acabado pelo **custo apurado**. A ordem encerra sozinha ao atingir a quantidade.
 
-### 9.2 Inspeção de recebimento
+**Roteiro de operações** (Produção → Roteiro de operações): para cada estrutura, cadastre as operações
+na ordem (corte, montagem, pintura), com a máquina ou posto, o **tempo de preparação** (fixo por ordem), o
+**tempo por unidade** e o **custo da hora**. A ordem de produção mostra o **tempo previsto** (preparação +
+tempo × quantidade) e o **custo estimado do roteiro**. Esse custo é **informativo**: não entra no custo
+apurado do produto acabado, que continua sendo só o dos componentes. Não há planejamento de capacidade
+(carga por máquina e calendário).
+
+### 9.2 Inspeção de recebimento e plano de inspeção
 
 Marque **inspecionar no recebimento** no cadastro do produto. Ao receber a compra, o material entra no
 armazém de **quarentena** e uma **inspeção** fica pendente. Em **Registrar resultado**, informe a
 quantidade aprovada e o laudo: o aprovado vai para o armazém principal; o reprovado fica na quarentena e
 abre uma **não conformidade** para o fornecedor.
+
+**Plano de inspeção** (Qualidade → Planos de inspeção): liste as características do produto. Cada uma é
+uma **medida** (faixa de mínimo e máximo, com unidade) ou uma **verificação** (atende / não atende). Ao
+criar uma inspeção desse produto, o ERP já gera uma linha por característica. Preencha os resultados
+editando a inspeção; o ERP só deixa concluir quando todas estão preenchidas, e **não permite aprovar o lote
+inteiro** se alguma estiver fora da faixa: reprove tudo ou libere só a parte conforme. O ERP não controla a
+calibração dos instrumentos de medição.
 
 ### 9.3 Não conformidades
 
@@ -447,6 +474,13 @@ raiz, a ação corretiva e a verificação de eficácia.
 - **Minhas horas:** cada pessoa aponta as próprias horas por projeto e tarefa, e vê e corrige só as suas.
   O custo da hora (salário × fator de encargos ÷ horas do mês) é registrado no dia do apontamento.
 - A ficha do projeto mostra o **custo realizado** (mão de obra + despesas) contra o orçamento e o saldo.
+- **Compras por projeto:** no pedido de compra, escolha o **projeto**. Se o centro de custo ficar vazio,
+  o ERP usa o do projeto, e as contas a pagar da compra caem nele. A ficha mostra as **compras aprovadas**
+  (aprovadas, parcialmente recebidas e recebidas).
+- **Vendas por projeto:** no pedido de venda, escolha o **projeto**. Ao faturar, as contas a receber ficam
+  no centro de custo do projeto. A ficha mostra **vendas faturadas**, **vendas a faturar** e o
+  **resultado** (faturado − custo realizado).
+- O cronograma não tem dependências entre tarefas nem caminho crítico.
 
 ## 12. SST / EHS — saúde, segurança e meio ambiente
 
@@ -457,8 +491,17 @@ raiz, a ação corretiva e a verificação de eficácia.
 | **Entregas de EPI** | Ficha de entrega com o **CA**. Se o EPI for um produto do estoque, a entrega baixa o saldo. Entregas não podem ser excluídas |
 | **ASOs** | Exames ocupacionais com **apenas a aptidão** (apto, apto com restrição, inapto), sem diagnóstico (LGPD). Acesso restrito ao SESMT e ao RH |
 | **Treinamentos (NRs)** | NR-10, NR-12, NR-35, brigada etc., com validade da reciclagem |
+| **CIPA — membros** | Titulares e suplentes, representantes do empregador e dos empregados, com o mandato (início e fim) |
+| **CIPA — reuniões** | Data, pauta, ata e presentes de cada reunião, ordinária ou extraordinária |
+| **Licenças ambientais** | Licença, órgão, número, validade e condicionantes |
+| **Resíduos** | Inventário de resíduos gerados: classe (I, IIA, IIB), quantidade, destinadora, MTR e certificado. Resíduo classe I exige o **número do MTR** |
 
-A rotina diária avisa o SESMT, pelo Kanban, sobre **ASOs e reciclagens que vencem nos próximos 30 dias**.
+A rotina diária avisa o SESMT, pelo Kanban, sobre **ASOs e reciclagens que vencem nos próximos 30 dias**,
+**mandatos da CIPA que terminam**, **reunião mensal da CIPA em atraso** (mais de 35 dias sem reunião, com
+mandato vigente) e **licenças ambientais a vencer**.
+
+O ERP não calcula taxa de frequência e de gravidade de acidentes, não gera o MTR (digite o número emitido
+no sistema do órgão ambiental) e não controla eleição da CIPA nem estabilidade dos membros.
 
 ## 13. Service Desk
 

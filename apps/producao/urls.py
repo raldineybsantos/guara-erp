@@ -6,7 +6,7 @@ from . import telas, views
 
 app_name = "producao"
 
-urlpatterns = crud_urls(telas.OrdemProducaoCrud, telas.EstruturaCrud) + [
+urlpatterns = crud_urls(telas.OrdemProducaoCrud, telas.EstruturaCrud, telas.OperacaoRoteiroCrud) + [
     path("ordem/<int:pk>/liberar/", views.liberar, name="liberar"),
     path("ordem/<int:pk>/apontar/", views.apontar, name="apontar"),
     path("ordem/<int:pk>/comprar/", views.gerar_sc, name="gerar_sc"),

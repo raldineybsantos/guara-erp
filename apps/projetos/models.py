@@ -69,6 +69,26 @@ class Projeto(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         return self.custo_mao_obra() + self.custo_despesas()
     custo_realizado.short_description = "custo realizado"
 
+    def compras_comprometidas(self):
+        """Pedidos de compra do projeto já aprovados (inclui o que ainda não foi recebido nem pago)."""
+        return (self.pedidos_compra.filter(status__in=["aprovado", "parcial", "recebido"])
+                .aggregate(t=Sum("valor_total"))["t"] or Decimal(0))
+    compras_comprometidas.short_description = "compras aprovadas"
+
+    def vendas_faturadas(self):
+        return self.pedidos_venda.filter(status="faturado").aggregate(t=Sum("valor_total"))["t"] or Decimal(0)
+    vendas_faturadas.short_description = "vendas faturadas"
+
+    def vendas_em_carteira(self):
+        return (self.pedidos_venda.filter(status__in=["aprovado", "bloqueado"])
+                .aggregate(t=Sum("valor_total"))["t"] or Decimal(0))
+    vendas_em_carteira.short_description = "vendas a faturar"
+
+    def resultado(self):
+        """Receita faturada menos custo realizado (mão de obra + despesas pagas ou a pagar)."""
+        return self.vendas_faturadas() - self.custo_realizado()
+    resultado.short_description = "resultado (faturado − custo)"
+
     def saldo_orcamento(self):
         return self.orcamento - self.custo_realizado()
     saldo_orcamento.short_description = "saldo do orçamento"

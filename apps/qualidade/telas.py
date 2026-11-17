@@ -1,11 +1,14 @@
 from apps.core.crud import Crud, FormBase
 
-from .models import Inspecao, NaoConformidade
+from .models import CaracteristicaInspecao, Inspecao, NaoConformidade, PlanoInspecao, ResultadoInspecao
 
 
 class InspecaoCrud(Crud):
     model = Inspecao
     fields = ["produto", "quantidade", "armazem", "fornecedor", "resultado"]
+    inline = (ResultadoInspecao, ["caracteristica", "valor", "atendeu", "observacao"], 0)
+    inline_no_detalhe = False
+    related = (("resultados", "Plano de inspeção — resultados", ["caracteristica", "valor", "atendeu", "observacao"]),)
     list_display = ("numero", "produto", "quantidade", "fornecedor", "origem", "status", "criado_em")
     search_fields = ("numero", "produto__descricao", "fornecedor__nome")
     filter_fields = ("status", "origem")
@@ -40,3 +43,16 @@ class NaoConformidadeCrud(Crud):
     icon = "exclamation-octagon"
     menu = "Qualidade"
     menu_order = 2
+
+
+class PlanoInspecaoCrud(Crud):
+    model = PlanoInspecao
+    fields = ["produto", "observacoes", "ativo"]
+    inline = (CaracteristicaInspecao, ["descricao", "tipo", "minimo", "maximo", "unidade"], 3)
+    list_display = ("produto", "ativo")
+    search_fields = ("produto__codigo", "produto__descricao")
+    icon = "rulers"
+    menu = "Qualidade"
+    menu_label = "Planos de inspeção"
+    menu_order = 3
+    can_delete = True

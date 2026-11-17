@@ -6,6 +6,6 @@ from . import telas, views
 
 app_name = "qualidade"
 
-urlpatterns = crud_urls(telas.InspecaoCrud, telas.NaoConformidadeCrud) + [
+urlpatterns = crud_urls(telas.InspecaoCrud, telas.NaoConformidadeCrud, telas.PlanoInspecaoCrud) + [
     path("inspecao/<int:pk>/resultado/", views.concluir_inspecao, name="concluir_inspecao"),
 ]

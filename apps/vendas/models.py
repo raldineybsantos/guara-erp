@@ -35,6 +35,9 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     armazem = models.ForeignKey("estoque.Armazem", verbose_name="armazém de saída", null=True, blank=True,
                                 on_delete=models.PROTECT, limit_choices_to={"tipo": "normal"},
                                 help_text="Em branco = armazém padrão.")
+    projeto = models.ForeignKey("projetos.Projeto", null=True, blank=True, on_delete=models.PROTECT,
+                                related_name="pedidos_venda",
+                                help_text="Venda vinculada a um projeto: a receita entra no resultado do projeto.")
     natureza_operacao = models.CharField("natureza da operação", max_length=100, default="Venda de mercadoria")
     valor_frete = models.DecimalField("frete", max_digits=14, decimal_places=2, default=0)
     observacoes = models.TextField("observações (vão para a nota)", blank=True)
@@ -153,7 +156,8 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
                 t = nota.gerar_titulo(vencimento=nota.data_emissao + datetime.timedelta(days=d))
             ContaReceber.objects.filter(pk=t.pk).update(
                 valor=base if k < n else nota.valor_total - base * (n - 1), parcela=k, total_parcelas=n,
-                observacoes=f"Pedido {self.numero}")
+                observacoes=f"Pedido {self.numero}",
+                **({"centro_custo_id": self.projeto.centro_custo_id} if self.projeto_id and self.projeto.centro_custo_id else {}))
             sincronizar_titulo(ContaReceber.objects.get(pk=t.pk))
         lancar("impostos_venda", nota.valor_icms + nota.valor_pis + nota.valor_cofins + nota.valor_iss,
                nota.data_emissao, f"Impostos da {nota} — pedido {self.numero}", nota)

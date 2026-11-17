@@ -23,10 +23,13 @@ class ProjetoCrud(Crud):
     search_fields = ("numero", "nome", "cliente__nome")
     filter_fields = ("status", "gerente", "cliente")
     detail_fields = ["numero", "nome", "cliente", "gerente", "status", "inicio", "fim_previsto", "orcamento",
-                     "custo_mao_obra", "custo_despesas", "custo_realizado", "saldo_orcamento", "horas_previstas",
+                     "custo_mao_obra", "custo_despesas", "custo_realizado", "saldo_orcamento", "compras_comprometidas",
+                     "vendas_faturadas", "vendas_em_carteira", "resultado", "horas_previstas",
                      "horas_realizadas", "percentual_concluido", "centro_custo", "departamento", "descricao"]
     related = (("tarefas", "EAP", ["eap", "nome", "responsavel", "inicio", "fim", "horas_previstas",
                                    "horas_realizadas", "percentual"]),
+               ("pedidos_compra", "Compras do projeto", ["numero", "fornecedor", "valor_total", "status"]),
+               ("pedidos_venda", "Vendas do projeto", ["numero", "cliente", "valor_total", "status"]),
                ("apontamentos", "Horas apontadas", ["data", "usuario", "tarefa", "horas", "custo", "descricao"]))
     icon = "kanban"
     menu = "Projetos"

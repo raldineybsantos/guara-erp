@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 
 from apps.core.crud import Crud, FormBase
 
-from .models import ComponenteEstrutura, EstruturaProduto, OrdemProducao
+from .models import ComponenteEstrutura, EstruturaProduto, OperacaoRoteiro, OrdemProducao
 
 
 class EstruturaCrud(Crud):
@@ -11,6 +11,8 @@ class EstruturaCrud(Crud):
     inline = (ComponenteEstrutura, ["componente", "quantidade", "perda_pct"], 3)
     list_display = ("produto", "quantidade_base", "ativo")
     search_fields = ("produto__codigo", "produto__descricao")
+    related = (("operacoes", "Roteiro de operações", ["sequencia", "descricao", "recurso", "setup_min",
+                                                      "tempo_unitario_min", "custo_hora"]),)
     icon = "diagram-3"
     menu = "Produção"
     menu_label = "Estruturas (lista de materiais)"
@@ -36,7 +38,8 @@ class OrdemProducaoCrud(Crud):
     search_fields = ("numero", "produto__codigo", "produto__descricao")
     filter_fields = ("status", "produto")
     detail_fields = ["numero", "produto", "quantidade", "quantidade_produzida", "saldo", "status", "armazem",
-                     "data_prevista", "custo_total", "custo_unitario", "observacoes"]
+                     "data_prevista", "custo_total", "custo_unitario", "tempo_previsto_min", "custo_roteiro_previsto",
+                     "observacoes"]
     related = (("apontamentos", "Apontamentos", ["data", "quantidade", "custo_unitario", "usuario", "observacao"]),)
     detail_template = "producao/ordem_detail.html"
     actions = (
@@ -49,3 +52,16 @@ class OrdemProducaoCrud(Crud):
     icon = "gear-wide-connected"
     menu = "Produção"
     menu_order = 1
+
+
+class OperacaoRoteiroCrud(Crud):
+    model = OperacaoRoteiro
+    fields = ["estrutura", "sequencia", "descricao", "recurso", "setup_min", "tempo_unitario_min", "custo_hora"]
+    list_display = ("estrutura", "sequencia", "descricao", "recurso", "setup_min", "tempo_unitario_min", "custo_hora")
+    search_fields = ("descricao", "recurso", "estrutura__produto__descricao")
+    filter_fields = ("estrutura",)
+    icon = "stopwatch"
+    menu = "Produção"
+    menu_label = "Roteiro de operações"
+    menu_order = 3
+    can_delete = True

@@ -34,11 +34,46 @@ class EstruturaProduto(ModeloBase):
     def __str__(self):
         return f"Estrutura de {self.produto}"
 
+    def tempo_total_min(self, quantidade):
+        """Tempo de fabricação de ``quantidade`` somando as operações do roteiro (preparação + tempo × unidades)."""
+        return sum((o.tempo_min(quantidade) for o in self.operacoes.all()), Decimal(0))
+
+    def custo_operacoes(self, quantidade):
+        """Custo estimado de máquina e mão de obra do roteiro (informativo: não entra no custo apurado da ordem)."""
+        return sum((o.custo(quantidade) for o in self.operacoes.all()), Decimal(0))
+
     def explodir(self, quantidade):
         """[(componente, quantidade necessária)] para produzir ``quantidade`` do produto, com a perda."""
         fator = Decimal(str(quantidade)) / self.quantidade_base
         return [(c.componente, (c.quantidade * fator * (1 + c.perda_pct / 100)).quantize(Q4))
                 for c in self.componentes.select_related("componente")]
+
+
+class OperacaoRoteiro(models.Model):
+    """Operação do roteiro de fabricação: tempo de preparação (setup) e tempo por unidade em um recurso."""
+
+    estrutura = models.ForeignKey(EstruturaProduto, on_delete=models.CASCADE, related_name="operacoes")
+    sequencia = models.PositiveSmallIntegerField("seq.", default=10)
+    descricao = models.CharField("operação", max_length=120)
+    recurso = models.CharField("máquina / posto", max_length=100, blank=True)
+    setup_min = models.DecimalField("preparação (min)", max_digits=8, decimal_places=2, default=0,
+                                    help_text="Tempo fixo por ordem, independente da quantidade.")
+    tempo_unitario_min = models.DecimalField("tempo por unidade (min)", max_digits=8, decimal_places=3, default=0)
+    custo_hora = models.DecimalField("custo da hora (R$)", max_digits=10, decimal_places=2, default=0)
+
+    class Meta:
+        verbose_name = "operação do roteiro"
+        verbose_name_plural = "roteiro de operações"
+        ordering = ["sequencia", "pk"]
+
+    def __str__(self):
+        return f"{self.sequencia} — {self.descricao}"
+
+    def tempo_min(self, quantidade):
+        return (self.setup_min + self.tempo_unitario_min * Decimal(str(quantidade))).quantize(Decimal("0.01"))
+
+    def custo(self, quantidade):
+        return (self.tempo_min(quantidade) / 60 * self.custo_hora).quantize(Decimal("0.01"))
 
 
 class ComponenteEstrutura(models.Model):
@@ -86,6 +121,16 @@ class OrdemProducao(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     @property
     def custo_unitario(self):
         return (self.custo_total / self.quantidade_produzida).quantize(Q4) if self.quantidade_produzida else None
+
+    def tempo_previsto_min(self):
+        e = EstruturaProduto.objects.filter(produto=self.produto, ativo=True).first()
+        return e.tempo_total_min(self.quantidade) if e else Decimal(0)
+    tempo_previsto_min.short_description = "tempo previsto (min)"
+
+    def custo_roteiro_previsto(self):
+        e = EstruturaProduto.objects.filter(produto=self.produto, ativo=True).first()
+        return e.custo_operacoes(self.quantidade) if e else Decimal(0)
+    custo_roteiro_previsto.short_description = "custo estimado do roteiro (R$)"
 
     def _estrutura(self):
         e = EstruturaProduto.objects.filter(produto=self.produto, ativo=True).first()

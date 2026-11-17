@@ -62,7 +62,7 @@ class PedidoForm(FormBase):
     class Meta:
         model = PedidoCompra
         fields = ["empresa", "fornecedor", "departamento", "solicitacao", "cotacao", "data_pedido",
-                  "previsao_entrega", "condicao_pagamento", "centro_custo", "plano_conta", "valor_frete",
+                  "previsao_entrega", "condicao_pagamento", "projeto", "centro_custo", "plano_conta", "valor_frete",
                   "observacoes"]
 
     def clean(self):
@@ -83,7 +83,7 @@ class PedidoCompraCrud(Crud):
     filter_fields = ("status", "fornecedor")
     detail_fields = ["numero", "fornecedor", "status", "motivo_status", "departamento", "aprovador_coordenador",
                      "aprovador_gerente", "aprovador_diretor", "data_pedido", "previsao_entrega",
-                     "condicao_pagamento", "valor_itens", "valor_frete", "valor_total", "centro_custo",
+                     "condicao_pagamento", "valor_itens", "valor_frete", "valor_total", "projeto", "centro_custo",
                      "plano_conta", "solicitacao", "cotacao", "comprador", "observacoes"]
     related = (("recebimentos", "Recebimentos", ["data", "nota_fiscal", "conferencia", "divergencias"]),)
     actions = (

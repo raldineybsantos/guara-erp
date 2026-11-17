@@ -9,7 +9,7 @@ class PedidoVendaForm(FormBase):
     class Meta:
         model = PedidoVenda
         fields = ["empresa", "cliente", "data_pedido", "previsao_entrega", "condicao_pagamento", "tabela_preco",
-                  "armazem", "natureza_operacao", "valor_frete", "observacoes"]
+                  "projeto", "armazem", "natureza_operacao", "valor_frete", "observacoes"]
 
     def clean(self):
         dados = super().clean()
@@ -26,7 +26,7 @@ class PedidoVendaCrud(Crud):
     search_fields = ("numero", "cliente__nome", "cliente__nome_fantasia", "itens__descricao")
     filter_fields = ("status", "cliente", "vendedor")
     detail_fields = ["numero", "cliente", "status", "motivo_status", "data_pedido", "previsao_entrega",
-                     "condicao_pagamento", "tabela_preco", "armazem", "valor_itens", "valor_frete", "valor_total", "vendedor",
+                     "condicao_pagamento", "tabela_preco", "projeto", "armazem", "valor_itens", "valor_frete", "valor_total", "vendedor",
                      "nota_fiscal", "natureza_operacao", "observacoes"]
     actions = (
         ("vendas:confirmar", "Confirmar (crédito e estoque)", "check2-circle", "vendas.change_pedidovenda"),

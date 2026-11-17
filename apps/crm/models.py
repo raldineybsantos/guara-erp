@@ -40,6 +40,8 @@ class Oportunidade(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     descricao = models.TextField("necessidade / observações", blank=True)
     motivo_perda = models.CharField("motivo da perda", max_length=200, blank=True)
     fechada_em = models.DateField("fechada em", null=True, blank=True, editable=False)
+    campanha = models.ForeignKey("Campanha", null=True, blank=True, on_delete=models.SET_NULL,
+                                 related_name="oportunidades", help_text="Campanha de marketing que originou o contato.")
     pedido_venda = models.ForeignKey("vendas.PedidoVenda", null=True, blank=True, on_delete=models.SET_NULL,
                                      related_name="+", editable=False)
 
@@ -145,3 +147,117 @@ class Interacao(models.Model):
                 titulo=f"{op.numero}: {self.proximo_passo}"[:200], descricao=f"{op.titulo} — {op.conta}",
                 responsavel=op.responsavel or self.usuario, prazo=self.data_proximo_passo, etiquetas="crm",
                 content_type=ContentType.objects.get_for_model(op), object_id=op.pk)
+
+
+class Campanha(ModeloBase, PorEmpresaMixin):
+    """Campanha de marketing: oportunidades criadas a partir dela medem leads, conversão e custo."""
+
+    CANAIS = [("email", "E-mail marketing"), ("redes", "Redes sociais"), ("evento", "Evento / feira"),
+              ("anuncio", "Anúncio pago"), ("indicacao", "Programa de indicação"), ("outro", "Outro")]
+    STATUS = [("planejada", "Planejada"), ("ativa", "Ativa"), ("encerrada", "Encerrada")]
+    nome = models.CharField(max_length=150)
+    canal = models.CharField(max_length=10, choices=CANAIS, default="email")
+    inicio = models.DateField("início", default=timezone.localdate)
+    fim = models.DateField("término", null=True, blank=True)
+    orcamento = models.DecimalField("orçamento (R$)", max_digits=14, decimal_places=2, default=0)
+    custo_realizado = models.DecimalField("custo realizado (R$)", max_digits=14, decimal_places=2, default=0)
+    responsavel = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="responsável", null=True, blank=True,
+                                    on_delete=models.SET_NULL, related_name="+")
+    status = models.CharField(max_length=10, choices=STATUS, default="planejada")
+    descricao = models.TextField("objetivo e público", blank=True)
+
+    class Meta:
+        verbose_name = "campanha"
+        verbose_name_plural = "campanhas"
+        ordering = ["-inicio"]
+
+    def __str__(self):
+        return self.nome
+
+    def clean(self):
+        if self.fim and self.inicio and self.fim < self.inicio:
+            raise ValidationError({"fim": "O término não pode ser anterior ao início."})
+
+    def leads(self):
+        return self.oportunidades.count()
+    leads.short_description = "oportunidades"
+
+    def ganhas(self):
+        return self.oportunidades.filter(estagio="ganha").count()
+    ganhas.short_description = "ganhas"
+
+    def conversao(self):
+        n = self.leads()
+        return (Decimal(self.ganhas()) * 100 / n).quantize(Decimal("0.1")) if n else Decimal(0)
+    conversao.short_description = "conversão %"
+
+    def valor_ganho(self):
+        return self.oportunidades.filter(estagio="ganha").aggregate(t=models.Sum("valor"))["t"] or Decimal(0)
+    valor_ganho.short_description = "valor ganho"
+
+    def custo_por_lead(self):
+        n = self.leads()
+        return (self.custo_realizado / n).quantize(Decimal("0.01")) if n else Decimal(0)
+    custo_por_lead.short_description = "custo por oportunidade"
+
+    def retorno(self):
+        """Valor ganho dividido pelo custo realizado (ROI bruto em múltiplos)."""
+        return (self.valor_ganho() / self.custo_realizado).quantize(Decimal("0.01")) if self.custo_realizado else None
+    retorno.short_description = "retorno (valor ganho ÷ custo)"
+
+
+class MetaVenda(ModeloBase, PorEmpresaMixin):
+    """Meta mensal de venda de um vendedor, comparada ao faturamento dos pedidos dele no mês."""
+
+    vendedor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="metas_venda")
+    competencia = models.DateField("mês", help_text="Qualquer dia do mês; fica gravado o dia 1.")
+    valor_meta = models.DecimalField("meta (R$)", max_digits=14, decimal_places=2)
+    observacoes = models.CharField("observações", max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "meta de venda"
+        verbose_name_plural = "metas de venda"
+        ordering = ["-competencia", "vendedor"]
+        constraints = [models.UniqueConstraint(fields=["vendedor", "competencia", "empresa"], name="meta_venda_unica")]
+
+    def __str__(self):
+        return f"{self.vendedor} — {self.competencia:%m/%Y}"
+
+    def clean(self):
+        if self.valor_meta is not None and self.valor_meta <= 0:
+            raise ValidationError({"valor_meta": "A meta deve ser positiva."})
+
+    def save(self, *args, **kwargs):
+        self.competencia = self.competencia.replace(day=1)
+        # Sem empresa, a restrição do banco não enxerga duplicidade (NULL ≠ NULL): confere aqui.
+        if MetaVenda.objects.filter(vendedor_id=self.vendedor_id, competencia=self.competencia,
+                                    empresa_id=self.empresa_id).exclude(pk=self.pk).exists():
+            raise ValidationError("Já existe meta deste vendedor para o mês.")
+        super().save(*args, **kwargs)
+
+    def realizado(self):
+        """Pedidos faturados do vendedor com data no mês."""
+        from apps.vendas.models import PedidoVenda
+
+        qs = PedidoVenda.objects.filter(vendedor_id=self.vendedor_id, status="faturado",
+                                        data_pedido__year=self.competencia.year, data_pedido__month=self.competencia.month)
+        if self.empresa_id:
+            qs = qs.filter(empresa_id=self.empresa_id)
+        return qs.aggregate(t=models.Sum("valor_total"))["t"] or Decimal(0)
+    realizado.short_description = "realizado"
+
+    def percentual(self):
+        return (self.realizado() * 100 / self.valor_meta).quantize(Decimal("0.1")) if self.valor_meta else Decimal(0)
+    percentual.short_description = "atingimento %"
+
+    def pipeline(self):
+        """Oportunidades abertas do vendedor com fechamento previsto no mês, ponderadas pela probabilidade."""
+        qs = Oportunidade.objects.filter(responsavel_id=self.vendedor_id, estagio__in=ABERTOS,
+                                         previsao_fechamento__year=self.competencia.year,
+                                         previsao_fechamento__month=self.competencia.month)
+        return sum((o.valor_ponderado for o in qs), Decimal(0))
+    pipeline.short_description = "pipeline ponderado"
+
+    def projecao(self):
+        return self.realizado() + self.pipeline()
+    projecao.short_description = "realizado + pipeline"

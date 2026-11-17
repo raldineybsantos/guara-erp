@@ -1,6 +1,7 @@
 from apps.core.crud import Crud, FormBase
 
-from .models import AvaliacaoRisco, EntregaEPI, ExameOcupacional, Incidente, TreinamentoSST
+from .models import (AvaliacaoRisco, EntregaEPI, ExameOcupacional, Incidente, LicencaAmbiental, MembroCIPA,
+                     ReuniaoCIPA, ResiduoGerado, TreinamentoSST)
 
 
 class IncidenteForm(FormBase):
@@ -77,3 +78,52 @@ class TreinamentoSSTCrud(Crud):
     menu = "SST / EHS"
     menu_label = "Treinamentos (NRs)"
     menu_order = 5
+
+
+class MembroCIPACrud(Crud):
+    model = MembroCIPA
+    list_display = ("colaborador", "funcao", "representacao", "inicio", "fim")
+    search_fields = ("colaborador__nome",)
+    filter_fields = ("funcao", "representacao")
+    icon = "people-fill"
+    menu = "SST / EHS"
+    menu_label = "CIPA — membros"
+    menu_order = 6
+    can_delete = True
+
+
+class ReuniaoCIPACrud(Crud):
+    model = ReuniaoCIPA
+    list_display = ("data", "tipo", "pauta")
+    search_fields = ("pauta", "ata")
+    filter_fields = ("tipo",)
+    detail_fields = ["data", "tipo", "pauta", "ata", "presentes"]
+    icon = "journal-text"
+    menu = "SST / EHS"
+    menu_label = "CIPA — reuniões"
+    menu_order = 7
+    can_delete = True
+
+
+class LicencaAmbientalCrud(Crud):
+    model = LicencaAmbiental
+    list_display = ("descricao", "orgao", "numero", "validade", "status")
+    search_fields = ("descricao", "orgao", "numero")
+    filter_fields = ("status",)
+    icon = "tree"
+    menu = "SST / EHS"
+    menu_label = "Licenças ambientais"
+    menu_order = 8
+    can_delete = True
+
+
+class ResiduoGeradoCrud(Crud):
+    model = ResiduoGerado
+    list_display = ("data", "residuo", "classe", "quantidade", "unidade", "destinadora", "mtr")
+    search_fields = ("residuo", "destinadora", "mtr")
+    filter_fields = ("classe", "departamento")
+    icon = "recycle"
+    menu = "SST / EHS"
+    menu_label = "Resíduos"
+    menu_order = 9
+    can_delete = True

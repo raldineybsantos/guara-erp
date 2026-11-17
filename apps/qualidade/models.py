@@ -13,6 +13,46 @@ from apps.core.numeracao import NumeradoMixin
 from apps.core.formatos import qtd as fq
 
 
+class PlanoInspecao(ModeloBase):
+    """Características a medir ou verificar na inspeção de um produto, com a faixa aceitável."""
+
+    produto = models.OneToOneField("fiscal.Produto", on_delete=models.PROTECT, related_name="plano_inspecao")
+    observacoes = models.TextField("método / instrumentos", blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "plano de inspeção"
+        verbose_name_plural = "planos de inspeção"
+        ordering = ["produto__descricao"]
+
+    def __str__(self):
+        return f"Plano de inspeção de {self.produto}"
+
+
+class CaracteristicaInspecao(models.Model):
+    TIPOS = [("quantitativa", "Medida (número dentro de uma faixa)"), ("qualitativa", "Verificação (atende / não atende)")]
+    plano = models.ForeignKey(PlanoInspecao, on_delete=models.CASCADE, related_name="caracteristicas")
+    descricao = models.CharField("característica", max_length=150)
+    tipo = models.CharField(max_length=12, choices=TIPOS, default="quantitativa")
+    minimo = models.DecimalField("mínimo", max_digits=14, decimal_places=4, null=True, blank=True)
+    maximo = models.DecimalField("máximo", max_digits=14, decimal_places=4, null=True, blank=True)
+    unidade = models.CharField(max_length=10, blank=True)
+
+    class Meta:
+        verbose_name = "característica"
+        verbose_name_plural = "características"
+        ordering = ["pk"]
+
+    def __str__(self):
+        return self.descricao
+
+    def clean(self):
+        if self.minimo is not None and self.maximo is not None and self.minimo > self.maximo:
+            raise ValidationError({"maximo": "O máximo não pode ser menor que o mínimo."})
+        if self.tipo == "quantitativa" and self.minimo is None and self.maximo is None:
+            raise ValidationError("Informe o mínimo e/ou o máximo da medida.")
+
+
 class Inspecao(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     PREFIXO = "INS"
     ORIGENS = [("recebimento", "Recebimento de compra"), ("producao", "Produção"), ("manual", "Manual")]
@@ -43,7 +83,36 @@ class Inspecao(NumeradoMixin, ModeloBase, PorEmpresaMixin):
     def save(self, *args, **kwargs):
         if not self.empresa_id and self.armazem_id:
             self.empresa_id = self.armazem.empresa_id      # a inspeção é da empresa do armazém de quarentena
+        novo = self.pk is None
         super().save(*args, **kwargs)
+        if novo:
+            self.gerar_resultados()
+
+    def gerar_resultados(self):
+        """Cria uma linha de resultado para cada característica do plano ativo do produto (uma vez só)."""
+        if self.resultados.exists():
+            return 0
+        plano = PlanoInspecao.objects.filter(produto_id=self.produto_id, ativo=True).first()
+        if not plano:
+            return 0
+        linhas = [ResultadoInspecao(inspecao=self, caracteristica=c) for c in plano.caracteristicas.all()]
+        ResultadoInspecao.objects.bulk_create(linhas)
+        return len(linhas)
+
+    def pendencias(self):
+        """Resultados ainda sem preenchimento; linhas apagadas do plano contam como pendentes."""
+        self.gerar_resultados()
+        pendentes = [r for r in self.resultados.select_related("caracteristica") if r.conforme is None]
+        plano = PlanoInspecao.objects.filter(produto_id=self.produto_id, ativo=True).first()
+        if plano:
+            feitas = set(self.resultados.values_list("caracteristica_id", flat=True))
+            faltam = [c for c in plano.caracteristicas.all() if c.pk not in feitas]
+            if faltam and self.resultados.exists():
+                pendentes += [ResultadoInspecao(inspecao=self, caracteristica=c) for c in faltam]
+        return pendentes
+
+    def fora_de_especificacao(self):
+        return [r for r in self.resultados.select_related("caracteristica") if r.conforme is False]
 
     @transaction.atomic
     def concluir(self, usuario, quantidade_aprovada, resultado):
@@ -53,6 +122,12 @@ class Inspecao(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         if self.status != "pendente":
             raise ValidationError("Inspeção já concluída.")
         aprovada = min(max(quantidade_aprovada, 0), self.quantidade)
+        if self.pendencias():
+            raise ValidationError("Preencha todas as medições e verificações do plano de inspeção antes de concluir.")
+        fora = self.fora_de_especificacao()
+        if fora and aprovada == self.quantidade:
+            raise ValidationError("Há característica fora da especificação (" + ", ".join(r.caracteristica.descricao for r in fora)
+                                  + "): reprove tudo ou libere só a parte conforme.")
         if aprovada > 0:
             est.transferir(self.produto, aprovada, self.armazem, est.Armazem.principal(self.empresa), self.numero,
                            "Liberado pela Qualidade", referencia=self)
@@ -68,6 +143,32 @@ class Inspecao(NumeradoMixin, ModeloBase, PorEmpresaMixin):
                 gravidade="media", responsavel=usuario)
         self.save()
         return self.status
+
+
+class ResultadoInspecao(models.Model):
+    inspecao = models.ForeignKey(Inspecao, on_delete=models.CASCADE, related_name="resultados")
+    caracteristica = models.ForeignKey(CaracteristicaInspecao, on_delete=models.PROTECT, related_name="+")
+    valor = models.DecimalField("valor medido", max_digits=14, decimal_places=4, null=True, blank=True)
+    atendeu = models.BooleanField("atende?", null=True, blank=True)
+    observacao = models.CharField("observação", max_length=200, blank=True)
+
+    class Meta:
+        verbose_name = "resultado da característica"
+        verbose_name_plural = "resultados do plano de inspeção"
+        ordering = ["pk"]
+
+    def __str__(self):
+        return f"{self.caracteristica}: {self.valor if self.valor is not None else self.atendeu}"
+
+    @property
+    def conforme(self):
+        """True/False; None enquanto não foi preenchido."""
+        c = self.caracteristica
+        if c.tipo == "qualitativa":
+            return self.atendeu
+        if self.valor is None:
+            return None
+        return not ((c.minimo is not None and self.valor < c.minimo) or (c.maximo is not None and self.valor > c.maximo))
 
 
 class NaoConformidade(NumeradoMixin, ModeloBase, PorEmpresaMixin):
