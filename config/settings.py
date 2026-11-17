@@ -194,6 +194,8 @@ CLAMAV_PORT = int(os.getenv("CLAMAV_PORT", "3310"))
 CLAMAV_SOCKET = os.getenv("CLAMAV_SOCKET", "")            # alternativa ao TCP (Linux), ex.: /var/run/clamav/clamd.ctl
 ANTIVIRUS_TIMEOUT = int(os.getenv("ANTIVIRUS_TIMEOUT", "120"))
 ANTIVIRUS_LIMITE_MB = int(os.getenv("ANTIVIRUS_LIMITE_MB", "100"))   # deve ser <= StreamMaxLength do clamd
+# Gateway de pagamento (boleto/PIX com baixa automática). Produção travada até você liberar (como a NFS-e).
+COBRANCA_GATEWAY_PRODUCAO = env_bool("COBRANCA_GATEWAY_PRODUCAO", False)
 # Só ative se o ERP estiver atrás de um proxy reverso (nginx/Caddy/Traefik) que define o cabeçalho
 CONFIAR_X_FORWARDED_FOR = env_bool("CONFIAR_X_FORWARDED_FOR", False)
 

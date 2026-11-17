@@ -61,6 +61,7 @@ LINKS_EXTRAS = [
     ("Administração", "Usuários e grupos", "admin:auth_user_changelist", "person-gear", "auth.view_user", 1),
     ("Administração", "Banco de dados", "banco_dados", "database", "is_superuser", 2),
     ("Administração", "Login corporativo (LDAP/SSO)", "identidade:painel", "diagram-3", "is_superuser", 5),
+    ("Administração", "Gateway de pagamento", "cobranca:gateways", "credit-card-2-front", "is_superuser", 7),
     ("Administração", "Antivírus", "seguranca:antivirus", "bug", "is_superuser", 6),
     ("Administração", "Backups", "seguranca:backups", "cloud-arrow-up", "is_superuser", 4),
     ("Administração", "Dois fatores (2FA)", "seguranca:mfa_usuarios", "shield-check", "is_superuser", 3),

@@ -168,6 +168,24 @@ para a auditoria. **O `.env` e a `BACKUP_SENHA` não estão no backup: guarde-os
 por segundos, um dump em texto claro numa pasta temporária (`0700`) que é apagada ao final — em servidor compartilhado,
 aponte `TMPDIR` para um disco cifrado.
 
+## Gateway de pagamento (boleto/PIX)
+
+- **Chave e token cifrados:** a chave da API e o token do webhook ficam cifrados (cofre) e fora da auditoria. A chave nunca volta
+  para a tela; o token aparece só para superusuário (precisa ser copiado para o painel do gateway).
+- **Webhook autenticado:** o token vem no header `asaas-access-token` e é comparado em tempo constante; sem ele, 401 e registro na
+  auditoria. O Asaas não assina o corpo, então **o webhook só avisa**: antes de dar baixa o ERP consulta o pagamento na API com a
+  chave e confere o ID, a referência da cobrança (`guara-<id>`), a situação `RECEIVED` e o **valor vindo da API, não do aviso**.
+  Um aviso forjado, mesmo com o token vazado, não consegue baixar um título sem pagamento real.
+- **Idempotência:** cada evento (ID único) é processado uma vez; a baixa tem bloqueio de linha e nunca duplica. Falha ao processar
+  devolve 500 para o gateway reenviar.
+- **Isolamento por empresa:** o aviso só afeta cobranças da empresa dona daquele token.
+- **Dinheiro sem decisão automática de risco:** pagamento em título já pago/cancelado, estorno e chargeback **avisam** o Financeiro
+  e não mexem sozinhos.
+- **Produção travada** por `COBRANCA_GATEWAY_PRODUCAO` até você liberar, como a NFS-e.
+- **Limites honestos:** testado contra um Asaas **simulado** (sandbox real ainda não); o ERP precisa estar na internet via HTTPS para
+  receber o webhook (sem lista de IPs; restrinja no proxy, se quiser); uma falha de rede no instante exato da criação da cobrança no
+  gateway pode deixar uma cobrança lá sem registro aqui (raro; confira no painel do Asaas). Não há cartão de crédito.
+
 ## Antivírus dos uploads (ClamAV)
 
 - **Onde:** GED (novas versões), contratos do Jurídico e importação de XML da NF-e, antes de gravar em disco. Arquivos gerados

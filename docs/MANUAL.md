@@ -36,6 +36,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 27. [Segurança da conta e backups](#27-segurança-da-conta-e-backups)
 28. [Login corporativo: LDAP/AD e login único (Microsoft, Google)](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
 29. [Antivírus nos uploads](#29-antivírus-nos-uploads)
+30. [Boleto e PIX com baixa automática](#30-boleto-e-pix-com-baixa-automática)
 
 ---
 
@@ -1472,3 +1473,29 @@ Todo arquivo que você envia ao **GED**, aos **contratos** (Jurídico) ou na **i
 arquivos do GED estão sem ameaças/com ameaça/não verificados e as últimas ocorrências. **Testar detecção (EICAR)** envia o arquivo
 de teste padrão da indústria e confirma que a detecção funciona de ponta a ponta; **Verificar pendentes** examina os arquivos
 enviados antes do antivírus. Configuração e limites em [INSTALACAO.md](INSTALACAO.md#53-antivírus-dos-uploads-clamav).
+
+---
+
+## 30. Boleto e PIX com baixa automática
+
+Com um **gateway de pagamento** configurado (Administração → Gateway de pagamento; veja [INSTALACAO.md](INSTALACAO.md#54-boleto-e-pix-com-baixa-automática-gateway-asaas)),
+o ERP emite boleto e PIX e baixa o título sozinho quando o cliente paga.
+
+**Gerar:** na conta a receber, **Gerar cobrança** → **Boleto registrado** ou **PIX com QR Code** (ou *PIX estático*, sem baixa automática).
+A cobrança mostra a **linha digitável** e o **PDF do boleto**, ou o **QR Code** e o copia-e-cola. **Enviar por e-mail** manda esses dados ao cliente.
+Se o título estiver vencido, o boleto sai com vencimento hoje.
+
+**O que acontece quando o cliente paga:** o gateway avisa o ERP, que **confere o pagamento direto com o gateway** e então:
+dá baixa no título (forma PIX ou boleto), lança a entrada na conta bancária dos repasses, lança a **tarifa do gateway** como despesa (para o saldo
+bater com o repasse real), guarda o **comprovante** e avisa o Financeiro. Se o cliente pagou **multa e juros**, a diferença vai para os juros do título.
+Tudo fica na auditoria.
+
+**Situações que pedem sua atenção (o Financeiro é avisado, nada é feito sozinho):**
+- Pagamento no gateway de um título que **já estava pago** (ex.: baixado à mão) ou **cancelado**: não há baixa; avalie a devolução ao cliente.
+- **Estorno ou contestação** (chargeback): a baixa **não é desfeita automaticamente**; estorne o recebimento se for o caso.
+
+**Outras ações:** **Consultar no gateway** (atualiza situação e dados, e baixa se já estiver pago), **Cancelar** (o boleto/PIX deixa de poder ser pago).
+Cancelar o título também cancela a cobrança no gateway na próxima conciliação (de hora em hora).
+
+**Administrador:** a tela do gateway mostra o endereço e o token do webhook, testa a chave, lista os últimos avisos recebidos e tem **Conciliar agora**.
+

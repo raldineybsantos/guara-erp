@@ -24,6 +24,7 @@ class Command(BaseCommand):
         alvo = hora.strip()
         alvo_backup = (hora_backup or settings.BACKUP_HORA).strip()
         ultimo_backup = None
+        ultimo_gateway = None
         ultimo_dia = None
         ultimo_sla = None
         self.stdout.write(f"Agendador ativo: régua de cobrança diariamente às {alvo}; backup às {alvo_backup}.")
@@ -55,6 +56,15 @@ class Command(BaseCommand):
                     self.stdout.write(f"{agora:%d/%m/%Y %H:%M} backup: {reg.get_situacao_display()} {reg.arquivo} {reg.erro}")
                 except Exception as exc:
                     self.stderr.write(f"Erro no backup: {exc}")
+            if ultimo_gateway is None or (agora - ultimo_gateway).total_seconds() >= 3600:
+                try:  # a cada hora: rede de segurança para avisos de pagamento perdidos
+                    from apps.cobranca.gateway import servico as gateway
+                    r = gateway.sincronizar()
+                    if r["baixadas"] or r["canceladas"]:
+                        self.stdout.write(f"{agora:%H:%M} Gateway: {r['baixadas']} baixa(s), {r['canceladas']} cancelamento(s).")
+                except Exception as exc:
+                    self.stderr.write(f"Erro na conciliação do gateway: {exc}")
+                ultimo_gateway = agora
             if ultimo_sla is None or (agora - ultimo_sla).total_seconds() >= 900:
                 try:  # a cada 15 minutos: avisos de SLA do Service Desk
                     from apps.servicedesk.models import verificar_slas

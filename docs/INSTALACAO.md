@@ -455,6 +455,29 @@ Todo arquivo enviado ao **GED**, ao **Jurídico** (contratos) e a **importação
   **download bloqueado** e os administradores são avisados.
 - Desligar (não recomendado): `ANTIVIRUS_ATIVO=0`.
 
+## 5.4 Boleto e PIX com baixa automática (gateway Asaas)
+
+O ERP emite **boleto registrado** e **PIX com QR Code** pelo gateway **Asaas** e dá **baixa sozinho** quando o cliente paga.
+Sem gateway, continua o PIX estático (copia-e-cola com a chave da empresa, baixa manual).
+
+1. Crie uma conta de **sandbox** em sandbox.asaas.com (testes) e gere a **chave da API** em Integrações. As chaves do sandbox e da
+   produção são diferentes.
+2. Em **Administração → Gateway de pagamento → Adicionar**: empresa, ambiente *Sandbox*, a chave, a **conta bancária que recebe os
+   repasses** (os recebimentos dão baixa nela) e multa/juros. Use **Testar chave**.
+3. A tela mostra o **endereço do webhook** e o **token**. No painel do Asaas (Integrações → Webhooks) cadastre esse endereço, versão 3,
+   com os eventos de **cobranças**, e cole o token em *token de autenticação*. O ERP precisa estar acessível pela internet por **HTTPS**
+   (defina `ERP_URL_BASE`). Se trocar o token no ERP (*gerar outro*), troque-o no Asaas também.
+4. Gere uma cobrança numa conta a receber (**Gerar cobrança → Boleto ou PIX**) e pague no sandbox. Confira que o título foi baixado, a
+   tarifa lançada e o aviso aparece em *Últimos avisos recebidos*.
+5. **Produção:** só depois de validar o fluxo, defina `COBRANCA_GATEWAY_PRODUCAO=1` no `.env`, reinicie, crie a configuração com
+   ambiente *Produção* e a chave de produção (a conta de produção do Asaas passa por aprovação cadastral deles).
+
+- **Rede de segurança:** o agendador concilia com o gateway **a cada hora** e a rotina diária também (`python manage.py
+  cobranca_sincronizar`), recuperando pagamentos cujo aviso se perdeu e cancelando no gateway o que foi cancelado no ERP.
+- **Avisos do próprio Asaas ao cliente** (e-mail/SMS) são uma configuração da sua conta no Asaas; se não quiser duplicar com a régua de
+  cobrança do ERP, ajuste lá.
+- **Cliente** precisa de **CPF/CNPJ** cadastrado. Título vencido gera boleto com vencimento **hoje** (o original fica na descrição).
+
 ## 6. Atualização
 
 ```bash

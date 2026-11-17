@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not producao_liberada %}<div class="alert alert-info small">Produção está <strong>travada</strong> (COBRANCA_GATEWAY_PRODUCAO=0): só o sandbox funciona. Libere no <code>.env</code> depois de validar o fluxo.</div>{% endif %}
+<div class="d-flex justify-content-between mb-2"><h5 class="mb-0">Contas de gateway por empresa</h5>
+  <div class="d-flex gap-2">
+    <form method="post" action="{% url 'cobranca:gateway_sincronizar' %}">{% csrf_token %}<button class="btn btn-sm btn-outline-secondary">Conciliar agora</button></form>
+    <a class="btn btn-sm btn-primary" href="{% url 'cobranca:gateway_novo' %}"><i class="bi bi-plus-lg"></i> Adicionar</a></div></div>
+{% for g in lista %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex flex-wrap justify-content-between gap-2">
+    <div><strong>{{ g.c }}</strong> {% if g.c.ativo %}<span class="badge text-bg-success">Ativo</span>{% else %}<span class="badge text-bg-secondary">Inativo</span>{% endif %}
+      <div class="small text-muted">Repasses na conta: {{ g.c.conta_bancaria }} · multa {{ g.c.multa_pct }}% · juros {{ g.c.juros_mes_pct }}% ao mês</div></div>
+    <div class="d-flex gap-1 align-items-start">
+      <form method="post" action="{% url 'cobranca:gateway_testar' g.c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Testar chave</button></form>
+      <a class="btn btn-sm btn-outline-secondary" href="{% url 'cobranca:gateway_editar' g.c.pk %}">Editar</a></div></div>
+  <hr>
+  <div class="small"><strong>Cadastre este webhook no painel do gateway</strong> (Integrações → Webhooks, versão 3, evento de cobranças):
+    <div>Endereço: <code class="user-select-all">{{ g.url }}</code></div>
+    <div>Token de autenticação: <code class="user-select-all">{{ g.token }}</code>
+      <form method="post" action="{% url 'cobranca:gateway_novo_token' g.c.pk %}" class="d-inline" onsubmit="return confirm('Gerar novo token? Você precisa atualizá-lo no gateway.')">{% csrf_token %}<button class="btn btn-sm btn-link">gerar outro</button></form></div></div>
+  {% if g.eventos %}<div class="small mt-2"><strong>Últimos avisos recebidos:</strong>
+    <table class="table table-sm mb-0"><tbody>{% for e in g.eventos %}<tr><td class="text-nowrap">{{ e.recebido_em|date:"d/m H:i" }}</td><td>{{ e.tipo }}</td><td>{{ e.pagamento_id }}</td><td>{{ e.resultado }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+</div></div>
+{% empty %}<p class="text-muted">Nenhum gateway configurado. Sem ele, o PIX gerado é o estático (sem baixa automática).</p>{% endfor %}
+{% endblock %}

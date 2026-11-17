@@ -10,11 +10,13 @@ class CobrancaCrud(Crud):
     list_display = ("vencimento", "cliente", "conta_receber", "tipo", "valor", "status", "data_envio")
     search_fields = ("cliente__nome", "conta_receber__descricao", "nosso_numero")
     filter_fields = {"status": ["exact"], "tipo": ["exact"], "cliente": ["exact"], "vencimento": ["gte", "lte"]}
-    detail_fields = ["conta_receber", "cliente", "tipo", "valor", "vencimento", "status", "nosso_numero",
-                     "linha_digitavel", "url_pagamento", "data_envio", "observacoes", "criado_por", "criado_em"]
+    detail_fields = ["conta_receber", "cliente", "tipo", "valor", "vencimento", "status", "gateway_status", "nosso_numero",
+                     "linha_digitavel", "url_pagamento", "url_boleto", "pago_em", "valor_liquido", "taxa", "data_envio",
+                     "observacoes", "criado_por", "criado_em"]
     detail_template = "cobranca/cobranca_detail.html"
     related = (("historico", "Histórico de envios", ["data", "destino", "assunto", "sucesso", "erro"]),)
-    actions = (("cobranca:enviar_cobranca", "Enviar por e-mail", "envelope", "cobranca.change_cobranca"),)
+    actions = (("cobranca:enviar_cobranca", "Enviar por e-mail", "envelope", "cobranca.change_cobranca"),
+               ("cobranca:cancelar_cobranca", "Cancelar", "x-circle", "cobranca.change_cobranca"))
     icon = "receipt"
     menu = "Cobrança"
     menu_order = 1

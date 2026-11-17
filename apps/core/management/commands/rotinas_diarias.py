@@ -29,6 +29,10 @@ class Command(BaseCommand):
         av = varredura.rotina_diaria()
         self.stdout.write("Antivírus: " + ("desligado." if not av["ativo"] else "ClamAV FORA DO AR — administradores avisados."
                                            if not av["no_ar"] else f"{av['limpo']} arquivo(s) verificado(s), {av['infectado']} ameaça(s)."))
+        from apps.cobranca.gateway import servico as gateway
+
+        g = gateway.sincronizar()
+        self.stdout.write(f"Gateway: {g['baixadas']} baixa(s), {g['canceladas']} cancelamento(s), {g['erros']} erro(s).")
         m = auditoria.manutencao()
         self.stdout.write(f"Auditoria: {'trilha selada' if m['selo'] else 'nada novo a selar'}; "
                           f"{m['erros_apagados']} erro(s) antigo(s) removido(s).")

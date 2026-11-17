@@ -30,6 +30,17 @@ class Cobranca(ModeloBase):
     url_pagamento = models.URLField("link de pagamento", blank=True)
     data_envio = models.DateTimeField("último envio", null=True, blank=True)
     observacoes = models.TextField("observações", blank=True)
+    # --- gateway de pagamento (boleto/PIX com baixa automática) ---
+    gateway_provedor = models.CharField("gateway", max_length=20, blank=True, editable=False)
+    gateway_id = models.CharField("ID no gateway", max_length=60, blank=True, db_index=True, editable=False)
+    gateway_status = models.CharField("situação no gateway", max_length=30, blank=True, editable=False)
+    url_boleto = models.URLField("PDF do boleto", max_length=500, blank=True, editable=False)
+    url_recibo = models.URLField("comprovante", max_length=500, blank=True, editable=False)
+    pix_qrcode_png = models.TextField("QR Code do PIX (base64)", blank=True, editable=False)
+    pago_em = models.DateField("pago em", null=True, blank=True, editable=False)
+    valor_liquido = models.DecimalField("valor líquido", max_digits=14, decimal_places=2, null=True, blank=True,
+                                        editable=False, help_text="O que o gateway repassa, já descontada a tarifa.")
+    taxa = models.DecimalField("tarifa do gateway", max_digits=14, decimal_places=2, default=0, editable=False)
 
     class Meta:
         verbose_name = "cobrança"
@@ -205,3 +216,99 @@ class HistoricoCobranca(models.Model):
 
     def __str__(self):
         return f"{timezone.localtime(self.data):%d/%m/%Y %H:%M} {self.destino}"
+
+
+# --------------------------------------------------------------------------- gateway de pagamento
+def _cifrar(texto):
+    from apps.fiscal import cofre
+
+    return cofre.cifrar(texto.encode())
+
+
+def _decifrar(dados):
+    from apps.fiscal import cofre
+
+    return cofre.decifrar(dados).decode()
+
+
+class ConfiguracaoGateway(ModeloBase):
+    """Conta do gateway (Asaas) de uma empresa: emite boleto/PIX e avisa os pagamentos por webhook.
+    A chave da API e o token do webhook ficam cifrados (cofre) e fora da auditoria."""
+
+    PROVEDORES = [("asaas", "Asaas")]
+    AMBIENTES = [("sandbox", "Sandbox (testes, sem dinheiro de verdade)"), ("producao", "Produção")]
+
+    empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name="gateways")
+    provedor = models.CharField(max_length=20, choices=PROVEDORES, default="asaas")
+    ambiente = models.CharField(max_length=10, choices=AMBIENTES, default="sandbox")
+    ativo = models.BooleanField(default=True)
+    chave_api = models.BinaryField(editable=False, default=b"")
+    token_webhook = models.BinaryField(editable=False, default=b"")
+    conta_bancaria = models.ForeignKey("financeiro.ContaBancaria", verbose_name="conta que recebe os repasses",
+                                       on_delete=models.PROTECT, related_name="+",
+                                       help_text="Os pagamentos recebidos pelo gateway dão baixa nesta conta.")
+    multa_pct = models.DecimalField("multa por atraso (%)", max_digits=5, decimal_places=2, default=2)
+    juros_mes_pct = models.DecimalField("juros ao mês (%)", max_digits=5, decimal_places=2, default=1)
+    lancar_tarifa = models.BooleanField("lançar a tarifa do gateway como despesa", default=True,
+                                        help_text="Faz o saldo da conta bater com o que o gateway realmente repassa.")
+
+    class Meta:
+        verbose_name = "gateway de pagamento"
+        verbose_name_plural = "gateways de pagamento"
+        constraints = [models.UniqueConstraint(fields=["empresa", "provedor"], name="gateway_unico_por_empresa")]
+
+    def __str__(self):
+        return f"{self.get_provedor_display()} — {self.empresa} ({self.get_ambiente_display().split(' ')[0]})"
+
+    def definir_chave(self, texto):
+        self.chave_api = _cifrar(texto.strip()) if texto else b""
+
+    def obter_chave(self):
+        return _decifrar(self.chave_api) if self.chave_api else ""
+
+    def novo_token_webhook(self):
+        import secrets
+
+        token = secrets.token_urlsafe(48)           # 64 caracteres, sem espaços (o Asaas exige 32 a 255)
+        self.token_webhook = _cifrar(token)
+        return token
+
+    def obter_token(self):
+        return _decifrar(self.token_webhook) if self.token_webhook else ""
+
+    def clean(self):
+        from django.conf import settings
+
+        if self.ambiente == "producao" and not getattr(settings, "COBRANCA_GATEWAY_PRODUCAO", False):
+            raise ValidationError({"ambiente": "Produção está travada. Libere com COBRANCA_GATEWAY_PRODUCAO=1 no .env "
+                                               "depois de validar todo o fluxo no sandbox."})
+        for campo in ("multa_pct", "juros_mes_pct"):
+            v = getattr(self, campo)
+            if v is not None and not (0 <= v <= 20):
+                raise ValidationError({campo: "Informe um percentual entre 0 e 20."})
+
+
+class ClienteGateway(models.Model):
+    """Cadastro do cliente no gateway (criado na primeira cobrança)."""
+
+    config = models.ForeignKey(ConfiguracaoGateway, on_delete=models.CASCADE, related_name="clientes")
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name="+")
+    externo_id = models.CharField(max_length=60)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["config", "cliente"], name="cliente_gateway_unico")]
+
+
+class EventoGateway(models.Model):
+    """Cada aviso (webhook) recebido. O ID do evento é único: reenvios não processam duas vezes."""
+
+    config = models.ForeignKey(ConfiguracaoGateway, on_delete=models.CASCADE, related_name="eventos")
+    evento_id = models.CharField(max_length=200)
+    tipo = models.CharField(max_length=60)
+    pagamento_id = models.CharField(max_length=60, blank=True, db_index=True)
+    recebido_em = models.DateTimeField(default=timezone.now)
+    resultado = models.CharField(max_length=300, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=["config", "evento_id"], name="evento_gateway_unico")]
+        ordering = ["-recebido_em"]

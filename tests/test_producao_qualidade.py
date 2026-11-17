@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.utils import timezone
 from django.contrib.auth.models import Group, User
 from django.core.exceptions import ValidationError
 from django.core.management import call_command
@@ -117,7 +118,7 @@ class QualidadeTest(TestCase):
 
     def test_nc_so_encerra_com_causa_acao_e_eficacia(self):
         nc = NaoConformidade.objects.create(titulo="Reclamação", descricao="x", gravidade="critica")
-        self.assertEqual((nc.prazo - nc.criado_em.date()).days, 2)
+        self.assertEqual((nc.prazo - timezone.localtime(nc.criado_em).date()).days, 2)
         nc.status = "encerrada"
         with self.assertRaisesMessage(ValidationError, "causa raiz"):
             nc.full_clean()
