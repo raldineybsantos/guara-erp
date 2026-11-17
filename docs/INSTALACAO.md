@@ -455,7 +455,7 @@ Todo arquivo enviado ao **GED**, ao **Jurídico** (contratos) e a **importação
   **download bloqueado** e os administradores são avisados.
 - Desligar (não recomendado): `ANTIVIRUS_ATIVO=0`.
 
-## 5.4 Boleto e PIX com baixa automática (gateway Asaas)
+## 5.4 Boleto, PIX e cartão com baixa automática (gateways Asaas e Efí)
 
 O ERP emite **boleto registrado** e **PIX com QR Code** pelo gateway **Asaas** e dá **baixa sozinho** quando o cliente paga.
 Sem gateway, continua o PIX estático (copia-e-cola com a chave da empresa, baixa manual).
@@ -471,6 +471,25 @@ Sem gateway, continua o PIX estático (copia-e-cola com a chave da empresa, baix
    tarifa lançada e o aviso aparece em *Últimos avisos recebidos*.
 5. **Produção:** só depois de validar o fluxo, defina `COBRANCA_GATEWAY_PRODUCAO=1` no `.env`, reinicie, crie a configuração com
    ambiente *Produção* e a chave de produção (a conta de produção do Asaas passa por aprovação cadastral deles).
+
+**Efí (Gerencianet)** — alternativa ao Asaas (pode ter os dois na mesma empresa; ao gerar a cobrança você escolhe):
+- Use a **API Cobranças** da Efí. Em *API → Minhas aplicações* crie a aplicação com **Emissão de cobranças** habilitada e copie o
+  **Client_Id** e o **Client_Secret** (sandbox e produção são diferentes). No ERP: provedor *Efí*, o Client_Id no campo próprio e
+  o Client_Secret em *chave da API*. **Testar chave** confere as credenciais. Não precisa de certificado.
+- A Efí **não tem webhook para cadastrar**: o endereço de aviso vai junto de cada cobrança e leva um **segredo no caminho**
+  (a tela mostra). Exige `ERP_URL_BASE` com **https://**. O aviso traz só um token: o ERP o consulta na Efí e reconsulta a cobrança.
+  *Gerar outro* segredo faz as cobranças já emitidas deixarem de avisar (a conciliação horária as baixa); o segredo aparece
+  nos logs de acesso do proxy, então trate esses logs como sensíveis.
+- A Efí emite **boleto (Bolix, com QR Pix) e cartão**. **Pix puro** exige certificado mTLS e **não** é suportado: use o Asaas.
+- **Limites honestos da Efí:** multa e juros **não** são enviados (configure no painel da Efí); o ERP baixa pelo **valor da
+  cobrança** (a Efí não informa na consulta o valor efetivamente pago nem a tarifa, então a tarifa não é lançada); a data da
+  baixa é a do evento da Efí. Confira o extrato da Efí.
+
+**Cartão de crédito (Asaas e Efí):** a cobrança de cartão é uma **página de pagamento hospedada pelo gateway**: o ERP gera o
+link e o **cliente digita o cartão lá**. Número de cartão **nunca** passa pelo ERP nem fica no banco (sem escopo PCI para você).
+No Asaas, a conta precisa ter os dados comerciais completos para aceitar cartão. A baixa ocorre quando o gateway **confirma** o
+pagamento (Asaas: *CONFIRMED*; Efí: *paid*), mas o dinheiro só cai na conta no prazo do adquirente: considere isso na
+conciliação bancária. Parcelamento e recorrência (assinatura) não estão implementados.
 
 - **Rede de segurança:** o agendador concilia com o gateway **a cada hora** e a rotina diária também (`python manage.py
   cobranca_sincronizar`), recuperando pagamentos cujo aviso se perdeu e cancelando no gateway o que foi cancelado no ERP.

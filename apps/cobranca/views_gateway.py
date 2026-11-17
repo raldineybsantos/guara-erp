@@ -17,7 +17,8 @@ from apps.core.models import LogAuditoria
 from apps.core.signals import ip_da_requisicao
 
 from .gateway import servico
-from .gateway.asaas import Asaas, GatewayErro, GatewayParcial
+from .gateway import efi as efi_mod
+from .gateway.base import GatewayErro, GatewayParcial
 from .models import Cobranca, ConfiguracaoGateway, EventoGateway
 
 LIMITE_CORPO = 200 * 1024
@@ -68,6 +69,64 @@ def webhook_asaas(request):
     return JsonResponse({"received": True})
 
 
+@csrf_exempt
+@require_POST
+def webhook_efi(request, segredo):
+    """Aviso da Efí: o POST traz só um token ('notification'). O segredo no caminho identifica a conta; o ERP consulta o
+    token na API (GET /v1/notification/:token) e reconsulta cada cobrança antes de qualquer baixa."""
+    cfg = None
+    for c in ConfiguracaoGateway.objects.filter(provedor="efi", ativo=True):
+        t = c.obter_token()
+        if t and hmac.compare_digest(segredo.encode(), t.encode()):
+            cfg = c
+    if cfg is None:
+        LogAuditoria.objects.create(usuario=None, acao="seguranca", modelo="cobranca.webhook", objeto_id="",
+                                    descricao="Aviso da Efí recusado: segredo inválido", ip=ip_da_requisicao(request))
+        return HttpResponse(status=404)
+    if len(request.body) > LIMITE_CORPO:             # ler o corpo antes de acessar request.POST
+        return HttpResponse(status=413)
+    token = str(request.POST.get("notification", ""))[:200]
+    if not token:
+        return HttpResponse(status=400)
+    try:
+        api = servico.driver(cfg)
+        eventos = api.eventos(token)
+    except GatewayErro as exc:
+        if exc.status in (400, 401, 403, 404):       # token inexistente/forjado: não adianta a Efí repetir
+            return HttpResponse(status=200)
+        return HttpResponse(status=500)              # indisponível: a Efí tenta de novo
+    resultados = []
+    for ev in eventos:
+        if not isinstance(ev, dict):
+            continue
+        evento_id = f"{token}:{ev.get('id')}"[:200]
+        charge = str((ev.get("identifiers") or {}).get("charge_id", ""))[:60]
+        if not charge or ev.get("type") != "charge":
+            continue
+        try:
+            with transaction.atomic():
+                reg = EventoGateway.objects.create(config=cfg, evento_id=evento_id, tipo=str((ev.get("status") or {}).get("current", ""))[:60],
+                                                   pagamento_id=charge)
+        except IntegrityError:
+            continue                                  # já tratado
+        try:
+            cob = Cobranca.objects.filter(gateway_provedor="efi", gateway_id=charge,
+                                          conta_receber__empresa=cfg.empresa).first()
+            if cob is None:
+                reg.resultado = "cobrança desconhecida"
+            else:
+                pag = api.pagamento(charge, efi_mod.data_do_evento(ev))
+                reg.resultado = servico.aplicar(cfg, cob, pag)[:300]
+            reg.save(update_fields=["resultado"])
+        except Exception as exc:
+            reg.delete()                              # libera para a repetição
+            from apps.core.logs import registrar_erro
+
+            registrar_erro(exc, request=request, mensagem="Aviso da Efí")
+            return HttpResponse(status=500)
+    return JsonResponse({"received": True})
+
+
 # ----------------------------------------------------------------------------------------------- uso diário
 @login_required
 @permission_required("cobranca.add_cobranca", raise_exception=True)
@@ -77,14 +136,27 @@ def gerar_pelo_gateway(request, pk):
 
     titulo = get_object_or_404(ContaReceber, pk=pk)
     cfg = servico.config_ativa(titulo.empresa)
+    opcoes = []                                    # (rótulo, tipo, provedor) oferecidos conforme os gateways ativos
+    for c in ConfiguracaoGateway.objects.filter(empresa=titulo.empresa, ativo=True).order_by("pk"):
+        api = servico.DRIVERS[c.provedor]
+        if "boleto" in api.TIPOS:
+            opcoes.append((f"Boleto registrado — {c.get_provedor_display()}", "boleto", c.provedor, "baixa automática"))
+        if "pix" in api.TIPOS:
+            opcoes.append((f"PIX com QR Code — {c.get_provedor_display()}", "pix", c.provedor, "baixa automática"))
+        if "cartao" in api.TIPOS:
+            opcoes.append((f"Cartão de crédito (link de pagamento) — {c.get_provedor_display()}", "cartao", c.provedor,
+                           "o cliente digita o cartão na página do gateway"))
     if titulo.status in ("pago", "cancelado"):
         messages.error(request, "Título já está pago ou cancelado.")
         return redirect(titulo.get_absolute_url())
     if request.method != "POST":
         return render(request, "cobranca/gerar.html", {"titulo": "Gerar cobrança", "icone": "receipt", "conta": titulo,
-                                                       "cfg": cfg, "voltar": titulo.get_absolute_url()})
+                                                       "cfg": cfg, "opcoes": opcoes, "voltar": titulo.get_absolute_url()})
     tipo = request.POST.get("tipo")
-    if tipo not in ("pix", "boleto", "pix_estatico"):
+    provedor = ""
+    if request.POST.get("opcao") and tipo != "pix_estatico":
+        tipo, _, provedor = request.POST["opcao"].partition("|")
+    if tipo not in ("pix", "boleto", "cartao", "pix_estatico"):
         tipo = "pix"
     if tipo == "pix_estatico" or cfg is None:
         cob = Cobranca.objects.create(conta_receber=titulo, tipo="pix", valor=titulo.saldo, vencimento=titulo.vencimento)
@@ -92,7 +164,7 @@ def gerar_pelo_gateway(request, pk):
         return redirect(cob.get_absolute_url())
     cob = Cobranca.objects.create(conta_receber=titulo, tipo=tipo, valor=titulo.saldo, vencimento=titulo.vencimento)
     try:
-        servico.emitir(cob)
+        servico.emitir(cob, provedor)
     except GatewayParcial as exc:
         # já existe no gateway: NÃO se apaga (ficaria um boleto pagável sem registro aqui); o usuário rebusca os dados
         messages.warning(request, f"Cobrança emitida, mas não foi possível obter o boleto/QR agora ({exc}). "
@@ -102,7 +174,8 @@ def gerar_pelo_gateway(request, pk):
         cob.delete()                      # nada foi criado no gateway
         messages.error(request, f"Não foi possível emitir pelo gateway: {exc}")
         return redirect(titulo.get_absolute_url())
-    messages.success(request, f"{'Boleto' if tipo == 'boleto' else 'PIX'} emitido. O pagamento será baixado automaticamente.")
+    nome = {"boleto": "Boleto", "pix": "PIX", "cartao": "Link de cartão"}[tipo]
+    messages.success(request, f"{nome} emitido. O pagamento será baixado automaticamente.")
     return redirect(cob.get_absolute_url())
 
 
@@ -112,14 +185,13 @@ def gerar_pelo_gateway(request, pk):
 def atualizar_do_gateway(request, pk):
     cob = get_object_or_404(Cobranca, pk=pk)
     try:
-        cfg = servico.config_ativa(cob.conta_receber.empresa)
+        cfg = servico.config_da(cob)
         if cob.gateway_id and cfg:
-            p = Asaas(cfg).consultar(cob.gateway_id)
-            if p.get("status") == "RECEIVED":
-                messages.success(request, f"Consulta ao gateway: {servico.registrar_pagamento(cfg, cob.pk, p)}.")
+            res = servico.aplicar(cfg, cob, servico.driver(cfg).pagamento(cob.gateway_id))
+            cob.refresh_from_db()
+            if cob.status == "paga":
+                messages.success(request, f"Consulta ao gateway: {res}.")
             else:
-                cob.gateway_status = p.get("status", cob.gateway_status)
-                cob.save(update_fields=["gateway_status"])
                 servico.atualizar_dados(cob)
                 messages.success(request, f"Atualizado. Situação no gateway: {cob.gateway_status}.")
     except GatewayErro as exc:
@@ -154,8 +226,10 @@ def gateways(request):
 
     lista = []
     for c in ConfiguracaoGateway.objects.select_related("empresa", "conta_bancaria"):
-        lista.append({"c": c, "url": f"{settings.ERP_URL_BASE or request.build_absolute_uri('/').rstrip('/')}/cobranca/webhook/asaas/",
-                      "token": c.obter_token(), "eventos": c.eventos.all()[:10]})
+        base = settings.ERP_URL_BASE or request.build_absolute_uri('/').rstrip('/')
+        lista.append({"c": c, "url": f"{base}/cobranca/webhook/asaas/", "token": c.obter_token(),
+                      "efi": c.provedor == "efi", "url_efi": servico.url_aviso(c) or "(defina ERP_URL_BASE com https://)",
+                      "eventos": c.eventos.all()[:10]})
     return render(request, "cobranca/gateways.html", {"titulo": "Gateway de pagamento", "icone": "credit-card-2-front",
                                                       "lista": lista, "producao_liberada": settings.COBRANCA_GATEWAY_PRODUCAO})
 
@@ -180,8 +254,8 @@ def gateway_form(request, pk=None):
 def gateway_testar(request, pk):
     cfg = get_object_or_404(ConfiguracaoGateway, pk=pk)
     try:
-        Asaas(cfg).testar()
-        messages.success(request, "Conexão com o gateway OK: a chave foi aceita.")
+        servico.driver(cfg).testar()
+        messages.success(request, "Conexão com o gateway OK: as credenciais foram aceitas.")
     except GatewayErro as exc:
         messages.error(request, f"Falha no teste: {exc}")
     return redirect("cobranca:gateways")

@@ -36,7 +36,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 27. [Segurança da conta e backups](#27-segurança-da-conta-e-backups)
 28. [Login corporativo: LDAP/AD, login único (OIDC, SAML) e SCIM](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
 29. [Antivírus nos uploads](#29-antivírus-nos-uploads)
-30. [Boleto e PIX com baixa automática](#30-boleto-e-pix-com-baixa-automática)
+30. [Boleto, PIX e cartão com baixa automática](#30-boleto-pix-e-cartão-com-baixa-automática)
 
 ---
 
@@ -1511,12 +1511,14 @@ enviados antes do antivírus. Configuração e limites em [INSTALACAO.md](INSTAL
 
 ---
 
-## 30. Boleto e PIX com baixa automática
+## 30. Boleto, PIX e cartão com baixa automática
 
-Com um **gateway de pagamento** configurado (Administração → Gateway de pagamento; veja [INSTALACAO.md](INSTALACAO.md#54-boleto-e-pix-com-baixa-automática-gateway-asaas)),
-o ERP emite boleto e PIX e baixa o título sozinho quando o cliente paga.
+Com um **gateway de pagamento** configurado (Administração → Gateway de pagamento; veja [INSTALACAO.md](INSTALACAO.md#54-boleto-pix-e-cartão-com-baixa-automática-gateways-asaas-e-efí)),
+o ERP emite boleto, PIX e cartão e baixa o título sozinho quando o cliente paga.
 
-**Gerar:** na conta a receber, **Gerar cobrança** → **Boleto registrado** ou **PIX com QR Code** (ou *PIX estático*, sem baixa automática).
+**Gerar:** na conta a receber, **Gerar cobrança** → a lista mostra as opções de cada gateway ativo da empresa (**Boleto registrado**, **PIX com QR Code**,
+**Cartão de crédito**), ou *PIX estático* (sem baixa automática). **Cartão:** o sistema gera um **link de pagamento**; envie ao cliente, que digita o cartão
+na página do gateway (o ERP nunca vê o número). O PIX com QR Code é do Asaas; a Efí emite boleto (com QR Pix) e cartão.
 A cobrança mostra a **linha digitável** e o **PDF do boleto**, ou o **QR Code** e o copia-e-cola. **Enviar por e-mail** manda esses dados ao cliente.
 Se o título estiver vencido, o boleto sai com vencimento hoje.
 

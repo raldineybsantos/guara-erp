@@ -9,7 +9,7 @@ from .models import ConfiguracaoGateway
 
 
 class GatewayForm(BootstrapMixin, forms.ModelForm):
-    chave = forms.CharField(label="chave da API", required=False, widget=forms.PasswordInput(
+    chave = forms.CharField(label="chave da API (Efí: Client_Secret)", required=False, widget=forms.PasswordInput(
         render_value=False, attrs={"autocomplete": "new-password"}),
         help_text="Painel do gateway → Integrações. Fica cifrada. Em branco mantém a atual. Sandbox e produção têm chaves diferentes.")
 

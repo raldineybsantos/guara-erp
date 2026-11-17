@@ -11,6 +11,7 @@ urlpatterns = [
     path("cobranca/<int:pk>/atualizar/", views_gateway.atualizar_do_gateway, name="atualizar_do_gateway"),
     path("cobranca/<int:pk>/cancelar/", views_gateway.cancelar_cobranca, name="cancelar_cobranca"),
     path("webhook/asaas/", views_gateway.webhook_asaas, name="webhook_asaas"),
+    path("webhook/efi/<str:segredo>/", views_gateway.webhook_efi, name="webhook_efi"),
     path("gateway/", views_gateway.gateways, name="gateways"),
     path("gateway/novo/", views_gateway.gateway_form, name="gateway_novo"),
     path("gateway/<int:pk>/", views_gateway.gateway_form, name="gateway_editar"),

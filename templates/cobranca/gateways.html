@@ -14,10 +14,14 @@
       <form method="post" action="{% url 'cobranca:gateway_testar' g.c.pk %}">{% csrf_token %}<button class="btn btn-sm btn-outline-primary">Testar chave</button></form>
       <a class="btn btn-sm btn-outline-secondary" href="{% url 'cobranca:gateway_editar' g.c.pk %}">Editar</a></div></div>
   <hr>
+  {% if g.efi %}<div class="small"><strong>Efí:</strong> não há webhook para cadastrar. O endereço de aviso vai junto de cada cobrança e tem um segredo no caminho:
+    <div><code class="user-select-all">{{ g.url_efi }}</code>
+      <form method="post" action="{% url 'cobranca:gateway_novo_token' g.c.pk %}" class="d-inline" onsubmit="return confirm('Gerar novo segredo? Cobranças já emitidas deixam de avisar (a conciliação horária as baixa).')">{% csrf_token %}<button class="btn btn-sm btn-link">gerar outro</button></form></div></div>
+  {% else %}
   <div class="small"><strong>Cadastre este webhook no painel do gateway</strong> (Integrações → Webhooks, versão 3, evento de cobranças):
     <div>Endereço: <code class="user-select-all">{{ g.url }}</code></div>
     <div>Token de autenticação: <code class="user-select-all">{{ g.token }}</code>
-      <form method="post" action="{% url 'cobranca:gateway_novo_token' g.c.pk %}" class="d-inline" onsubmit="return confirm('Gerar novo token? Você precisa atualizá-lo no gateway.')">{% csrf_token %}<button class="btn btn-sm btn-link">gerar outro</button></form></div></div>
+      <form method="post" action="{% url 'cobranca:gateway_novo_token' g.c.pk %}" class="d-inline" onsubmit="return confirm('Gerar novo token? Você precisa atualizá-lo no gateway.')">{% csrf_token %}<button class="btn btn-sm btn-link">gerar outro</button></form></div></div>{% endif %}
   {% if g.eventos %}<div class="small mt-2"><strong>Últimos avisos recebidos:</strong>
     <table class="table table-sm mb-0"><tbody>{% for e in g.eventos %}<tr><td class="text-nowrap">{{ e.recebido_em|date:"d/m H:i" }}</td><td>{{ e.tipo }}</td><td>{{ e.pagamento_id }}</td><td>{{ e.resultado }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
 </div></div>

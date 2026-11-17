@@ -232,16 +232,18 @@ def _decifrar(dados):
 
 
 class ConfiguracaoGateway(ModeloBase):
-    """Conta do gateway (Asaas) de uma empresa: emite boleto/PIX e avisa os pagamentos por webhook.
+    """Conta de gateway (Asaas ou Efí) de uma empresa: emite boleto/PIX/cartão e avisa os pagamentos por webhook.
     A chave da API e o token do webhook ficam cifrados (cofre) e fora da auditoria."""
 
-    PROVEDORES = [("asaas", "Asaas")]
+    PROVEDORES = [("asaas", "Asaas"), ("efi", "Efí (Gerencianet)")]
     AMBIENTES = [("sandbox", "Sandbox (testes, sem dinheiro de verdade)"), ("producao", "Produção")]
 
     empresa = models.ForeignKey(Empresa, on_delete=models.PROTECT, related_name="gateways")
     provedor = models.CharField(max_length=20, choices=PROVEDORES, default="asaas")
     ambiente = models.CharField(max_length=10, choices=AMBIENTES, default="sandbox")
     ativo = models.BooleanField(default=True)
+    client_id = models.CharField("Client_Id (Efí)", max_length=120, blank=True,
+                                 help_text="Só para a Efí: Client_Id da aplicação. A chave abaixo é o Client_Secret.")
     chave_api = models.BinaryField(editable=False, default=b"")
     token_webhook = models.BinaryField(editable=False, default=b"")
     conta_bancaria = models.ForeignKey("financeiro.ContaBancaria", verbose_name="conta que recebe os repasses",
@@ -282,6 +284,8 @@ class ConfiguracaoGateway(ModeloBase):
         if self.ambiente == "producao" and not getattr(settings, "COBRANCA_GATEWAY_PRODUCAO", False):
             raise ValidationError({"ambiente": "Produção está travada. Libere com COBRANCA_GATEWAY_PRODUCAO=1 no .env "
                                                "depois de validar todo o fluxo no sandbox."})
+        if self.provedor == "efi" and not (self.client_id or "").strip():
+            raise ValidationError({"client_id": "Informe o Client_Id da Efí."})
         for campo in ("multa_pct", "juros_mes_pct"):
             v = getattr(self, campo)
             if v is not None and not (0 <= v <= 20):

@@ -176,7 +176,7 @@ para a auditoria. **O `.env` e a `BACKUP_SENHA` não estão no backup: guarde-os
 por segundos, um dump em texto claro numa pasta temporária (`0700`) que é apagada ao final — em servidor compartilhado,
 aponte `TMPDIR` para um disco cifrado.
 
-## Gateway de pagamento (boleto/PIX)
+## Gateway de pagamento (boleto/PIX/cartão — Asaas e Efí)
 
 - **Chave e token cifrados:** a chave da API e o token do webhook ficam cifrados (cofre) e fora da auditoria. A chave nunca volta
   para a tela; o token aparece só para superusuário (precisa ser copiado para o painel do gateway).
@@ -189,10 +189,19 @@ aponte `TMPDIR` para um disco cifrado.
 - **Isolamento por empresa:** o aviso só afeta cobranças da empresa dona daquele token.
 - **Dinheiro sem decisão automática de risco:** pagamento em título já pago/cancelado, estorno e chargeback **avisam** o Financeiro
   e não mexem sozinhos.
+- **Efí:** o aviso traz só um token (`notification`) e não é assinado nem autenticado; o ERP identifica a conta por um **segredo no
+  caminho** do endereço (comparado em tempo constante; segredo errado = 404 + auditoria), consulta o token na API da Efí com
+  OAuth2 (credenciais cifradas; token de acesso em cache e renovado) e **reconsulta a cobrança** antes de baixar; o valor vem da
+  API (`total`), nunca do aviso, e a referência (`custom_id = guara-<id>`) tem de conferir. Token forjado = a Efí responde 404 e nada
+  acontece. O segredo aparece nos logs de acesso do proxy: trate-os como sensíveis e gere outro se vazar.
+- **Cartão sem escopo PCI:** só link de pagamento hospedado pelo gateway; nenhum campo de cartão trafega ou é guardado no ERP
+  (há teste que garante que o corpo enviado não contém dados de cartão). Não há tokenização nem cobrança recorrente.
+- **Baixa por cartão** ocorre na confirmação do gateway, antes do dinheiro cair na conta (prazo do adquirente); o ERP trata
+  situação *baixa manual* (`settled`) e estorno apenas **avisando** o Financeiro.
 - **Produção travada** por `COBRANCA_GATEWAY_PRODUCAO` até você liberar, como a NFS-e.
-- **Limites honestos:** testado contra um Asaas **simulado** (sandbox real ainda não); o ERP precisa estar na internet via HTTPS para
+- **Limites honestos:** testado contra Asaas e Efí **simulados** em software (sandbox real ainda não; os formatos de resposta vêm da documentação pública e podem divergir da API real); o ERP precisa estar na internet via HTTPS para
   receber o webhook (sem lista de IPs; restrinja no proxy, se quiser); uma falha de rede no instante exato da criação da cobrança no
-  gateway pode deixar uma cobrança lá sem registro aqui (raro; confira no painel do Asaas). Não há cartão de crédito.
+  gateway pode deixar uma cobrança lá sem registro aqui (raro; confira no painel do Asaas). Pix puro na Efí (exige certificado mTLS), parcelamento, recorrência e estorno pelo ERP não existem.
 
 ## Antivírus dos uploads (ClamAV)
 
