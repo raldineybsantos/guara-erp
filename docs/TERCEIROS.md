@@ -29,6 +29,7 @@ arquivos ou nos pacotes instalados.
 | segno (QR code do 2FA) | BSD-3-Clause |
 | ldap3 (login LDAP/AD) | LGPL-3.0 |
 | PyJWT (validação do ID token do SSO) | MIT |
+| py_webauthn (chaves de segurança FIDO2) | BSD-3-Clause |
 
 ## Serviços usados no Docker (imagens, não redistribuídas)
 

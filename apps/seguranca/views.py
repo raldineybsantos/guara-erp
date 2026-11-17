@@ -25,7 +25,7 @@ def verificar(request):
     """Segunda etapa do login: código do aplicativo ou código de recuperação."""
     if not mfa.precisa_verificar(request.user):
         return redirect(_destino(request))
-    if mfa.dispositivo(request.user) is None:
+    if not mfa.tem_fator(request.user):
         return redirect("seguranca:mfa_ativar")
     if request.session.get("mfa_ok"):
         return redirect(_destino(request))
@@ -38,7 +38,9 @@ def verificar(request):
         erro = not bloqueado
     return render(request, "seguranca/verificar.html", {"titulo": "Verificação em duas etapas", "icone": "shield-lock",
                                                          "erro": erro, "bloqueado": bloqueado,
-                                                         "next": _destino(request)},
+                                                         "next": _destino(request),
+                                                         "tem_totp": mfa.dispositivo(request.user) is not None,
+                                                         "tem_chave": mfa.chaves(request.user).exists()},
                   status=429 if bloqueado else 200)
 
 
@@ -46,9 +48,11 @@ def verificar(request):
 @login_required
 def painel(request):
     disp = mfa.dispositivo(request.user)
+    ativo = mfa.tem_fator(request.user)
     return render(request, "seguranca/painel.html", {
-        "titulo": "Segurança da conta", "icone": "shield-lock", "ativo": disp is not None,
-        "obrigatorio": mfa.exigido(request.user), "restantes": mfa.codigos_restantes(request.user) if disp else 0,
+        "titulo": "Segurança da conta", "icone": "shield-lock", "ativo": ativo, "tem_totp": disp is not None,
+        "chaves": mfa.chaves(request.user), "obrigatorio": mfa.exigido(request.user),
+        "restantes": mfa.codigos_restantes(request.user) if ativo else 0,
         "desde": disp.confirmado_em if disp else None, "mfa_ligado": mfa.ativo()})
 
 
@@ -89,7 +93,7 @@ def _exigir_codigo(request):
 @login_required
 @require_POST
 def novos_codigos(request):
-    if mfa.dispositivo(request.user) is None:
+    if not mfa.tem_fator(request.user):
         return redirect("seguranca:mfa_painel")
     if not _exigir_codigo(request):
         messages.error(request, "Código inválido (ou conta bloqueada por alguns minutos). Nada foi alterado.")
@@ -107,7 +111,7 @@ def desativar(request):
     if mfa.exigido(request.user):
         messages.error(request, "Seu perfil exige verificação em duas etapas; ela não pode ser desativada.")
         return redirect("seguranca:mfa_painel")
-    if mfa.dispositivo(request.user) is None or not _exigir_codigo(request):
+    if not mfa.tem_fator(request.user) or not _exigir_codigo(request):
         messages.error(request, "Código inválido (ou conta bloqueada por alguns minutos). Nada foi alterado.")
         return redirect("seguranca:mfa_painel")
     mfa.redefinir(request.user, request.user, request)
@@ -126,8 +130,10 @@ def usuarios(request):
     lista = []
     for u in User.objects.filter(is_active=True).order_by("username"):
         d = mfa.dispositivo(u)
-        lista.append({"u": u, "ativo": d is not None, "desde": d.confirmado_em if d else None,
-                      "exigido": mfa.exigido(u), "restantes": mfa.codigos_restantes(u) if d else 0})
+        ativo = mfa.tem_fator(u)
+        lista.append({"u": u, "ativo": ativo, "desde": d.confirmado_em if d else None,
+                      "exigido": mfa.exigido(u), "restantes": mfa.codigos_restantes(u) if ativo else 0,
+                      "chaves": mfa.chaves(u).count()})
     return render(request, "seguranca/usuarios.html", {"titulo": "Dois fatores por usuário", "icone": "people",
                                                        "lista": lista})
 

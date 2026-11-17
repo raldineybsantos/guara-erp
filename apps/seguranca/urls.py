@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from django.urls import path
 
-from . import views, views_antivirus, views_backup
+from . import views, views_antivirus, views_backup, views_chaves
 
 app_name = "seguranca"
 
@@ -15,6 +15,12 @@ urlpatterns = [
     path("2fa/desativar/", views.desativar, name="mfa_desativar"),
     path("2fa/usuarios/", views.usuarios, name="mfa_usuarios"),
     path("2fa/usuarios/<int:pk>/redefinir/", views.redefinir, name="mfa_redefinir"),
+    path("2fa/chaves/registrar/opcoes/", views_chaves.registrar_opcoes, name="chave_registrar_opcoes"),
+    path("2fa/chaves/registrar/confirmar/", views_chaves.registrar_confirmar, name="chave_registrar_confirmar"),
+    path("2fa/chaves/entrar/opcoes/", views_chaves.entrar_opcoes, name="chave_entrar_opcoes"),
+    path("2fa/chaves/entrar/verificar/", views_chaves.entrar_verificar, name="chave_entrar_verificar"),
+    path("2fa/chaves/codigos/", views_chaves.codigos_iniciais, name="chave_codigos"),
+    path("2fa/chaves/<int:pk>/remover/", views_chaves.remover, name="chave_remover"),
     path("backups/", views_backup.painel, name="backups"),
     path("backups/executar/", views_backup.executar, name="backup_executar"),
     path("backups/<str:nome>/baixar/", views_backup.baixar, name="backup_baixar"),

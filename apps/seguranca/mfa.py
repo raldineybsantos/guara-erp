@@ -11,7 +11,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from . import totp
-from .models import CodigoRecuperacao, DispositivoMFA
+from .models import ChaveSeguranca, CodigoRecuperacao, DispositivoMFA
 
 MODELO_LOG = "auth.mfa"
 QTD_CODIGOS = 10
@@ -35,8 +35,17 @@ def dispositivo(user):
     return DispositivoMFA.objects.filter(usuario=user, confirmado=True).first()
 
 
+def chaves(user):
+    return ChaveSeguranca.objects.filter(usuario=user)
+
+
+def tem_fator(user) -> bool:
+    """Tem aplicativo autenticador OU chave de segurança cadastrados."""
+    return dispositivo(user) is not None or chaves(user).exists()
+
+
 def precisa_verificar(user) -> bool:
-    return ativo() and user.is_authenticated and (exigido(user) or dispositivo(user) is not None)
+    return ativo() and user.is_authenticated and (exigido(user) or tem_fator(user))
 
 
 def iniciar_sessao(request, user):
@@ -96,16 +105,17 @@ def _gastar_recuperacao(user, informado: str) -> bool:
 def conferir(user, informado: str) -> str | None:
     """Confere TOTP ou código de recuperação. Devolve 'totp', 'recuperacao' ou None. Não olha bloqueio."""
     informado = (informado or "").strip()
-    disp = dispositivo(user)
-    if disp is None or not informado:
+    if not informado or not tem_fator(user):
         return None
     with transaction.atomic():
-        disp = DispositivoMFA.objects.select_for_update().get(pk=disp.pk)
-        passo = totp.verificar(disp.obter_segredo(), informado, disp.ultimo_passo)
-        if passo is not None:
-            disp.ultimo_passo = passo
-            disp.save(update_fields=["ultimo_passo"])
-            return "totp"
+        disp = dispositivo(user)
+        if disp is not None:
+            disp = DispositivoMFA.objects.select_for_update().get(pk=disp.pk)
+            passo = totp.verificar(disp.obter_segredo(), informado, disp.ultimo_passo)
+            if passo is not None:
+                disp.ultimo_passo = passo
+                disp.save(update_fields=["ultimo_passo"])
+                return "totp"
         if len("".join(c for c in informado if c.isalnum())) == 10 and _gastar_recuperacao(user, informado):
             return "recuperacao"
     return None
@@ -152,7 +162,8 @@ def confirmar_cadastro(request, user, informado: str):
 
 
 def redefinir(user, por, request=None):
-    """Remove o segundo fator (celular perdido). Quem é obrigado a ter 2FA cadastra outro no próximo login."""
+    """Remove todos os segundos fatores (celular/chave perdidos). Quem é obrigado a ter 2FA cadastra outro no próximo login."""
     DispositivoMFA.objects.filter(usuario=user).delete()
+    ChaveSeguranca.objects.filter(usuario=user).delete()
     CodigoRecuperacao.objects.filter(usuario=user).delete()
     registrar(por, f"2FA de {user.username} redefinido por {por.username}", request)

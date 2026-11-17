@@ -177,6 +177,9 @@ LOGIN_BLOQUEIO_MINUTOS = int(os.getenv("LOGIN_BLOQUEIO_MINUTOS", "15"))
 MFA_ATIVO = env_bool("MFA_ATIVO", True) and "test" not in sys.argv
 MFA_GRUPOS_OBRIGATORIOS = [g.strip() for g in os.getenv("MFA_GRUPOS_OBRIGATORIOS", "Administradores,Financeiro").split(",") if g.strip()]
 MFA_EMISSOR = os.getenv("MFA_EMISSOR", "Guará ERP")
+# WebAuthn/passkeys: se vazios, usa ERP_URL_BASE e, na falta dela, o endereço da requisição.
+WEBAUTHN_RP_ID = os.getenv("WEBAUTHN_RP_ID", "")
+WEBAUTHN_ORIGENS = [o.strip() for o in os.getenv("WEBAUTHN_ORIGENS", "").split(",") if o.strip()]
 # Backup automático (veja docs/INSTALACAO.md): cifrado, com retenção e cópia externa.
 BACKUP_DIR = os.getenv("BACKUP_DIR", str(BASE_DIR / "backups"))
 BACKUP_COPIA_DIR = os.getenv("BACKUP_COPIA_DIR", "")          # disco externo / NAS montado

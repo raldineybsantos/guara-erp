@@ -47,6 +47,30 @@ class CodigoRecuperacao(models.Model):
         verbose_name_plural = "códigos de recuperação"
 
 
+class ChaveSeguranca(models.Model):
+    """Chave FIDO2/WebAuthn (passkey, YubiKey, Windows Hello, Touch ID) cadastrada como segundo fator.
+
+    Só a parte PÚBLICA fica no servidor: se o banco vazar, as chaves não servem para entrar.
+    """
+
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="chaves_seguranca")
+    nome = models.CharField(max_length=60)
+    credencial_id = models.BinaryField(editable=False, unique=True)
+    chave_publica = models.BinaryField(editable=False)
+    contador = models.BigIntegerField(default=0)
+    transportes = models.CharField(max_length=80, blank=True)
+    criado_em = models.DateTimeField(default=timezone.now, editable=False)
+    ultimo_uso = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "chave de segurança"
+        verbose_name_plural = "chaves de segurança"
+        ordering = ["criado_em"]
+
+    def __str__(self):
+        return f"{self.nome} ({self.usuario})"
+
+
 class RegistroBackup(models.Model):
     """Histórico de cada backup (agendado ou manual): o que foi gerado, onde, se foi verificado e copiado."""
 

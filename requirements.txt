@@ -14,3 +14,4 @@ requests>=2.31
 segno>=1.6
 ldap3>=2.9
 PyJWT[crypto]>=2.8
+webauthn>=2.7,<4

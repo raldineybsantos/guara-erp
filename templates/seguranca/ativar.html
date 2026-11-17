@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block content %}
 <div class="card" style="max-width:640px"><div class="card-body p-4">
   {% if obrigatorio %}<div class="alert alert-info small">Seu perfil exige verificação em duas etapas. Configure agora para continuar.</div>{% endif %}
@@ -18,5 +18,23 @@
     <input name="codigo" class="form-control" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required aria-label="Código de 6 dígitos">
     <button class="btn btn-primary">Ativar</button>
   </form>
+  <hr><h6 class="mb-2"><i class="bi bi-usb-symbol"></i> Ou use uma chave de segurança</h6>
+  <div id="area-chave" class="d-none d-flex gap-2" style="max-width:460px">
+    <input id="nome-chave" class="form-control" maxlength="60" placeholder="Nome (ex.: YubiKey azul)" aria-label="Nome da chave">
+    <button type="button" id="btn-cadastrar-chave" class="btn btn-outline-primary text-nowrap">Cadastrar chave</button>
+  </div>
+  <div id="erro-chave" class="alert alert-danger small mt-2 d-none"></div>
+  <p id="sem-suporte" class="small text-muted d-none">Este navegador/endereço não permite chaves de segurança (exige HTTPS ou localhost).</p>
 </div></div>
 {% endblock %}
+{% block scripts %}<script src="{% static 'js/webauthn.js' %}"></script>
+<script>
+(function(){
+  if (!window.guaraChaves || !guaraChaves.suportado()) { document.getElementById("sem-suporte").classList.remove("d-none"); return; }
+  document.getElementById("area-chave").classList.remove("d-none");
+  document.getElementById("btn-cadastrar-chave").addEventListener("click", function(){
+    guaraChaves.cadastrar({opcoes:"{% url 'seguranca:chave_registrar_opcoes' %}", confirmar:"{% url 'seguranca:chave_registrar_confirmar' %}"},
+      document.getElementById("nome-chave").value, document.getElementById("erro-chave"));
+  });
+})();
+</script>{% endblock %}

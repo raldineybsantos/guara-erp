@@ -13,7 +13,7 @@ EXCLUIR = {"core.logauditoria", "core.seloauditoria", "core.logerro", "core.noti
            # derivados e recalculáveis; as entradas (marcações, lançamentos, folha) continuam auditadas
            "rh.apuracaodia", "rh.holerite", "rh.itemholerite",
            # segredos e códigos: os eventos de 2FA vão para a trilha como "auth.mfa" (sem valores)
-           "seguranca.dispositivomfa", "seguranca.codigorecuperacao", "seguranca.registrobackup"}
+           "seguranca.dispositivomfa", "seguranca.chaveseguranca", "seguranca.codigorecuperacao", "seguranca.registrobackup"}
 # identidades externas mudam a cada login: o evento de login já fica em auth.login
 EXCLUIR |= {"identidade.identidadeexterna", "cobranca.eventogateway", "cobranca.clientegateway"}
 IGNORAR = {"criado_em", "atualizado_em", "certificado", "senha", "chave_api", "telegram_token", "telegram_segredo",

@@ -157,8 +157,16 @@ Os instaladores ajudam nisso:
   em *Administração → Dois fatores* (fica registrado quem redefiniu). Se o único superusuário perder tudo:
   `python manage.py shell -c "from apps.seguranca.models import DispositivoMFA as D; D.objects.filter(usuario__username='NOME').delete()"`
   (acesso ao servidor).
-- **Limite honesto:** TOTP não protege contra páginas falsas que retransmitem o código em tempo real (*phishing* ativo).
-  Para isso, chaves de segurança (WebAuthn) — não implementadas. Sessões abertas antes da atualização pedem o 2FA no
+- **Chaves de segurança (WebAuthn/FIDO2):** segundo fator resistente a *phishing*, pela biblioteca py_webauthn. A
+  assinatura é amarrada ao domínio (`rp_id`) e à origem; o servidor guarda só a chave **pública**; o desafio é aleatório,
+  fica na sessão, vale uma vez e expira em 5 min; contador de assinaturas que não avança (chave clonada) é recusado;
+  falhas entram no bloqueio por força bruta e na auditoria. Cadastrar nova chave exige já ter passado pelo 2º fator da
+  sessão (quem tem fator) e remover exige a senha. Defina `ERP_URL_BASE` (ou `WEBAUTHN_RP_ID`/`WEBAUTHN_ORIGENS`) com o
+  endereço público; o `rp_id` não pode mudar depois, senão as chaves cadastradas deixam de valer. É **segundo fator**,
+  não login sem senha (*passwordless*).
+- **Limite honesto:** TOTP e códigos de recuperação não protegem contra páginas falsas que retransmitem o código em tempo
+  real (*phishing* ativo); quem precisa dessa proteção deve usar chave de segurança. Testado só com autenticador simulado
+  em software (não com YubiKey/Windows Hello reais nem navegadores). Sessões abertas antes da atualização pedem o 2FA no
   próximo acesso. `MFA_ATIVO=0` desliga tudo (use só para recuperação de emergência).
 
 **Backup.** Cifrado com AES-256-GCM (chave derivada por scrypt da `BACKUP_SENHA`; blocos autenticados, então senha errada,

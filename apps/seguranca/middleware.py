@@ -21,7 +21,7 @@ class MFAMiddleware:
         user = getattr(request, "user", None)
         if (user is not None and user.is_authenticated and not request.session.get("mfa_ok")
                 and not request.path.startswith(ISENTOS) and mfa.precisa_verificar(user)):
-            destino = reverse("seguranca:mfa_verificar" if mfa.dispositivo(user) else "seguranca:mfa_ativar")
+            destino = reverse("seguranca:mfa_verificar" if mfa.tem_fator(user) else "seguranca:mfa_ativar")
             if request.method == "GET" and not request.headers.get("x-requested-with"):
                 destino += f"?next={quote(request.get_full_path(), safe='/')}"
             return redirect(destino)

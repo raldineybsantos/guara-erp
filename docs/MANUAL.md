@@ -1379,6 +1379,12 @@ clica em **Redefinir**; no próximo login você cadastra o novo aparelho. Fica r
 
 **Muitos erros seguidos** bloqueiam a verificação por alguns minutos (por segurança, mesmo com o código certo).
 
+**Chaves de segurança (passkeys, YubiKey, Windows Hello, Touch ID).** Em *Segurança da conta → Chaves de segurança* você
+cadastra uma chave física ou a biometria do aparelho como segundo fator, no lugar ou além do aplicativo. Ao entrar, clique
+em **Usar chave de segurança** e toque na chave. A chave **só funciona no endereço verdadeiro do ERP**, então não cai em
+página falsa. Funciona apenas em **HTTPS** (ou `localhost`). A primeira chave de quem não tinha 2FA gera os 10 códigos de
+recuperação. Para remover uma chave, o sistema pede a sua senha; quem é obrigado a ter 2FA não pode ficar sem nenhum fator.
+
 ### 27.2 Backups (superusuário)
 
 **Administração → Backups.** O sistema faz um backup cifrado **todo dia às 02:00** (banco de dados + arquivos do GED),

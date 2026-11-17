@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base.html" %}{% load static %}
 {% block content %}
 <div class="card" style="max-width:640px"><div class="card-body p-4">
   {% if not mfa_ligado %}<div class="alert alert-secondary small">A verificação em duas etapas está desligada neste servidor (MFA_ATIVO).</div>{% endif %}
@@ -7,6 +7,8 @@
        {% if obrigatorio %}<span class="badge text-bg-info">Obrigatória para o seu perfil</span>{% endif %}</p>
     <p class="small">Códigos de recuperação restantes: <strong>{{ restantes }}</strong>{% if restantes <= 3 %} — gere novos em breve.{% endif %}</p>
     <hr>
+    {% if tem_totp %}<p class="small mb-2"><i class="bi bi-phone"></i> Aplicativo autenticador: <strong>ativo</strong></p>
+    {% else %}<p class="small mb-2"><i class="bi bi-phone"></i> Aplicativo autenticador: não configurado — <a href="{% url 'seguranca:mfa_ativar' %}">configurar</a></p>{% endif %}
     <form method="post" action="{% url 'seguranca:mfa_codigos' %}" class="d-flex gap-2 mb-3" style="max-width:420px">{% csrf_token %}
       <input name="codigo" class="form-control" placeholder="Código atual" inputmode="numeric" maxlength="12" required aria-label="Código atual">
       <button class="btn btn-outline-primary text-nowrap">Gerar novos códigos</button>
@@ -21,7 +23,34 @@
     <p class="small text-muted">Adiciona uma segunda prova de identidade (código do celular) além da senha.</p>
     <a class="btn btn-primary" href="{% url 'seguranca:mfa_ativar' %}">Ativar agora</a>
   {% endif %}
+  {% if mfa_ligado %}<hr>
+  <h6><i class="bi bi-usb-symbol"></i> Chaves de segurança (passkeys, YubiKey, Windows Hello)</h6>
+  {% for c in chaves %}
+  <form method="post" action="{% url 'seguranca:chave_remover' c.pk %}" class="d-flex flex-wrap gap-2 align-items-center small mb-2">{% csrf_token %}
+    <span class="flex-grow-1"><strong>{{ c.nome }}</strong> · cadastrada em {{ c.criado_em|date:"d/m/Y" }}{% if c.ultimo_uso %} · último uso {{ c.ultimo_uso|date:"d/m/Y H:i" }}{% endif %}</span>
+    <input type="password" name="senha" class="form-control form-control-sm" style="width:9rem" placeholder="Sua senha" required autocomplete="current-password" aria-label="Senha para remover">
+    <button class="btn btn-sm btn-outline-danger">Remover</button>
+  </form>
+  {% empty %}<p class="small text-muted">Nenhuma chave cadastrada.</p>{% endfor %}
+  <div id="area-chave" class="d-none d-flex gap-2 mt-2" style="max-width:460px">
+    <input id="nome-chave" class="form-control" maxlength="60" placeholder="Nome (ex.: YubiKey azul)" aria-label="Nome da chave">
+    <button type="button" id="btn-cadastrar-chave" class="btn btn-outline-primary text-nowrap">Adicionar chave</button>
+  </div>
+  <div id="erro-chave" class="alert alert-danger small mt-2 d-none"></div>
+  <p id="sem-suporte" class="small text-muted d-none">Este navegador/endereço não permite chaves de segurança (exige HTTPS ou localhost).</p>
+  {% endif %}
   <hr><a href="{% url 'password_change' %}" class="small">Alterar senha</a>
   {% if request.user.is_superuser %} · <a href="{% url 'seguranca:mfa_usuarios' %}" class="small">2FA dos usuários</a>{% endif %}
 </div></div>
 {% endblock %}
+{% block scripts %}{% if mfa_ligado %}<script src="{% static 'js/webauthn.js' %}"></script>
+<script>
+(function(){
+  if (!window.guaraChaves || !guaraChaves.suportado()) { var e=document.getElementById("sem-suporte"); if(e) e.classList.remove("d-none"); return; }
+  document.getElementById("area-chave").classList.remove("d-none");
+  document.getElementById("btn-cadastrar-chave").addEventListener("click", function(){
+    guaraChaves.cadastrar({opcoes:"{% url 'seguranca:chave_registrar_opcoes' %}", confirmar:"{% url 'seguranca:chave_registrar_confirmar' %}"},
+      document.getElementById("nome-chave").value, document.getElementById("erro-chave"));
+  });
+})();
+</script>{% endif %}{% endblock %}
