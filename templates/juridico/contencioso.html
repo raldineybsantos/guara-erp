@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary small">Processos ativos</div><div class="fs-3">{{ total }}</div></div></div></div>
+  <div class="col-md-3"><div class="card"><div class="card-body"><div class="text-secondary small">Provisão constituída</div><div class="fs-3">{{ provisao_total|moeda }}</div></div></div></div>
+</div>
+<div class="row g-3">
+  <div class="col-lg-6"><div class="card"><div class="card-header">Por risco de perda</div><table class="table table-sm mb-0">
+    <thead><tr><th>Risco</th><th class="text-end">Processos</th><th class="text-end">Perda estimada</th><th class="text-end">Provisão</th></tr></thead>
+    <tbody>{% for r in riscos %}<tr><td>{{ r.risco }}</td><td class="text-end">{{ r.n }}</td><td class="text-end">{{ r.perda|moeda }}</td><td class="text-end">{{ r.prov|moeda }}</td></tr>
+    {% empty %}<tr><td colspan="4" class="text-secondary text-center py-3">Nenhum processo ativo.</td></tr>{% endfor %}</tbody></table></div>
+    <div class="card mt-3"><div class="card-header">Por natureza</div><ul class="list-group list-group-flush">{% for n in natureza %}<li class="list-group-item d-flex justify-content-between">{{ n.nome }}<span>{{ n.n }}</span></li>{% endfor %}</ul></div></div>
+  <div class="col-lg-6"><div class="card"><div class="card-header">Próximos prazos</div><table class="table table-sm mb-0">
+    <thead><tr><th>Data fatal</th><th>Prazo</th><th>Processo</th></tr></thead>
+    <tbody>{% for p in prazos %}<tr {% if p.vencido %}class="table-danger"{% endif %}><td>{{ p.data_fatal|date:"d/m/Y" }}</td><td><a href="{{ p.get_absolute_url }}">{{ p.descricao }}</a></td><td><a href="{{ p.processo.get_absolute_url }}">{{ p.processo.numero }}</a></td></tr>
+    {% empty %}<tr><td colspan="3" class="text-secondary text-center py-3">Sem prazos pendentes.</td></tr>{% endfor %}</tbody></table></div></div>
+</div>
+{% endblock %}

@@ -41,6 +41,7 @@ LINKS_EXTRAS = [
     ("Financeiro", "Apurar PDD", "financeiro:pdd_apurar", "calculator", "financeiro.add_apuracaopdd", 8),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),
     ("Cobrança", "Executar régua agora", "cobranca:executar_regua", "send", "cobranca.change_cobranca", 9),
+    ("Jurídico", "Contencioso", "juridico:contencioso", "bank", "juridico.view_processo", 1),
     ("Jurídico", "Painel jurídico", "juridico:painel", "speedometer2", "juridico.view_contrato", 0),
     ("Estoque", "Movimentação manual", "estoque:movimentar", "pencil-square", "estoque.add_movimento", 3),
     ("Estoque", "Reposição (abaixo do mínimo)", "estoque:reposicao", "bell", "estoque.view_saldo", 6),

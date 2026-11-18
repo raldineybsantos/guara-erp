@@ -12,6 +12,7 @@ from apps.core.validators import validar_arquivo_seguro
 from apps.seguranca.antivirus import validador as validar_antivirus
 
 from .models import Aditivo, Caucao, Contrato, Medicao, Paralisacao, ValorIndice
+from .processos import Prazo, Processo
 
 TERMOS_TRAVADOS = ["tipo", "fornecedor", "cliente", "outra_parte", "objeto", "valor_total", "valor_mensal",
                    "inicio_vigencia", "fim_vigencia", "indice_reajuste"]
@@ -237,3 +238,55 @@ class ParalisacaoCrud(Crud):
     menu_label = "Paralisações"
     menu_order = 6
     can_delete = False
+
+
+class ProcessoCrud(Crud):
+    model = Processo
+    fields = ["empresa", "numero", "tipo", "natureza", "assunto", "orgao", "comarca", "polo", "contraparte",
+              "documento_contraparte", "advogado", "responsavel", "contrato", "data_distribuicao", "valor_causa",
+              "observacoes"]
+    list_display = ("numero", "assunto", "contraparte", "natureza", "risco", "provisao", "status")
+    search_fields = ("numero", "assunto", "contraparte", "advogado")
+    filter_fields = ("status", "natureza", "risco", "polo", "tipo")
+    detail_fields = ["numero", "tipo", "natureza", "assunto", "orgao", "comarca", "polo", "contraparte",
+                     "documento_contraparte", "advogado", "responsavel", "contrato", "data_distribuicao",
+                     "valor_causa", "risco", "valor_risco", "provisao", "status", "resultado", "data_encerramento",
+                     "valor_condenacao", "observacoes", "criado_por", "criado_em"]
+    related = (
+        ("prazos", "Prazos", ["descricao", "data_fatal", "status", "responsavel"]),
+        ("andamentos", "Andamentos", ["data", "tipo", "descricao"]),
+        ("envolvidos", "Envolvidos", ["nome", "papel", "documento", "contato"]),
+        ("reavaliacoes", "Histórico de risco e provisão", ["data", "risco", "valor_estimado", "ajuste", "motivo"]),
+    )
+    actions = (
+        ("juridico:processo_andamento", "Registrar andamento", "journal-plus", "juridico.add_andamento"),
+        ("juridico:processo_prazo", "Novo prazo", "alarm", "juridico.add_prazo"),
+        ("juridico:processo_envolvido", "Adicionar envolvido", "person-plus", "juridico.add_envolvido"),
+        ("juridico:processo_risco", "Reavaliar risco e provisão", "speedometer", "juridico.change_processo"),
+        ("juridico:processo_suspender", "Suspender", "pause-circle", "juridico.change_processo"),
+        ("juridico:processo_retomar", "Retomar", "play-circle", "juridico.change_processo"),
+        ("juridico:processo_encerrar", "Encerrar processo", "check2-circle", "juridico.change_processo"),
+    )
+    can_delete = False
+    icon = "bank"
+    menu = "Jurídico"
+    menu_label = "Processos"
+    menu_order = 7
+
+
+class PrazoCrud(Crud):
+    model = Prazo
+    list_display = ("data_fatal", "descricao", "processo", "responsavel", "status")
+    search_fields = ("descricao", "processo__numero", "processo__contraparte")
+    filter_fields = ("status",)
+    detail_fields = ["processo", "descricao", "data_fatal", "alertar_dias", "responsavel", "status", "observacoes"]
+    actions = (("juridico:prazo_cumprir", "Marcar como cumprido", "check-lg", "juridico.change_prazo"),
+               ("juridico:prazo_cancelar", "Cancelar prazo", "x-lg", "juridico.change_prazo"),
+               ("juridico:prazo_perdido", "Registrar como perdido", "exclamation-octagon", "juridico.change_prazo"))
+    can_create = False      # nasce em Processos → Novo prazo
+    can_edit = False
+    can_delete = False
+    icon = "alarm"
+    menu = "Jurídico"
+    menu_label = "Prazos processuais"
+    menu_order = 8

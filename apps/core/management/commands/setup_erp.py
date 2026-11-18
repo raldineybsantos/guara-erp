@@ -99,7 +99,7 @@ PLANO_CONTABIL = [
     ("1.2.2", "(-) Depreciação acumulada", "ativo", False),
     ("2", "Passivo e patrimônio líquido", "passivo", True), ("2.1", "Passivo circulante", "passivo", True),
     ("2.1.1", "Fornecedores", "passivo", False), ("2.1.2", "Compras a faturar", "passivo", False),
-    ("2.1.3", "Impostos a recolher", "passivo", False),
+    ("2.1.3", "Impostos a recolher", "passivo", False), ("2.1.4", "Provisões para contingências", "passivo", False),
     ("2.3", "Patrimônio líquido", "pl", True), ("2.3.1", "Capital social", "pl", False),
     ("2.3.2", "Lucros ou prejuízos acumulados", "pl", False),
     ("3", "Receitas", "receita", True), ("3.1", "Receita de vendas e serviços", "receita", False),
@@ -110,6 +110,7 @@ PLANO_CONTABIL = [
     ("4.4", "Ajustes de inventário", "despesa", False), ("4.5", "Despesas financeiras", "despesa", False),
     ("4.6", "Descontos concedidos", "despesa", False), ("4.7", "Outras despesas", "despesa", False),
     ("4.8", "Depreciação", "despesa", False), ("4.9", "Perdas estimadas com créditos (PDD)", "despesa", False),
+    ("4.10", "Despesas com contingências", "despesa", False),
 ]
 # evento: (debitar, creditar)
 REGRAS_CONTABEIS = {
@@ -126,6 +127,7 @@ REGRAS_CONTABEIS = {
     "baixa_bem_perda": ("4.7", "1.2.1"), "baixa_bem_ganho": ("1.2.1", "3.4"),
     "compensacao": ("2.1.1", "1.1.2"), "renegociacao_baixa": ("3.1", "1.1.2"),
     "pdd_constituicao": ("4.9", "1.1.4"), "pdd_reversao": ("1.1.4", "4.9"),
+    "contingencia_constituicao": ("4.10", "2.1.4"), "contingencia_reversao": ("2.1.4", "4.10"),
 }
 
 # Faixas de atraso da PDD: (dias mínimos de atraso, nome, percentual). Ponto de partida: o contador confere.
@@ -226,7 +228,7 @@ class Command(BaseCommand):
                     codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
                     superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())
         for codigo, nome, natureza, sintetica in PLANO_CONTABIL:   # contas criadas depois da primeira instalação
-            if codigo in ("1.2", "1.2.1", "1.2.2", "4.8", "1.1.4", "4.9") and not ContaContabil.objects.filter(codigo=codigo).exists():
+            if codigo in ("1.2", "1.2.1", "1.2.2", "4.8", "1.1.4", "4.9", "2.1.4", "4.10") and not ContaContabil.objects.filter(codigo=codigo).exists():
                 ContaContabil.objects.create(
                     codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
                     superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())

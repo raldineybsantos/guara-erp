@@ -610,6 +610,9 @@ def processar_vencimentos(hoje=None):
             c.save(update_fields=["ultimo_alerta_para"])
             Evento.objects.create(contrato=c, tipo="alerta", descricao=f"Alerta de vencimento criado no quadro de tarefas ({dias} dias).")
             alertas += 1
+    from .processos import alertar_prazos
+
+    alertas += alertar_prazos(hoje)
     # garantias a vencer
     for g in Caucao.objects.filter(status="ativa", validade__isnull=False, contrato__status="vigente").select_related("contrato"):
         c = g.contrato
@@ -626,3 +629,6 @@ def processar_vencimentos(hoje=None):
             g.save(update_fields=["ultimo_alerta"])
             alertas += 1
     return alertas, renovados
+
+
+from .processos import Andamento, Envolvido, Prazo, Processo, Reavaliacao  # noqa: E402,F401

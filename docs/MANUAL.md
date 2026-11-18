@@ -1242,6 +1242,23 @@ Medição aprovada não se edita; cancele e lance outra.
   parados e, se marcado, **prorroga a vigência** na mesma quantidade, com aditivo de prazo.
   A paralisação não bloqueia medições automaticamente: confira o período ao aprovar.
 
+### 20.7 Processos (contencioso)
+
+Em **Jurídico → Processos** ficam as ações judiciais e administrativas da empresa.
+
+- **Cadastro:** número (único), tipo, natureza (trabalhista, cível, tributária...), órgão, comarca,
+  polo (réu ou autor), contraparte, advogado, responsável, contrato relacionado e valor da causa.
+- **Andamentos:** registre despachos, audiências e sentenças; a linha do tempo guarda tudo.
+- **Prazos:** informe a data fatal e com quantos dias de antecedência alertar. A rotina diária cria um
+  cartão no Kanban do responsável (urgente se já venceu). *Cumprir*, *Cancelar* ou *Perdido* encerram o prazo.
+- **Envolvidos:** partes, advogados, peritos e testemunhas.
+- **Risco e provisão (CPC 25):** *Avaliar risco* com valor estimado. Só risco **provável** gera provisão
+  (débito 4.10 / crédito 2.1.4); possível apenas é divulgado e remoto não provisiona. Cada reavaliação
+  ajusta a provisão pela diferença e fica no histórico.
+- **Encerrar:** informe o resultado e, havendo condenação com a empresa como ré, o valor condenado. O ERP
+  reverte a provisão e gera a **conta a pagar** da condenação.
+- **Suspender/Retomar** e o painel **Contencioso** (processos ativos, prazos próximos e provisão total).
+
 
 ---
 

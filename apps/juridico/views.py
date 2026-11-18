@@ -10,6 +10,7 @@ from django.utils import timezone
 from apps.core.crud import BootstrapMixin
 
 from .models import Caucao, Contrato, Evento, Medicao, Paralisacao
+from .processos import Andamento, Envolvido, Prazo, Processo
 
 
 class RenovarForm(BootstrapMixin, forms.Form):
@@ -211,3 +212,157 @@ def painel(request):
         "aguardando": Contrato.objects.filter(status="aprovado"), "a_vencer": a_vencer,
         "vencidos": vigentes.filter(fim_vigencia__lt=hoje), "eventos": Evento.objects.select_related("contrato", "usuario")[:15],
     })
+
+
+# --------------------------------------------------------------------------- contencioso
+def _processo(pk):
+    return get_object_or_404(Processo, pk=pk)
+
+
+class _FilhoForm(BootstrapMixin, forms.ModelForm):
+    pass
+
+
+def _form_filho(modelo, campos):
+    Meta = type("Meta", (), {"model": modelo, "fields": campos})
+    return type(f"{modelo.__name__}Form", (_FilhoForm,), {"Meta": Meta})
+
+
+def _criar_filho(request, pk, modelo, campos, titulo, icone, depois=None):
+    proc = _processo(pk)
+    Form = _form_filho(modelo, campos)
+    form = Form(request.POST or None)
+    if "data" in form.fields:
+        form.fields["data"].widget = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+    if "data_fatal" in form.fields:
+        form.fields["data_fatal"].widget = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+    if request.method == "POST" and form.is_valid():
+        obj = form.save(commit=False)
+        obj.processo = proc
+        if hasattr(obj, "registrado_por"):
+            obj.registrado_por = request.user
+        obj.save()
+        if depois:
+            depois(proc, obj, request.user)
+        messages.success(request, "Registrado.")
+        return redirect(proc.get_absolute_url())
+    return render(request, "form_simples.html", {"form": form, "titulo": f"{titulo} — {proc.numero}", "icone": icone})
+
+
+@login_required
+@permission_required("juridico.add_andamento", raise_exception=True)
+def processo_andamento(request, pk):
+    return _criar_filho(request, pk, Andamento, ["data", "tipo", "descricao"], "Registrar andamento", "journal-plus")
+
+
+@login_required
+@permission_required("juridico.add_prazo", raise_exception=True)
+def processo_prazo(request, pk):
+    return _criar_filho(request, pk, Prazo, ["descricao", "data_fatal", "alertar_dias", "responsavel", "observacoes"],
+                        "Novo prazo", "alarm",
+                        lambda proc, obj, u: proc.registrar(f"Prazo aberto: {obj}", "intimacao", None, u))
+
+
+@login_required
+@permission_required("juridico.add_envolvido", raise_exception=True)
+def processo_envolvido(request, pk):
+    return _criar_filho(request, pk, Envolvido, ["nome", "papel", "documento", "contato"], "Adicionar envolvido",
+                        "person-plus")
+
+
+class RiscoForm(BootstrapMixin, forms.Form):
+    risco = forms.ChoiceField(choices=Processo.RISCOS, label="Risco de perda")
+    valor_estimado = forms.DecimalField(label="Perda estimada (R$)", min_value=0, max_digits=14, decimal_places=2,
+                                        help_text="Só o risco provável gera provisão no razão.")
+    motivo = forms.CharField(required=False, max_length=300)
+
+
+class EncerrarProcessoForm(BootstrapMixin, forms.Form):
+    resultado = forms.ChoiceField(choices=Processo.RESULTADOS)
+    data = forms.DateField(initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}))
+    valor_condenacao = forms.DecimalField(label="Valor da condenação/acordo a pagar (R$)", required=False,
+                                          min_value=0, max_digits=14, decimal_places=2,
+                                          help_text="Vira conta a pagar (vence em 15 dias). Vazio se nada a pagar.")
+    observacao = forms.CharField(required=False, max_length=300)
+
+
+@login_required
+@permission_required("juridico.change_processo", raise_exception=True)
+def processo_risco(request, pk):
+    proc = _processo(pk)
+    form = RiscoForm(request.POST or None, initial={"risco": proc.risco, "valor_estimado": proc.valor_risco})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        return _executar(request, proc, lambda: proc.avaliar_risco(d["risco"], d["valor_estimado"], request.user,
+                                                                   motivo=d["motivo"]), "Risco reavaliado.")
+    return render(request, "form_simples.html", {"form": form, "titulo": f"Reavaliar risco — {proc.numero}",
+                                                 "icone": "speedometer"})
+
+
+@login_required
+@permission_required("juridico.change_processo", raise_exception=True)
+def processo_encerrar(request, pk):
+    proc = _processo(pk)
+    form = EncerrarProcessoForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        return _executar(request, proc, lambda: proc.encerrar(d["resultado"], request.user, d["data"],
+                                                              d["valor_condenacao"] or 0, d["observacao"]),
+                         "Processo encerrado.")
+    return render(request, "form_simples.html", {"form": form, "titulo": f"Encerrar processo {proc.numero}",
+                                                 "icone": "check2-circle"})
+
+
+@login_required
+@permission_required("juridico.change_processo", raise_exception=True)
+def processo_suspender(request, pk):
+    proc = _processo(pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {"titulo": "Suspender processo", "voltar": proc.get_absolute_url(),
+                                                  "mensagem": f"Suspender o processo {proc.numero}?"})
+    return _executar(request, proc, lambda: proc.suspender(request.user), "Processo suspenso.")
+
+
+@login_required
+@permission_required("juridico.change_processo", raise_exception=True)
+def processo_retomar(request, pk):
+    proc = _processo(pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {"titulo": "Retomar processo", "voltar": proc.get_absolute_url(),
+                                                  "mensagem": f"Retomar o processo {proc.numero}?"})
+    return _executar(request, proc, lambda: proc.retomar(request.user), "Processo retomado.")
+
+
+@login_required
+@permission_required("juridico.change_prazo", raise_exception=True)
+def prazo_acao(request, pk, acao):
+    prazo = get_object_or_404(Prazo, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {"titulo": "Confirmar", "voltar": prazo.get_absolute_url(),
+                                                  "mensagem": f"Confirmar a ação sobre o prazo “{prazo}”?"})
+    try:
+        getattr(prazo, acao)(request.user)
+        messages.success(request, "Prazo atualizado.")
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    return redirect(prazo.processo.get_absolute_url())
+
+
+@login_required
+@permission_required("juridico.view_processo", raise_exception=True)
+def contencioso(request):
+    from django.db.models import Count, Sum
+
+    ativos = Processo.objects.exclude(status="encerrado")
+    por_risco = ativos.values("risco").annotate(n=Count("pk"), perda=Sum("valor_risco"), prov=Sum("provisao"))
+    nome_risco = dict(Processo.RISCOS)
+    riscos = [{"risco": nome_risco[r["risco"]], "n": r["n"], "perda": r["perda"] or 0, "prov": r["prov"] or 0}
+              for r in por_risco]
+    hoje = timezone.localdate()
+    prazos = Prazo.objects.filter(status="pendente", processo__status="andamento").select_related("processo") \
+        .order_by("data_fatal")[:15]
+    return render(request, "juridico/contencioso.html", {
+        "titulo": "Contencioso", "icone": "bank", "total": ativos.count(), "riscos": riscos, "prazos": prazos,
+        "hoje": hoje, "provisao_total": ativos.aggregate(t=Sum("provisao"))["t"] or 0,
+        "natureza": [{"nome": dict(Processo.NATUREZAS)[x["natureza"]], "n": x["n"]}
+                     for x in ativos.values("natureza").annotate(n=Count("pk")).order_by("-n")]})

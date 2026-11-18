@@ -50,6 +50,8 @@ EVENTOS = [
     ("renegociacao_baixa", "Renegociação: baixa do título original"),
     ("pdd_constituicao", "PDD: constituição da provisão"),
     ("pdd_reversao", "PDD: reversão da provisão"),
+    ("contingencia_constituicao", "Contingência judicial: constituição da provisão"),
+    ("contingencia_reversao", "Contingência judicial: reversão da provisão"),
     ("baixa_bem_perda", "Baixa de bem: perda"),
     ("baixa_bem_ganho", "Baixa de bem: ganho"),
 ]

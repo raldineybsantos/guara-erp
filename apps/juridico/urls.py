@@ -19,6 +19,17 @@ urlpatterns = [
     path("medicao/<int:pk>/cancelar/", views.medicao_cancelar, name="medicao_cancelar"),
     path("caucao/<int:pk>/devolver/", views.caucao_devolver, name="caucao_devolver"),
     path("caucao/<int:pk>/executar/", views.caucao_executar, name="caucao_executar"),
+    path("processo/<int:pk>/andamento/", views.processo_andamento, name="processo_andamento"),
+    path("processo/<int:pk>/prazo/", views.processo_prazo, name="processo_prazo"),
+    path("processo/<int:pk>/envolvido/", views.processo_envolvido, name="processo_envolvido"),
+    path("processo/<int:pk>/risco/", views.processo_risco, name="processo_risco"),
+    path("processo/<int:pk>/encerrar-processo/", views.processo_encerrar, name="processo_encerrar"),
+    path("processo/<int:pk>/suspender/", views.processo_suspender, name="processo_suspender"),
+    path("processo/<int:pk>/retomar/", views.processo_retomar, name="processo_retomar"),
+    path("prazo/<int:pk>/cumprir/", views.prazo_acao, {"acao": "cumprir"}, name="prazo_cumprir"),
+    path("prazo/<int:pk>/cancelar/", views.prazo_acao, {"acao": "cancelar"}, name="prazo_cancelar"),
+    path("prazo/<int:pk>/perdido/", views.prazo_acao, {"acao": "marcar_perdido"}, name="prazo_perdido"),
+    path("contencioso/", views.contencioso, name="contencioso"),
     path("paralisacao/<int:pk>/retomar/", views.paralisacao_retomar, name="paralisacao_retomar"),
 ] + crud_urls(telas.ContratoCrud, telas.AditivoCrud, telas.ValorIndiceCrud, telas.MedicaoCrud, telas.CaucaoCrud,
-              telas.ParalisacaoCrud)
+              telas.ParalisacaoCrud, telas.ProcessoCrud, telas.PrazoCrud)
