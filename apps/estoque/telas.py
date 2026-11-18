@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 
 from apps.core.crud import Crud, FormBase
 
-from .models import Armazem, Inventario, ItemInventario, Movimento, Saldo
+from .models import Armazem, Endereco, Inventario, ItemInventario, Lote, Movimento, Saldo, SaldoLote
 
 
 class ArmazemCrud(Crud):
@@ -74,3 +74,44 @@ class InventarioCrud(Crud):
     def after_save(cls, request, obj, created):
         if created:
             obj.carregar_itens()
+
+
+class EnderecoCrud(Crud):
+    model = Endereco
+    fields = ["armazem", "codigo", "descricao", "ativo"]
+    list_display = ("armazem", "codigo", "descricao", "ativo")
+    search_fields = ("codigo", "descricao")
+    filter_fields = ("armazem", "ativo")
+    empresa_campo = "armazem__empresa"
+    icon = "geo-alt"
+    menu = "Estoque"
+    menu_order = 6
+
+
+class LoteCrud(Crud):
+    model = Lote
+    fields = ["produto", "codigo", "fabricacao", "validade", "bloqueado", "motivo_bloqueio", "observacoes"]
+    list_display = ("produto", "codigo", "fabricacao", "validade", "quantidade", "bloqueado")
+    search_fields = ("codigo", "produto__codigo", "produto__descricao")
+    filter_fields = ("bloqueado",)
+    detail_fields = ["produto", "codigo", "fabricacao", "validade", "quantidade", "bloqueado", "motivo_bloqueio",
+                     "observacoes"]
+    related = (("saldos", "Onde está", ["armazem", "endereco", "quantidade"]),)
+    can_create = False     # lotes nascem nas entradas
+    can_delete = False
+    icon = "tags"
+    menu = "Estoque"
+    menu_order = 7
+
+
+class SaldoLoteCrud(Crud):
+    model = SaldoLote
+    empresa_campo = "armazem__empresa"
+    list_display = ("produto", "lote", "armazem", "endereco", "quantidade")
+    search_fields = ("produto__codigo", "produto__descricao", "lote__codigo")
+    filter_fields = ("armazem", "endereco")
+    can_create = can_edit = can_delete = False
+    icon = "grid-3x3-gap"
+    menu = "Estoque"
+    menu_label = "Saldos por lote/endereço"
+    menu_order = 3

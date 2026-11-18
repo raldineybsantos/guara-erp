@@ -5,7 +5,7 @@ from decimal import Decimal
 from django.contrib import messages
 from django.forms import formset_factory
 from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.db.models import Q as models_q, Sum
 from django.db.models.functions import TruncMonth
@@ -14,8 +14,9 @@ from django.utils import timezone
 
 from apps.core.crud import restringir_por_empresa
 
+from . import aging
 from .forms import BaixaForm, CompensacaoForm, RenegociacaoForm, RateioLinhaForm, RecolhimentoForm, RetencaoForm, TransferenciaForm
-from .models import (Compensacao, ContaBancaria, ContaPagar, Renegociacao, ContaReceber, GuiaTributo, Movimentacao, Retencao,
+from .models import (ApuracaoPDD, Compensacao, ContaBancaria, ContaPagar, Renegociacao, ContaReceber, GuiaTributo, Movimentacao, Retencao,
                      definir_rateio, partes_por_centro)
 
 MODELOS = {"pagar": ContaPagar, "receber": ContaReceber}
@@ -393,3 +394,56 @@ def desfazer_renegociacao(request, pk):
     except ValidationError as e:
         messages.error(request, e.messages[0])
     return redirect(reneg.get_absolute_url())
+
+
+# --------------------------------------------------------------------------- aging e PDD
+@login_required
+def aging_view(request):
+    tipo = request.GET.get("tipo") if request.GET.get("tipo") in MODELOS else "receber"
+    modelo = _modelo(tipo)
+    if not request.user.has_perm(f"financeiro.view_{modelo._meta.model_name}"):
+        raise PermissionDenied
+    try:
+        data = datetime.date.fromisoformat(request.GET.get("data", ""))
+    except ValueError:
+        data = timezone.localdate()
+    qs = restringir_por_empresa(modelo.objects.em_aberto(), modelo, request.user)
+    qs = qs.select_related("cliente" if tipo == "receber" else "fornecedor")
+    dados = aging.gerar(qs, data)
+    return render(request, "financeiro/aging.html", {"titulo": "Aging de títulos em aberto", "icone": "hourglass-split",
+                                                     "tipo": tipo, "dados": dados, "data": data})
+
+
+@login_required
+@permission_required("financeiro.add_apuracaopdd", raise_exception=True)
+def apurar_pdd(request):
+    try:
+        data = datetime.date.fromisoformat(request.POST.get("data") or request.GET.get("data", ""))
+    except ValueError:
+        data = timezone.localdate()
+    if request.method == "POST":
+        try:
+            ap = ApuracaoPDD.apurar(data, observacoes=request.POST.get("observacoes", ""))
+            messages.success(request, "Apuração registrada." if ap.ajuste else
+                             "Apuração registrada: a provisão já estava correta, sem lançamento.")
+            return redirect(ap.get_absolute_url())
+        except ValidationError as e:
+            messages.error(request, e.messages[0])
+    return render(request, "financeiro/apurar_pdd.html", {"titulo": "Apurar provisão para devedores duvidosos",
+                                                          "icone": "shield-exclamation",
+                                                          "calc": ApuracaoPDD.calcular(data), "data": data})
+
+
+@login_required
+@permission_required("financeiro.change_apuracaopdd", raise_exception=True)
+def estornar_pdd(request, pk):
+    ap = get_object_or_404(ApuracaoPDD, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {"titulo": "Estornar apuração de PDD", "voltar": ap.get_absolute_url(),
+                                                  "mensagem": f"Estornar a apuração de {ap.data:%d/%m/%Y}?"})
+    try:
+        ap.estornar()
+        messages.success(request, "Apuração estornada.")
+    except ValidationError as e:
+        messages.error(request, e.messages[0])
+    return redirect(ap.get_absolute_url())

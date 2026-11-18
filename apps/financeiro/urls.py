@@ -24,8 +24,12 @@ urlpatterns = [
     path("compensacoes/<int:pk>/estornar/", views.estornar_compensacao, name="compensacao_estornar"),
     path("receber/<int:pk>/renegociar/", views.renegociar, name="renegociar"),
     path("renegociacoes/<int:pk>/desfazer/", views.desfazer_renegociacao, name="renegociacao_desfazer"),
+    path("aging/", views.aging_view, name="aging"),
+    path("pdd/apurar/", views.apurar_pdd, name="pdd_apurar"),
+    path("pdd/<int:pk>/estornar/", views.estornar_pdd, name="pdd_estornar"),
     path("pagar/<int:pk>/cancelar/", views.cancelar, {"tipo": "pagar"}, name="titulo_cancelar_pagar"),
     path("receber/<int:pk>/cancelar/", views.cancelar, {"tipo": "receber"}, name="titulo_cancelar_receber"),
 ] + crud_urls(telas.ContaPagarCrud, telas.ContaReceberCrud, telas.MovimentacaoCrud, telas.ContaBancariaCrud,
               telas.PlanoContaCrud, telas.CentroCustoCrud, telas.RegraRetencaoCrud, telas.GuiaTributoCrud,
-              telas.CompensacaoCrud, telas.RenegociacaoCrud)
+              telas.CompensacaoCrud, telas.RenegociacaoCrud,
+              telas.ApuracaoPDDCrud, telas.FaixaPDDCrud)

@@ -8,7 +8,7 @@ class ProdutoCrud(Crud):
     fields = ["codigo", "descricao", "tipo", "unidade", "ncm", "cest", "codigo_servico", "codigo_tributacao_nacional",
               "codigo_tributacao_municipal", "codigo_nbs", "cfop_padrao", "preco",
               "aliquota_icms", "aliquota_ipi", "aliquota_pis", "aliquota_cofins", "aliquota_iss", "estoque_minimo",
-              "inspecionar_recebimento", "ativo"]
+              "inspecionar_recebimento", "controla_lote", "controla_endereco", "ativo"]
     list_display = ("codigo", "descricao", "tipo", "unidade", "ncm", "preco", "ativo")
     search_fields = ("codigo", "descricao", "ncm")
     filter_fields = ("tipo", "ativo")

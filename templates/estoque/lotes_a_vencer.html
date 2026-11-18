@@ -1,0 +1,16 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<form class="row g-2 mb-3 align-items-end" method="get">
+  <div class="col-auto"><label class="form-label small mb-1">Vencem em até (dias)</label><input type="number" name="dias" value="{{ dias }}" min="0" class="form-control form-control-sm"></div>
+  <div class="col-auto"><button class="btn btn-sm btn-primary">Filtrar</button></div>
+</form>
+<div class="card"><div class="table-responsive"><table class="table table-sm mb-0">
+  <thead class="table-light"><tr><th>Produto</th><th>Lote</th><th>Armazém</th><th>Endereço</th><th class="text-end">Quantidade</th><th>Validade</th><th class="text-end">Dias</th></tr></thead>
+  <tbody>{% for l in linhas %}<tr {% if l.lote.vencido %}class="table-danger"{% elif l.lote.bloqueado %}class="table-warning"{% endif %}>
+    <td>{{ l.produto }}</td><td><a href="{{ l.lote.get_absolute_url }}">{{ l.lote.codigo }}</a>{% if l.lote.bloqueado %} <span class="badge bg-warning text-dark">bloqueado</span>{% endif %}</td>
+    <td>{{ l.armazem.codigo }}</td><td>{{ l.endereco|default:"—" }}</td><td class="text-end">{{ l.quantidade|floatformat:"-4" }}</td>
+    <td>{{ l.lote.validade|date:"d/m/Y" }}</td><td class="text-end">{% if l.lote.vencido %}vencido há {% widthratio l.lote.dias_para_vencer 1 -1 %}{% else %}{{ l.lote.dias_para_vencer }}{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7" class="text-center text-secondary py-3">Nenhum lote vence nesse prazo.</td></tr>{% endfor %}</tbody>
+</table></div>
+<div class="card-footer small text-secondary">Lotes vencidos aparecem em vermelho e não são vendidos nem consumidos; para descartar, transfira-os para um armazém de quarentena.</div></div>
+{% endblock %}

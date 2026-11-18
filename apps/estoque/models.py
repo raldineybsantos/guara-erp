@@ -5,6 +5,7 @@ custo médio ponderado e gravam o movimento com o saldo resultante. Movimentos n
 um erro se corrige com outro movimento.
 """
 
+import datetime
 from decimal import Decimal
 
 from django.conf import settings
@@ -134,6 +135,175 @@ class Movimento(models.Model):
         return (self.quantidade * self.custo_unitario).quantize(Decimal("0.01"))
 
 
+class Endereco(ModeloBase):
+    """Posição física dentro do armazém (rua-prateleira-nível)."""
+
+    armazem = models.ForeignKey(Armazem, verbose_name="armazém", on_delete=models.PROTECT, related_name="enderecos")
+    codigo = models.CharField("código", max_length=30)
+    descricao = models.CharField("descrição", max_length=120, blank=True)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "endereço"
+        verbose_name_plural = "endereços"
+        ordering = ["armazem__codigo", "codigo"]
+        constraints = [models.UniqueConstraint(fields=["armazem", "codigo"], name="endereco_unico_no_armazem")]
+
+    def __str__(self):
+        return f"{self.armazem.codigo}/{self.codigo}"
+
+
+class Lote(ModeloBase):
+    produto = models.ForeignKey("fiscal.Produto", on_delete=models.PROTECT, related_name="lotes")
+    codigo = models.CharField("lote", max_length=40)
+    fabricacao = models.DateField("fabricação", null=True, blank=True)
+    validade = models.DateField(null=True, blank=True)
+    bloqueado = models.BooleanField(default=False, help_text="Lote bloqueado não é consumido nem vendido.")
+    motivo_bloqueio = models.CharField("motivo do bloqueio", max_length=200, blank=True)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "lote"
+        verbose_name_plural = "lotes"
+        ordering = ["validade", "codigo"]
+        constraints = [models.UniqueConstraint(fields=["produto", "codigo"], name="lote_unico_por_produto")]
+
+    def __str__(self):
+        return f"{self.produto.codigo} · lote {self.codigo}"
+
+    @property
+    def vencido(self):
+        return self.validade is not None and self.validade < timezone.localdate()
+
+    @property
+    def dias_para_vencer(self):
+        return None if self.validade is None else (self.validade - timezone.localdate()).days
+
+    @property
+    def quantidade(self):
+        return self.saldos.aggregate(t=models.Sum("quantidade"))["t"] or Decimal("0")
+
+    def clean(self):
+        if self.fabricacao and self.validade and self.validade < self.fabricacao:
+            raise ValidationError({"validade": "A validade não pode ser anterior à fabricação."})
+        if self.bloqueado and not self.motivo_bloqueio:
+            raise ValidationError({"motivo_bloqueio": "Informe o motivo do bloqueio."})
+
+
+class SaldoLote(models.Model):
+    """Parte do saldo de um produto num armazém, por lote e/ou endereço. Para produto rastreado a soma destas
+    linhas é igual ao saldo do armazém."""
+
+    produto = models.ForeignKey("fiscal.Produto", on_delete=models.PROTECT, related_name="saldos_lote")
+    armazem = models.ForeignKey(Armazem, verbose_name="armazém", on_delete=models.PROTECT,
+                                related_name="saldos_lote")
+    lote = models.ForeignKey(Lote, null=True, blank=True, on_delete=models.PROTECT, related_name="saldos")
+    endereco = models.ForeignKey(Endereco, verbose_name="endereço", null=True, blank=True,
+                                 on_delete=models.PROTECT, related_name="saldos")
+    quantidade = models.DecimalField(max_digits=16, decimal_places=4, default=0)
+
+    class Meta:
+        verbose_name = "saldo por lote/endereço"
+        verbose_name_plural = "saldos por lote e endereço"
+        ordering = ["produto__descricao", "lote__validade", "lote__codigo"]
+
+    def __str__(self):
+        return f"{self.produto.codigo} {self.lote.codigo if self.lote else ''} {self.endereco or ''}".strip()
+
+
+class MovimentoLote(models.Model):
+    """De quais lotes/endereços saiu ou entrou cada movimento."""
+
+    movimento = models.ForeignKey(Movimento, on_delete=models.CASCADE, related_name="partes")
+    lote = models.ForeignKey(Lote, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    endereco = models.ForeignKey(Endereco, null=True, blank=True, on_delete=models.PROTECT, related_name="+")
+    quantidade = models.DecimalField(max_digits=16, decimal_places=4)
+
+
+# Origens que podem mexer em lote vencido ou bloqueado (descarte, quarentena, contagem).
+ORIGENS_LIVRES = ("transferencia", "inventario", "ajuste", "qualidade")
+
+
+def _rastreia(produto):
+    return bool(getattr(produto, "controla_lote", False) or getattr(produto, "controla_endereco", False))
+
+
+def _linha(produto, armazem, lote, endereco):
+    """Linha de saldo (travada) para a combinação; cria se não existir (NULL não entra em restrição única)."""
+    qs = SaldoLote.objects.select_for_update(of=("self",)).filter(produto=produto, armazem=armazem, lote=lote, endereco=endereco)
+    linha = qs.first()
+    if linha is None:
+        linha = SaldoLote.objects.create(produto=produto, armazem=armazem, lote=lote, endereco=endereco)
+    return linha
+
+
+def _lote_da_entrada(produto, lote, validade, fabricacao, documento, origem, data):
+    if not produto.controla_lote:
+        return None
+    if isinstance(lote, Lote):
+        if lote.produto_id != produto.pk:
+            raise ValidationError("O lote informado é de outro produto.")
+        return lote
+    codigo = (str(lote).strip() if lote else "") or f"{documento or origem}-{(data or timezone.now()):%Y%m%d}"
+    obj, criado = Lote.objects.get_or_create(produto=produto, codigo=codigo[:40],
+                                             defaults={"validade": validade, "fabricacao": fabricacao})
+    if not criado:
+        if validade and obj.validade and validade != obj.validade:
+            raise ValidationError(f"O lote {obj.codigo} já existe com validade {obj.validade:%d/%m/%Y}.")
+        if validade and not obj.validade:
+            obj.validade = validade
+            obj.save()
+    return obj
+
+
+def _rastrear_entrada(mov, produto, armazem, quantidade, lote, validade, fabricacao, endereco, partes):
+    if partes is None:
+        partes = [(_lote_da_entrada(produto, lote, validade, fabricacao, mov.documento, mov.origem, mov.data),
+                   endereco, quantidade)]
+    for lote_obj, end, q in partes:
+        if end is not None and end.armazem_id != armazem.pk:
+            raise ValidationError(f"O endereço {end} não pertence ao armazém {armazem.codigo}.")
+        linha = _linha(produto, armazem, lote_obj, end)
+        linha.quantidade += q
+        linha.save()
+        MovimentoLote.objects.create(movimento=mov, lote=lote_obj, endereco=end, quantidade=q)
+
+
+def _alocar(produto, armazem, quantidade, lote, endereco, origem):
+    """Escolhe as linhas que atendem a saída: o lote pedido ou, sem pedido, FEFO (vence antes, sai antes)."""
+    livre = origem in ORIGENS_LIVRES
+    qs = SaldoLote.objects.select_for_update(of=("self",)).filter(produto=produto, armazem=armazem, quantidade__gt=0)
+    if lote is not None:
+        if not isinstance(lote, Lote):
+            lote = Lote.objects.filter(produto=produto, codigo=str(lote).strip()).first()
+            if lote is None:
+                raise ValidationError("Lote não encontrado para este produto.")
+        if not livre and lote.bloqueado:
+            raise ValidationError(f"O lote {lote.codigo} está bloqueado: {lote.motivo_bloqueio or 'sem motivo informado'}.")
+        if not livre and lote.vencido:
+            raise ValidationError(f"O lote {lote.codigo} venceu em {lote.validade:%d/%m/%Y}.")
+        qs = qs.filter(lote=lote)
+    elif not livre:
+        qs = qs.filter(models.Q(lote__isnull=True) | models.Q(lote__bloqueado=False)).exclude(
+            lote__validade__lt=timezone.localdate())
+    if endereco is not None:
+        qs = qs.filter(endereco=endereco)
+    qs = qs.order_by(models.F("lote__validade").asc(nulls_last=True), "lote_id", "endereco_id", "id")
+    restante, partes = Decimal(quantidade), []
+    for linha in qs:
+        q = min(linha.quantidade, restante)
+        partes.append((linha, q))
+        restante -= q
+        if restante <= 0:
+            break
+    if restante > 0 and not getattr(settings, "ESTOQUE_PERMITE_NEGATIVO", False):
+        raise ValidationError(
+            f"Saldo utilizável insuficiente de {produto}"
+            + ("" if lote is not None or livre else " (lotes vencidos ou bloqueados não entram)")
+            + f": faltam {fq(restante)}.")
+    return partes
+
+
 # --------------------------------------------------------------------------- serviços
 def _saldo_travado(produto, armazem):
     saldo, _ = Saldo.objects.get_or_create(produto=produto, armazem=armazem)
@@ -161,8 +331,9 @@ def _validar(produto, quantidade):
 
 @transaction.atomic
 def entrada(produto, quantidade, custo_unitario, armazem=None, origem="ajuste", documento="", observacao="",
-            referencia=None, data=None):
-    """Soma ao saldo e recalcula o custo médio ponderado."""
+            referencia=None, data=None, lote=None, validade=None, fabricacao=None, endereco=None, partes=None):
+    """Soma ao saldo e recalcula o custo médio ponderado. Produto com controle de lote/endereço registra de
+    qual lote e endereço (sem lote informado, cria um com o documento e a data)."""
     _validar(produto, quantidade)
     quantidade, custo = Decimal(quantidade), Decimal(custo_unitario or 0)
     armazem = armazem or Armazem.principal()
@@ -174,14 +345,18 @@ def entrada(produto, quantidade, custo_unitario, armazem=None, origem="ajuste", 
         s.custo_medio = ((s.quantidade * s.custo_medio + quantidade * custo) / total).quantize(Q4)
     s.quantidade = total
     s.save()
-    return _registrar("entrada", origem, produto, armazem, quantidade, custo, s, documento, observacao,
-                      referencia, data)
+    mov = _registrar("entrada", origem, produto, armazem, quantidade, custo, s, documento, observacao,
+                     referencia, data)
+    if _rastreia(produto):
+        _rastrear_entrada(mov, produto, armazem, quantidade, lote, validade, fabricacao, endereco, partes)
+    return mov
 
 
 @transaction.atomic
 def saida(produto, quantidade, armazem=None, origem="consumo", documento="", observacao="", referencia=None,
-          data=None):
-    """Baixa pelo custo médio. Não deixa o saldo ficar negativo (ESTOQUE_PERMITE_NEGATIVO=1 libera)."""
+          data=None, lote=None, endereco=None):
+    """Baixa pelo custo médio. Não deixa o saldo ficar negativo (ESTOQUE_PERMITE_NEGATIVO=1 libera).
+    Produto rastreado sai do lote pedido ou, sem pedido, do que vence primeiro (FEFO)."""
     _validar(produto, quantidade)
     quantidade = Decimal(quantidade)
     armazem = armazem or Armazem.principal()
@@ -189,10 +364,16 @@ def saida(produto, quantidade, armazem=None, origem="consumo", documento="", obs
     if s.quantidade < quantidade and not getattr(settings, "ESTOQUE_PERMITE_NEGATIVO", False):
         raise ValidationError(f"Saldo insuficiente de {produto} em {armazem.codigo}: há {fq(s.quantidade)}, "
                               f"pedido {fq(quantidade)}.")
+    partes = _alocar(produto, armazem, quantidade, lote, endereco, origem) if _rastreia(produto) else []
     s.quantidade -= quantidade
     s.save()
-    return _registrar("saida", origem, produto, armazem, quantidade, s.custo_medio, s, documento, observacao,
-                      referencia, data)
+    mov = _registrar("saida", origem, produto, armazem, quantidade, s.custo_medio, s, documento, observacao,
+                     referencia, data)
+    for linha, q in partes:
+        linha.quantidade -= q
+        linha.save()
+        MovimentoLote.objects.create(movimento=mov, lote=linha.lote, endereco=linha.endereco, quantidade=q)
+    return mov
 
 
 @transaction.atomic
@@ -201,27 +382,71 @@ def transferir(produto, quantidade, origem_armazem, destino_armazem, documento="
         raise ValidationError("Origem e destino são o mesmo armazém.")
     mov = saida(produto, quantidade, origem_armazem, "transferencia", documento,
                 observacao or f"Para {destino_armazem.codigo}", referencia)
+    partes = [(p.lote, None, p.quantidade) for p in mov.partes.all()] or None
     entrada(produto, quantidade, mov.custo_unitario, destino_armazem, "transferencia", documento,
-            observacao or f"De {origem_armazem.codigo}", referencia)
+            observacao or f"De {origem_armazem.codigo}", referencia, partes=partes)
     return mov
 
 
 @transaction.atomic
-def ajustar(produto, armazem, nova_quantidade, origem="ajuste", documento="", observacao="", referencia=None):
+def ajustar(produto, armazem, nova_quantidade, origem="ajuste", documento="", observacao="", referencia=None,
+            lote=None, validade=None, endereco=None):
     """Leva o saldo à quantidade informada (inventário). A diferença entra pelo custo médio atual."""
     s = _saldo_travado(produto, armazem)
     dif = Decimal(nova_quantidade) - s.quantidade
     if dif > 0:
-        return entrada(produto, dif, s.custo_medio, armazem, origem, documento, observacao, referencia)
+        return entrada(produto, dif, s.custo_medio, armazem, origem, documento, observacao, referencia,
+                       lote=lote, validade=validade, endereco=endereco)
     if dif < 0:
-        return saida(produto, -dif, armazem, origem, documento, observacao, referencia)
+        return saida(produto, -dif, armazem, origem, documento, observacao, referencia, lote=lote,
+                     endereco=endereco)
     return None
+
+
+@transaction.atomic
+def enderecar(produto, quantidade, armazem, lote, de, para):
+    """Muda quantidade de um endereço para outro (ou de 'sem endereço' para um endereço) dentro do armazém.
+    Não altera o saldo nem o custo: só a localização."""
+    quantidade = Decimal(quantidade)
+    if quantidade <= 0:
+        raise ValidationError("A quantidade deve ser maior que zero.")
+    if de == para:
+        raise ValidationError("Origem e destino são o mesmo endereço.")
+    if para is not None and para.armazem_id != armazem.pk:
+        raise ValidationError(f"O endereço {para} não pertence ao armazém {armazem.codigo}.")
+    if lote is not None and not isinstance(lote, Lote):
+        lote = Lote.objects.filter(produto=produto, codigo=str(lote).strip()).first()
+    origem = SaldoLote.objects.select_for_update(of=("self",)).filter(produto=produto, armazem=armazem, lote=lote,
+                                                          endereco=de).first()
+    if origem is None or origem.quantidade < quantidade:
+        raise ValidationError(f"Não há {fq(quantidade)} de {produto} nesse lote e endereço de origem.")
+    destino = _linha(produto, armazem, lote, para)
+    origem.quantidade -= quantidade
+    destino.quantidade += quantidade
+    origem.save()
+    destino.save()
+    return destino
+
+
+def lotes_a_vencer(dias=30, armazem=None):
+    """Linhas de saldo com lote que vence em até `dias` dias (já vencidos primeiro)."""
+    limite = timezone.localdate() + datetime.timedelta(days=dias)
+    qs = SaldoLote.objects.filter(quantidade__gt=0, lote__validade__lte=limite).select_related(
+        "produto", "lote", "armazem", "endereco")
+    if armazem is not None:
+        qs = qs.filter(armazem=armazem)
+    return qs.order_by("lote__validade", "produto__codigo")
 
 
 def saldo_disponivel(produto, armazem=None):
     qs = Saldo.objects.filter(produto=produto)
     qs = qs.filter(armazem=armazem) if armazem else qs.filter(armazem__tipo="normal")
-    return qs.aggregate(t=models.Sum("quantidade"))["t"] or Decimal(0)
+    total = qs.aggregate(t=models.Sum("quantidade"))["t"] or Decimal(0)
+    if getattr(produto, "controla_lote", False):   # lote vencido ou bloqueado não está disponível
+        ruim = SaldoLote.objects.filter(produto=produto, armazem__in=qs.values("armazem")).filter(
+            models.Q(lote__bloqueado=True) | models.Q(lote__validade__lt=timezone.localdate()))
+        total -= ruim.aggregate(t=models.Sum("quantidade"))["t"] or Decimal(0)
+    return total
 
 
 def custo_medio(produto, armazem=None):

@@ -2,7 +2,7 @@ from apps.core.crud import Crud
 
 from .filtros import ContaPagarFilter, ContaReceberFilter
 from .forms import ContaPagarForm, ContaReceberForm
-from .models import (Compensacao, ItemRenegociacao, Renegociacao, CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
+from .models import (ApuracaoPDD, FaixaPDD, Compensacao, ItemRenegociacao, Renegociacao, CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
                      RegraRetencao)
 
 DETALHE_TITULO = ["descricao", "documento", "parcela", "total_parcelas", "plano_conta", "centro_custo",
@@ -183,3 +183,28 @@ class RenegociacaoCrud(Crud):
     icon = "arrow-repeat"
     menu = "Financeiro"
     menu_order = 8
+
+
+class FaixaPDDCrud(Crud):
+    model = FaixaPDD
+    fields = ["nome", "dias_minimos", "percentual", "ativa"]
+    list_display = ("nome", "dias_minimos", "percentual", "ativa")
+    icon = "percent"
+    menu = "Financeiro"
+    menu_order = 13
+
+
+class ApuracaoPDDCrud(Crud):
+    model = ApuracaoPDD
+    list_display = ("data", "base_vencida", "provisao_necessaria", "provisao_anterior", "ajuste", "status")
+    filter_fields = ("status",)
+    detail_fields = ["data", "base_vencida", "provisao_necessaria", "provisao_anterior", "ajuste", "status",
+                     "observacoes", "criado_por", "criado_em"]
+    actions = (("financeiro:pdd_estornar", "Estornar apuração", "arrow-counterclockwise",
+                "financeiro.change_apuracaopdd"),)
+    can_create = False
+    can_edit = False
+    can_delete = False
+    icon = "shield-exclamation"
+    menu = "Financeiro"
+    menu_order = 9

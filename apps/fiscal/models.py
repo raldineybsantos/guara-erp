@@ -41,6 +41,12 @@ class Produto(ModeloBase):
     inspecionar_recebimento = models.BooleanField(
         "inspecionar no recebimento", default=False,
         help_text="Entradas de compra vão para o armazém de quarentena até a Qualidade aprovar.")
+    controla_lote = models.BooleanField(
+        "controla lote e validade", default=False,
+        help_text="Cada entrada tem lote (e validade); as saídas consomem primeiro o que vence antes (FEFO).")
+    controla_endereco = models.BooleanField(
+        "controla endereço", default=False,
+        help_text="O saldo é guardado por endereço (rua, prateleira, posição) dentro do armazém.")
     ativo = models.BooleanField(default=True)
 
     class Meta:

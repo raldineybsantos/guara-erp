@@ -774,3 +774,116 @@ class ItemRenegociacao(models.Model):
 
     def __str__(self):
         return f"{self.titulo} — {self.saldo}"
+
+
+class FaixaPDD(ModeloBase):
+    """Percentual de provisão por faixa de atraso: vale o da faixa com maior `dias_minimos` que o atraso alcança."""
+
+    nome = models.CharField(max_length=60)
+    dias_minimos = models.PositiveIntegerField("atraso mínimo (dias)", unique=True)
+    percentual = models.DecimalField("% de provisão", max_digits=5, decimal_places=2)
+    ativa = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "faixa de PDD"
+        verbose_name_plural = "faixas de PDD"
+        ordering = ["dias_minimos"]
+
+    def __str__(self):
+        return f"{self.nome} ({self.percentual}%)"
+
+    def clean(self):
+        if self.percentual is not None and not Decimal("0") <= self.percentual <= Decimal("100"):
+            raise ValidationError({"percentual": "O percentual deve estar entre 0 e 100."})
+
+
+class ApuracaoPDD(ModeloBase, PorEmpresaMixin):
+    """Provisão para devedores duvidosos: a cada apuração a provisão necessária (saldo vencido × % da faixa)
+    é comparada com a já constituída, e a diferença vira despesa (constituição) ou reversão."""
+
+    STATUS = [("ativa", "Ativa"), ("estornada", "Estornada")]
+    data = models.DateField(default=timezone.localdate)
+    base_vencida = models.DecimalField("saldo vencido", max_digits=14, decimal_places=2, editable=False)
+    provisao_necessaria = models.DecimalField("provisão necessária", max_digits=14, decimal_places=2, editable=False)
+    provisao_anterior = models.DecimalField("provisão já constituída", max_digits=14, decimal_places=2,
+                                            editable=False)
+    ajuste = models.DecimalField("ajuste (+ constitui, − reverte)", max_digits=14, decimal_places=2,
+                                 editable=False)
+    status = models.CharField(max_length=10, choices=STATUS, default="ativa", editable=False)
+    observacoes = models.TextField("observações", blank=True)
+
+    class Meta:
+        verbose_name = "apuração de PDD"
+        verbose_name_plural = "apurações de PDD"
+        ordering = ["-data", "-pk"]
+
+    def __str__(self):
+        return f"PDD de {self.data:%d/%m/%Y}"
+
+    @staticmethod
+    def _empresa(empresa):
+        if empresa is None:
+            from apps.core.middleware import empresa_atual
+            from apps.core.models import Empresa
+
+            empresa = empresa_atual() or Empresa.padrao()
+        return empresa
+
+    @classmethod
+    def constituida(cls, empresa):
+        return cls.objects.filter(empresa=empresa, status="ativa").aggregate(t=Sum("ajuste"))["t"] or Decimal("0")
+
+    @classmethod
+    def calcular(cls, data=None, empresa=None):
+        """Prévia sem gravar: {faixas: [...], base, necessaria, anterior, ajuste}."""
+        data = data or timezone.localdate()
+        empresa = cls._empresa(empresa)
+        faixas = list(FaixaPDD.objects.filter(ativa=True).order_by("dias_minimos"))
+        linhas = {f.pk: {"faixa": f, "titulos": 0, "saldo": Decimal("0"), "provisao": Decimal("0")} for f in faixas}
+        base = necessaria = Decimal("0")
+        qs = ContaReceber.objects.em_aberto().filter(vencimento__lt=data, empresa=empresa)
+        for t in qs:
+            atraso = (data - t.vencimento).days
+            faixa = next((f for f in reversed(faixas) if atraso >= f.dias_minimos), None)
+            saldo = t.saldo
+            base += saldo
+            if faixa is None:
+                continue
+            prov = (saldo * faixa.percentual / 100).quantize(Decimal("0.01"))
+            l = linhas[faixa.pk]
+            l["titulos"] += 1
+            l["saldo"] += saldo
+            l["provisao"] += prov
+            necessaria += prov
+        anterior = cls.constituida(empresa)
+        return {"faixas": list(linhas.values()), "base": base, "necessaria": necessaria,
+                "anterior": anterior, "ajuste": necessaria - anterior, "data": data, "empresa": empresa}
+
+    @classmethod
+    @transaction.atomic
+    def apurar(cls, data=None, empresa=None, observacoes=""):
+        from apps.contabilidade import servicos
+
+        calc = cls.calcular(data, empresa)
+        empresa, data = calc["empresa"], calc["data"]
+        if cls.objects.filter(empresa=empresa, status="ativa", data__gt=data).exists():
+            raise ValidationError("Já existe apuração posterior a esta data. Estorne-a antes ou use data mais recente.")
+        ap = cls.objects.create(empresa=empresa, data=data, base_vencida=calc["base"],
+                                provisao_necessaria=calc["necessaria"], provisao_anterior=calc["anterior"],
+                                ajuste=calc["ajuste"], observacoes=observacoes)
+        if ap.ajuste:
+            evento = "pdd_constituicao" if ap.ajuste > 0 else "pdd_reversao"
+            servicos.lancar(evento, abs(ap.ajuste), data, f"PDD em {data:%d/%m/%Y}", ap, empresa=empresa)
+        return ap
+
+    @transaction.atomic
+    def estornar(self):
+        from apps.contabilidade import servicos
+
+        if self.status != "ativa":
+            raise ValidationError("Esta apuração já foi estornada.")
+        if ApuracaoPDD.objects.filter(empresa=self.empresa, status="ativa", pk__gt=self.pk).exists():
+            raise ValidationError("Estorne primeiro as apurações mais recentes.")
+        servicos.estornar_de(self, motivo="Apuração de PDD estornada.")
+        self.status = "estornada"
+        self.save()

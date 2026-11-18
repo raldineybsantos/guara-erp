@@ -415,6 +415,28 @@ As entradas acontecem sozinhas no **recebimento de compras** (pelo preço do ped
 saídas acontecem no **faturamento**, no **consumo da produção**, nas **peças de manutenção** e nas
 **entregas de EPI**. O ERP não deixa o saldo ficar negativo.
 
+### 8.1 Lote, validade e endereço
+
+No cadastro do produto (Fiscal → Produtos), marque **controla lote e validade** e/ou **controla endereço**.
+Produtos assim passam a ter o saldo dividido por lote e por endereço; os demais continuam como antes.
+
+- **Entrada:** informe o lote e a validade (no recebimento do pedido de compra, na produção ou na
+  movimentação manual). Sem lote informado, o ERP cria um com o documento e a data. Um lote existente não pode
+  mudar de validade.
+- **Saída:** sem indicar o lote, sai primeiro o que **vence antes** (FEFO); lote sem validade sai por último.
+  **Lote vencido ou bloqueado não é vendido nem consumido** e não conta como saldo disponível; uma saída que só
+  poderia ser atendida por eles é recusada. Transferência, inventário e ajuste podem mexer nesses lotes (para
+  descartar, transfira o vencido para um armazém de quarentena). A transferência preserva os lotes.
+- **Bloqueio:** em *Estoque → Lotes*, marque **bloqueado** e informe o motivo (por exemplo, análise da Qualidade).
+- **Endereços:** cadastre as posições do armazém (*Estoque → Endereços*). Informe o endereço na entrada, ou use
+  *Mudar endereço* para mover o saldo de uma posição para outra (não altera quantidade nem custo).
+- **Consultas:** *Saldos por lote/endereço* mostra onde está cada quantidade; *Lotes a vencer* lista o que vence
+  em até N dias, com os vencidos em vermelho.
+
+Limites: o **inventário** ajusta o total do armazém, sem contar lote por lote (uma sobra vira um lote
+automático "inventário-data" e uma falta sai pelo FEFO); não há coletor de código de barras (ACD) nem
+rastreabilidade de lote nas notas fiscais.
+
 ## 9. Produção e Qualidade
 
 ### 9.1 Estrutura e ordem de produção
@@ -763,6 +785,26 @@ Para cobrar um cliente inadimplente por um acordo, em vez de manter os títulos 
 Contabilmente o título original é baixado contra a receita e as novas parcelas a reconhecem de novo; o efeito
 líquido na receita é só o juros menos o desconto. **Limite:** boletos já registrados em banco ou gateway não
 são cancelados lá — cancele-os no próprio banco.
+
+### 14.10 Aging e provisão para devedores duvidosos (PDD)
+
+**Aging.** *Financeiro → Aging de títulos* mostra, por cliente (ou fornecedor), o saldo em aberto em seis
+faixas: a vencer, 1–30, 31–60, 61–90, 91–180 e mais de 180 dias de atraso, na data escolhida. Título pago
+parcialmente entra só pelo saldo; cancelado, pago e renegociado ficam de fora.
+
+**PDD.** Cada faixa de atraso tem um percentual de provisão (*Financeiro → Faixas de PDD*). O sistema
+traz seis faixas como ponto de partida (1%, 5%, 10%, 30%, 50% e 100%); **o contador deve conferir e ajustar**
+conforme a política da empresa.
+
+1. *Financeiro → Apurar PDD* calcula, na data escolhida, o saldo vencido × percentual da faixa e compara com a
+   provisão já constituída.
+2. **Registrar apuração** lança só a diferença: constituição (despesa 4.9 contra a conta redutora 1.1.4) ou
+   reversão. Se nada mudou, registra a apuração sem lançamento.
+3. Para desfazer, **Estornar apuração** — só da mais recente. Não é possível apurar em data anterior a uma
+   apuração ativa.
+
+Limites: a PDD é apurada sobre contas a receber (não sobre outros créditos), e o ERP não baixa o título como
+perda efetiva nem calcula o efeito fiscal da provisão (dedutibilidade).
 
 ## 15. Contabilidade
 

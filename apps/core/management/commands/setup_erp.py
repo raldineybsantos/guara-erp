@@ -94,7 +94,7 @@ GRUPOS = {
 PLANO_CONTABIL = [
     ("1", "Ativo", "ativo", True), ("1.1", "Ativo circulante", "ativo", True),
     ("1.1.1", "Caixa e bancos", "ativo", False), ("1.1.2", "Clientes", "ativo", False),
-    ("1.1.3", "Estoques", "ativo", False),
+    ("1.1.3", "Estoques", "ativo", False), ("1.1.4", "(-) Provisão para devedores duvidosos", "ativo", False),
     ("1.2", "Ativo não circulante", "ativo", True), ("1.2.1", "Imobilizado", "ativo", False),
     ("1.2.2", "(-) Depreciação acumulada", "ativo", False),
     ("2", "Passivo e patrimônio líquido", "passivo", True), ("2.1", "Passivo circulante", "passivo", True),
@@ -109,7 +109,7 @@ PLANO_CONTABIL = [
     ("4.2", "Despesas operacionais", "despesa", False), ("4.3", "Consumo de materiais", "despesa", False),
     ("4.4", "Ajustes de inventário", "despesa", False), ("4.5", "Despesas financeiras", "despesa", False),
     ("4.6", "Descontos concedidos", "despesa", False), ("4.7", "Outras despesas", "despesa", False),
-    ("4.8", "Depreciação", "despesa", False),
+    ("4.8", "Depreciação", "despesa", False), ("4.9", "Perdas estimadas com créditos (PDD)", "despesa", False),
 ]
 # evento: (debitar, creditar)
 REGRAS_CONTABEIS = {
@@ -125,7 +125,12 @@ REGRAS_CONTABEIS = {
     "baixa_bem_depreciacao": ("1.2.2", "1.2.1"), "baixa_bem_venda": ("1.1.1", "1.2.1"),
     "baixa_bem_perda": ("4.7", "1.2.1"), "baixa_bem_ganho": ("1.2.1", "3.4"),
     "compensacao": ("2.1.1", "1.1.2"), "renegociacao_baixa": ("3.1", "1.1.2"),
+    "pdd_constituicao": ("4.9", "1.1.4"), "pdd_reversao": ("1.1.4", "4.9"),
 }
+
+# Faixas de atraso da PDD: (dias mínimos de atraso, nome, percentual). Ponto de partida: o contador confere.
+FAIXAS_PDD = [(1, "1 a 30 dias", "1"), (31, "31 a 60 dias", "5"), (61, "61 a 90 dias", "10"),
+              (91, "91 a 180 dias", "30"), (181, "181 a 365 dias", "50"), (366, "Mais de 365 dias", "100")]
 
 # Pontos de partida para as retenções na fonte: o contador confere alíquotas, códigos e prazos.
 REGRAS_RETENCAO = [
@@ -221,7 +226,7 @@ class Command(BaseCommand):
                     codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
                     superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())
         for codigo, nome, natureza, sintetica in PLANO_CONTABIL:   # contas criadas depois da primeira instalação
-            if codigo in ("1.2", "1.2.1", "1.2.2", "4.8") and not ContaContabil.objects.filter(codigo=codigo).exists():
+            if codigo in ("1.2", "1.2.1", "1.2.2", "4.8", "1.1.4", "4.9") and not ContaContabil.objects.filter(codigo=codigo).exists():
                 ContaContabil.objects.create(
                     codigo=codigo, nome=nome, natureza=natureza, sintetica=sintetica,
                     superior=ContaContabil.objects.filter(codigo=codigo.rpartition(".")[0]).first())
@@ -230,7 +235,10 @@ class Command(BaseCommand):
             if d and c:
                 RegraContabil.objects.get_or_create(evento=evento, defaults={"conta_debito": d, "conta_credito": c})
 
-        from apps.financeiro.models import RegraRetencao
+        from apps.financeiro.models import FaixaPDD, RegraRetencao
+
+        for dias, nome, pct in FAIXAS_PDD:
+            FaixaPDD.objects.get_or_create(dias_minimos=dias, defaults={"nome": nome, "percentual": pct})
 
         for tributo, nome, aliquota, codigo in REGRAS_RETENCAO:
             RegraRetencao.objects.get_or_create(tributo=tributo, nome=nome, defaults={

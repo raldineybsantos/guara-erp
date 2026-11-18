@@ -376,8 +376,9 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
             self._mudar(novo)
 
     @transaction.atomic
-    def receber(self, quantidades, nota_fiscal=None, data=None, observacoes="", usuario=None):
-        """Registra a entrada física. ``quantidades`` = {item_id: quantidade}. Devolve o recebimento já conferido."""
+    def receber(self, quantidades, nota_fiscal=None, data=None, observacoes="", usuario=None, lotes=None):
+        """Registra a entrada física. ``quantidades`` = {item_id: quantidade}; ``lotes`` = {item_id: (lote,
+        validade)} para produto com controle de lote. Devolve o recebimento já conferido."""
         if self.status not in ("aprovado", "parcial"):
             raise ValidationError("Só pedidos aprovados podem ser recebidos.")
         itens = {i.pk: i for i in self.itens.select_for_update()}
@@ -394,13 +395,13 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
             ir = ItemRecebimento.objects.create(recebimento=rec, item_pedido=item, quantidade=q)
             item.quantidade_recebida += q
             item.save(update_fields=["quantidade_recebida"])
-            self._dar_entrada(rec, item, q, ir)
+            self._dar_entrada(rec, item, q, ir, (lotes or {}).get(str(item.pk)) or (lotes or {}).get(item.pk))
         self.atualizar_status_recebimento()
         rec.conferir()
         return rec
 
 
-    def _dar_entrada(self, rec, item, quantidade, item_recebido=None):
+    def _dar_entrada(self, rec, item, quantidade, item_recebido=None, lote=None):
         """Entrada no estoque pelo preço do pedido; produto com inspeção vai para a quarentena.
         Item sem estoque (serviço ou descrição livre) vai direto para despesa na contabilidade."""
         from apps.estoque import models as est
@@ -414,8 +415,9 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
                    empresa=self.empresa)
             return
         destino = est.Armazem.quarentena(self.empresa) if produto.inspecionar_recebimento else est.Armazem.principal(self.empresa)
+        codigo_lote, validade = lote or (None, None)
         est.entrada(produto, quantidade, item.valor_unitario, destino, "compra", self.numero,
-                    f"Recebimento {rec.pk}", referencia=rec)
+                    f"Recebimento {rec.pk}", referencia=rec, lote=codigo_lote, validade=validade)
         if produto.inspecionar_recebimento:
             from apps.qualidade.models import Inspecao
 

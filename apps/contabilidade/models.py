@@ -48,6 +48,8 @@ EVENTOS = [
     ("baixa_bem_venda", "Baixa de bem: valor recebido na venda"),
     ("compensacao", "Compensação entre contas a pagar e a receber"),
     ("renegociacao_baixa", "Renegociação: baixa do título original"),
+    ("pdd_constituicao", "PDD: constituição da provisão"),
+    ("pdd_reversao", "PDD: reversão da provisão"),
     ("baixa_bem_perda", "Baixa de bem: perda"),
     ("baixa_bem_ganho", "Baixa de bem: ganho"),
 ]

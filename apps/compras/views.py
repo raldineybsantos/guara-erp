@@ -113,9 +113,24 @@ class ReceberForm(BootstrapMixin, forms.Form):
                     label=f"{item} (pedido {fq(item.quantidade)}, saldo {fq(item.saldo)})", min_value=0,
                     max_value=item.saldo, initial=item.saldo, decimal_places=4,
                     widget=forms.NumberInput(attrs={"class": "form-control", "step": "any"}))
+                if item.produto_id and getattr(item.produto, "controla_lote", False):
+                    self.fields[f"lote_{item.pk}"] = forms.CharField(
+                        label=f"Lote de {item.produto.codigo}", required=False, max_length=40,
+                        help_text="Sem informar, o sistema cria um lote com o número do pedido e a data.")
+                    self.fields[f"validade_{item.pk}"] = forms.DateField(
+                        label=f"Validade de {item.produto.codigo}", required=False,
+                        widget=forms.DateInput(attrs={"type": "date"}))
 
     def quantidades(self):
         return {k[5:]: v for k, v in self.cleaned_data.items() if k.startswith("item_") and v}
+
+    def lotes(self):
+        d = self.cleaned_data
+        saida = {}
+        for k, v in d.items():
+            if k.startswith("lote_") and (v or d.get(f"validade_{k[5:]}")):
+                saida[k[5:]] = (v or None, d.get(f"validade_{k[5:]}"))
+        return saida
 
 
 @login_required
@@ -131,7 +146,8 @@ def receber_pedido(request, pk):
     if request.method == "POST" and form.is_valid():
         d = form.cleaned_data
         try:
-            rec = p.receber(form.quantidades(), d["nota_fiscal"], d["data"], d["observacoes"], request.user)
+            rec = p.receber(form.quantidades(), d["nota_fiscal"], d["data"], d["observacoes"], request.user,
+                            form.lotes())
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))
         else:

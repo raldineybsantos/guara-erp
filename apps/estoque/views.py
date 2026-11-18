@@ -8,7 +8,7 @@ from apps.core.crud import BootstrapMixin, restringir_por_empresa
 from apps.fiscal.models import Produto
 
 from . import models as est
-from .models import Armazem, Inventario
+from .models import Armazem, Endereco, Inventario
 
 
 class MovimentarForm(BootstrapMixin, forms.Form):
@@ -23,6 +23,11 @@ class MovimentarForm(BootstrapMixin, forms.Form):
     custo_unitario = forms.DecimalField(label="custo unitário (só entrada)", required=False, min_value=0,
                                         decimal_places=4)
     documento = forms.CharField(required=False, max_length=60)
+    lote = forms.CharField(required=False, max_length=40,
+                           help_text="Produto com controle de lote: entrada cria/usa o lote; saída sem lote usa o que vence primeiro.")
+    validade = forms.DateField(required=False, widget=forms.DateInput(attrs={"type": "date"}),
+                               help_text="Só na entrada de lote novo.")
+    endereco = forms.ModelChoiceField(label="endereço", required=False, queryset=Endereco.objects.filter(ativo=True))
     motivo = forms.CharField(max_length=200)
 
     def __init__(self, *args, user=None, **kwargs):
@@ -50,9 +55,11 @@ def movimentar(request):
             if d["operacao"] == "entrada":
                 custo = d["custo_unitario"] if d["custo_unitario"] is not None else est.custo_medio(d["produto"],
                                                                                                    d["armazem"])
-                est.entrada(d["produto"], d["quantidade"], custo, d["armazem"], "ajuste", d["documento"], d["motivo"])
+                est.entrada(d["produto"], d["quantidade"], custo, d["armazem"], "ajuste", d["documento"], d["motivo"],
+                           lote=d["lote"] or None, validade=d["validade"], endereco=d["endereco"])
             elif d["operacao"] == "saida":
-                est.saida(d["produto"], d["quantidade"], d["armazem"], "consumo", d["documento"], d["motivo"])
+                est.saida(d["produto"], d["quantidade"], d["armazem"], "consumo", d["documento"], d["motivo"],
+                         lote=d["lote"] or None, endereco=d["endereco"])
             else:
                 est.transferir(d["produto"], d["quantidade"], d["armazem"], d["destino"], d["documento"], d["motivo"])
         except ValidationError as e:
@@ -106,3 +113,43 @@ def reposicao(request):
         return redirect(sc.get_absolute_url())
     return render(request, "estoque/reposicao.html", {"titulo": "Reposição de estoque", "icone": "bell",
                                                       "abaixo": abaixo})
+
+
+class EnderecarForm(BootstrapMixin, forms.Form):
+    produto = forms.ModelChoiceField(queryset=Produto.objects.filter(tipo="produto", ativo=True))
+    armazem = forms.ModelChoiceField(label="armazém", queryset=Armazem.objects.filter(ativo=True))
+    lote = forms.CharField(required=False, max_length=40)
+    de = forms.ModelChoiceField(label="endereço de origem", required=False, queryset=Endereco.objects.all(),
+                                help_text="Vazio = saldo ainda sem endereço.")
+    para = forms.ModelChoiceField(label="endereço de destino", required=False, queryset=Endereco.objects.filter(ativo=True),
+                                  help_text="Vazio = tirar do endereço.")
+    quantidade = forms.DecimalField(min_value=0, decimal_places=4)
+
+
+@login_required
+@permission_required("estoque.add_movimento", raise_exception=True)
+def enderecar(request):
+    form = EnderecarForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            est.enderecar(d["produto"], d["quantidade"], d["armazem"], d["lote"] or None, d["de"], d["para"])
+        except ValidationError as e:
+            form.add_error(None, e)
+        else:
+            messages.success(request, "Endereço atualizado.")
+            return redirect("estoque:saldolote_list")
+    return render(request, "form_simples.html", {"form": form, "titulo": "Mudar endereço de estoque",
+                                                 "icone": "geo-alt"})
+
+
+@login_required
+@permission_required("estoque.view_saldolote", raise_exception=True)
+def lotes_a_vencer(request):
+    try:
+        dias = max(0, min(int(request.GET.get("dias", 30)), 3650))
+    except ValueError:
+        dias = 30
+    qs = restringir_por_empresa(est.lotes_a_vencer(dias), est.SaldoLote, request.user, "armazem__empresa")
+    return render(request, "estoque/lotes_a_vencer.html", {
+        "titulo": "Lotes a vencer", "icone": "calendar-x", "linhas": qs, "dias": dias})

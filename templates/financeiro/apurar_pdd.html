@@ -1,0 +1,23 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<form class="row g-2 mb-3 align-items-end" method="get">
+  <div class="col-auto"><label class="form-label small mb-1">Apurar em</label><input type="date" name="data" value="{{ data|date:'Y-m-d' }}" class="form-control form-control-sm"></div>
+  <div class="col-auto"><button class="btn btn-sm btn-outline-primary">Recalcular prévia</button></div>
+</form>
+<div class="card mb-3"><div class="table-responsive"><table class="table table-sm mb-0">
+  <thead class="table-light"><tr><th>Faixa de atraso</th><th class="text-end">%</th><th class="text-end">Títulos</th><th class="text-end">Saldo vencido</th><th class="text-end">Provisão</th></tr></thead>
+  <tbody>{% for l in calc.faixas %}<tr><td>{{ l.faixa.nome }}</td><td class="text-end">{{ l.faixa.percentual }}%</td><td class="text-end">{{ l.titulos }}</td>
+    <td class="text-end">{{ l.saldo|moeda }}</td><td class="text-end">{{ l.provisao|moeda }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-center text-secondary py-3">Cadastre as faixas em Financeiro → Faixas de PDD.</td></tr>{% endfor %}</tbody>
+  <tfoot class="table-light">
+    <tr><th colspan="3">Total vencido / provisão necessária</th><th class="text-end">{{ calc.base|moeda }}</th><th class="text-end">{{ calc.necessaria|moeda }}</th></tr>
+    <tr><td colspan="4">Provisão já constituída</td><td class="text-end">{{ calc.anterior|moeda }}</td></tr>
+    <tr><th colspan="4">Ajuste a lançar ({% if calc.ajuste >= 0 %}constituição{% else %}reversão{% endif %})</th><th class="text-end">{{ calc.ajuste|moeda }}</th></tr>
+  </tfoot></table></div></div>
+<form method="post" style="max-width:700px">{% csrf_token %}
+  <input type="hidden" name="data" value="{{ data|date:'Y-m-d' }}">
+  <div class="mb-3"><label class="form-label small">Observações</label><textarea name="observacoes" class="form-control form-control-sm" rows="2"></textarea></div>
+  <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Registrar apuração</button>
+  <a href="{% url 'financeiro:apuracaopdd_list' %}" class="btn btn-outline-secondary">Apurações anteriores</a>
+</form>
+{% endblock %}
