@@ -3,6 +3,7 @@ from django import forms
 from apps.core.crud import Crud, FormBase
 
 from .desempenho import AcaoDesenvolvimento, Avaliacao, CicloAvaliacao, Competencia, ItemModelo, ModeloAvaliacao
+from .recrutamento import Candidato, Candidatura, Entrevista, Vaga
 from .treinamentos import Curso, Participacao, Turma
 from .models import (AbonoPonto, AjusteBancoHoras, Beneficio, BeneficioColaborador, DadosTrabalhistas, Dependente,
                      ConfiguracaoESocial, EventoESocial, FaixaINSS, FaixaIRRF, Feriado, Folha, Jornada, LancamentoFolha, Marcacao,
@@ -458,3 +459,83 @@ class AcaoDesenvolvimentoCrud(Crud):
     menu = "RH"
     menu_label = "PDI"
     menu_order = 85
+
+
+# ------------------------------------------------------------------ recrutamento e seleção
+class VagaCrud(Crud):
+    model = Vaga
+    fields = ["empresa", "titulo", "cargo", "departamento", "gestor", "tipo_contrato", "quantidade", "faixa_min",
+              "faixa_max", "descricao"]
+    list_display = ("numero", "titulo", "cargo", "quantidade", "status")
+    search_fields = ("numero", "titulo", "cargo__nome")
+    filter_fields = ("status", "cargo")
+    detail_fields = ["numero", "titulo", "cargo", "departamento", "gestor", "tipo_contrato", "quantidade", "faixa_min",
+                     "faixa_max", "status", "aberta_em", "fechada_em", "descricao"]
+    related = (("candidaturas", "Candidaturas", ["candidato", "etapa", "proposta_status"]),)
+    actions = (
+        ("rh:vaga_abrir", "Abrir / reabrir vaga", "megaphone", "rh.gerir_recrutamento"),
+        ("rh:vaga_pausar", "Pausar vaga", "pause-circle", "rh.gerir_recrutamento"),
+        ("rh:vaga_cancelar", "Cancelar vaga", "x-circle", "rh.gerir_recrutamento"),
+        ("rh:vaga_funil", "Ver funil", "funnel", "rh.view_vaga"),
+    )
+    can_delete = False
+    icon = "person-plus"
+    menu = "RH"
+    menu_label = "Vagas"
+    menu_order = 90
+
+
+class CandidatoCrud(Crud):
+    model = Candidato
+    fields = ["nome", "cpf", "email", "telefone", "origem", "pretensao", "curriculo", "consentimento_lgpd",
+              "banco_talentos"]
+    list_display = ("nome", "email", "telefone", "origem", "banco_talentos")
+    search_fields = ("nome", "email", "telefone")
+    filter_fields = ("origem", "banco_talentos")
+    related = (("candidaturas", "Candidaturas", ["vaga", "etapa"]),)
+    icon = "person-vcard"
+    menu = "RH"
+    menu_label = "Candidatos"
+    menu_order = 91
+
+
+class CandidaturaCrud(Crud):
+    model = Candidatura
+    empresa_campo = "vaga__empresa"
+    fields = ["vaga", "candidato"]
+    list_display = ("candidato", "vaga", "etapa", "proposta_status")
+    search_fields = ("candidato__nome", "vaga__titulo", "vaga__numero")
+    filter_fields = ("etapa", "vaga")
+    detail_fields = ["vaga", "candidato", "etapa", "motivo", "proposta_salario", "proposta_inicio", "proposta_status",
+                     "colaborador"]
+    related = (("historico", "Histórico do funil", ["em", "de", "para", "observacao", "usuario"]),
+               ("entrevistas", "Entrevistas", ["tipo", "data_hora", "entrevistador", "nota", "parecer"]))
+    actions = (
+        ("rh:candidatura_mover", "Mover de etapa", "arrow-right-circle", "rh.gerir_recrutamento"),
+        ("rh:candidatura_proposta", "Enviar proposta", "envelope-paper", "rh.gerir_recrutamento"),
+        ("rh:candidatura_aceite", "Registrar aceite", "hand-thumbs-up", "rh.gerir_recrutamento"),
+        ("rh:candidatura_recusa", "Registrar recusa", "hand-thumbs-down", "rh.gerir_recrutamento"),
+        ("rh:candidatura_contratar", "Contratar", "person-check", "rh.gerir_recrutamento"),
+        ("rh:candidatura_reprovar", "Reprovar", "x-octagon", "rh.gerir_recrutamento"),
+        ("rh:candidatura_desistir", "Registrar desistência", "box-arrow-left", "rh.gerir_recrutamento"),
+    )
+    can_edit = False
+    can_delete = False
+    icon = "diagram-3"
+    menu = "RH"
+    menu_label = "Candidaturas"
+    menu_order = 92
+
+
+class EntrevistaCrud(Crud):
+    model = Entrevista
+    empresa_campo = "candidatura__vaga__empresa"
+    fields = ["candidatura", "tipo", "data_hora", "entrevistador", "nota", "parecer"]
+    list_display = ("candidatura", "tipo", "data_hora", "nota")
+    search_fields = ("candidatura__candidato__nome",)
+    filter_fields = ("tipo",)
+    can_delete = False
+    icon = "chat-square-text"
+    menu = "RH"
+    menu_label = "Entrevistas"
+    menu_order = 93

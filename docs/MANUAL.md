@@ -1659,6 +1659,23 @@ Menu **RH**: *Competências*, *Modelos de avaliação*, *Ciclos de avaliação*,
    conceito e o PDI em *Minhas avaliações*.
 7. **PDI:** em cada avaliação o RH adiciona ações de desenvolvimento (competência, curso sugerido, prazo) e as conclui ou cancela.
 
+### 26.9 Recrutamento e seleção
+Menu **RH**: *Vagas*, *Candidatos*, *Candidaturas* e *Entrevistas*. Permissão `rh.gerir_recrutamento` para conduzir o processo.
+
+1. **Vaga** (numerada `VAG-AAAA-NNNN`): cargo, departamento, gestor, tipo de contrato, número de posições e **faixa salarial**.
+   Ciclo: *Rascunho → Aberta* (pode *Pausar* e reabrir) → *Preenchida* ou *Cancelada*. Cancelar reprova os candidatos em andamento.
+2. **Candidato:** contato (e-mail ou telefone), origem, pretensão e o **consentimento LGPD**, sem o qual ele não entra no processo.
+   Marque *banco de talentos* para reaproveitá-lo em outras vagas.
+3. **Candidatura** liga o candidato à vaga. O funil é *Triagem → Entrevista com RH → Entrevista com gestor → Teste → Proposta*;
+   *Mover de etapa* registra quem moveu e quando (histórico do funil). **Ver funil** na vaga mostra o quadro por etapa.
+4. **Reprovar** e **Registrar desistência** exigem o motivo e encerram a candidatura.
+5. **Enviar proposta:** salário (dentro da faixa da vaga) e data de início. Depois, **Registrar aceite** ou **recusa** (a recusa encerra
+   como desistência). Com a proposta enviada só se pode aceitar, recusar, reprovar ou contratar.
+6. **Contratar** (só com proposta aceita): cria o **colaborador** com cargo, departamento, gestor e contrato da vaga, o salário e
+   o início da proposta. O CPF é pedido se o candidato não o informou. Quando as posições se esgotam, a vaga fica *Preenchida* e os demais
+   candidatos em andamento são reprovados com o motivo “Vaga preenchida”.
+7. **Entrevistas** guardam tipo, data, entrevistador, nota de 1 a 5 e parecer de cada conversa.
+
 ---
 
 ## 27. Segurança da conta e backups

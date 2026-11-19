@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<p class="text-secondary">Posições: {{ vaga.quantidade }} · contratadas: {{ vaga.contratados }} · livres: {{ vaga.posicoes_livres }} · status: {{ vaga.get_status_display }}</p>
+<div class="row g-2 flex-nowrap overflow-auto">
+{% for col in colunas %}
+  <div class="col" style="min-width:190px"><div class="card h-100">
+    <div class="card-header py-1 small fw-semibold">{{ col.nome }} <span class="badge bg-secondary">{{ col.itens|length }}</span></div>
+    <div class="card-body p-2">{% for c in col.itens %}
+      <a class="d-block border rounded p-2 mb-2 small text-decoration-none" href="{{ c.get_absolute_url }}">{{ c.candidato.nome }}{% if c.proposta_status %}<div class="text-secondary">proposta {{ c.get_proposta_status_display|lower }}</div>{% endif %}</a>
+    {% empty %}<span class="text-secondary small">—</span>{% endfor %}</div></div></div>
+{% endfor %}
+</div>
+<a class="btn btn-outline-secondary mt-3" href="{{ vaga.get_absolute_url }}">Voltar à vaga</a>
+{% endblock %}

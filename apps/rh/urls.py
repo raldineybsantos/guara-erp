@@ -2,7 +2,7 @@ from django.urls import path
 
 from apps.core.crud import crud_urls
 
-from . import telas, views, views_desempenho, views_treinamento
+from . import telas, views, views_desempenho, views_recrutamento, views_treinamento
 
 app_name = "rh"
 
@@ -47,6 +47,17 @@ urlpatterns = [
     path("desempenho/pdi/<int:pk>/concluir/", views_desempenho.pdi_concluir, name="pdi_concluir"),
     path("desempenho/pdi/<int:pk>/cancelar/", views_desempenho.pdi_cancelar, name="pdi_cancelar"),
     path("desempenho/minhas/", views_desempenho.minhas_avaliacoes, name="minhas_avaliacoes"),
+    path("recrutamento/vaga/<int:pk>/abrir/", views_recrutamento.vaga_abrir, name="vaga_abrir"),
+    path("recrutamento/vaga/<int:pk>/pausar/", views_recrutamento.vaga_pausar, name="vaga_pausar"),
+    path("recrutamento/vaga/<int:pk>/cancelar/", views_recrutamento.vaga_cancelar, name="vaga_cancelar"),
+    path("recrutamento/vaga/<int:pk>/funil/", views_recrutamento.vaga_funil, name="vaga_funil"),
+    path("recrutamento/candidatura/<int:pk>/mover/", views_recrutamento.candidatura_mover, name="candidatura_mover"),
+    path("recrutamento/candidatura/<int:pk>/proposta/", views_recrutamento.candidatura_proposta, name="candidatura_proposta"),
+    path("recrutamento/candidatura/<int:pk>/aceite/", views_recrutamento.candidatura_aceite, name="candidatura_aceite"),
+    path("recrutamento/candidatura/<int:pk>/recusa/", views_recrutamento.candidatura_recusa, name="candidatura_recusa"),
+    path("recrutamento/candidatura/<int:pk>/contratar/", views_recrutamento.candidatura_contratar, name="candidatura_contratar"),
+    path("recrutamento/candidatura/<int:pk>/reprovar/", views_recrutamento.candidatura_reprovar, name="candidatura_reprovar"),
+    path("recrutamento/candidatura/<int:pk>/desistir/", views_recrutamento.candidatura_desistir, name="candidatura_desistir"),
     path("rescisao/<int:pk>/calcular/", views.rescisao_calcular, name="rescisao_calcular"),
     path("rescisao/<int:pk>/efetivar/", views.rescisao_efetivar, name="rescisao_efetivar"),
 ]
@@ -57,4 +68,4 @@ urlpatterns += crud_urls(
     telas.ConfiguracaoESocialCrud, telas.LancamentoFolhaCrud, telas.FolhaCrud, telas.RescisaoCrud, telas.EventoESocialCrud,
     telas.CursoCrud, telas.TurmaCrud, telas.ParticipacaoCrud,
     telas.CompetenciaCrud, telas.ModeloAvaliacaoCrud, telas.ItemModeloCrud, telas.CicloAvaliacaoCrud, telas.AvaliacaoCrud,
-    telas.AcaoDesenvolvimentoCrud)
+    telas.AcaoDesenvolvimentoCrud, telas.VagaCrud, telas.CandidatoCrud, telas.CandidaturaCrud, telas.EntrevistaCrud)
