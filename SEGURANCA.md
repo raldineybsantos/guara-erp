@@ -117,8 +117,7 @@ Os instaladores ajudam nisso:
 - **Administrador inicial:** numa instalação nova o ERP cria `GuaraSuperAdmin` com senha provisória conhecida
   (publicada na documentação). Ela é só para o primeiro acesso: o sistema bloqueia tudo até a senha ser trocada.
   Entre e troque **antes** de expor o servidor à rede; o usuário não é criado se já existir um administrador.
-- **Após a instalação:** troque a senha do administrador pela tela, apague `DJANGO_SUPERUSER_PASSWORD`
-  do `.env` e **nunca** use `CARREGAR_DEMO=1` em produção (ele cria usuários com senha conhecida).
+- **Após a instalação:** **nunca** use `CARREGAR_DEMO=1` em produção (ele cria usuários com senha conhecida).
 
 ## Auditoria e logs de erro
 

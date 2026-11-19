@@ -121,7 +121,6 @@ Edite o `.env` e troque **obrigatoriamente**:
 | `POSTGRES_PASSWORD` | Senha do usuário `erp` do banco (o ERP usa este usuário) |
 | `POSTGRES_ADMIN_PASSWORD` | Senha do superusuário `postgres` (só pgAdmin e manutenção) |
 | `PGADMIN_PASSWORD` | Senha de entrada no pgAdmin |
-| `DJANGO_SUPERUSER_USERNAME` / `_PASSWORD` | Primeiro administrador do ERP |
 | `DJANGO_ALLOWED_HOSTS` | Endereços usados no navegador, ex.: `localhost,192.168.0.10,erp.empresa.local` |
 | `DJANGO_CSRF_TRUSTED_ORIGINS` | Os mesmos endereços com protocolo e porta, ex.: `http://192.168.0.10:8000` |
 
@@ -162,7 +161,7 @@ Na primeira subida, o sistema faz sozinho:
 1. Cria o banco `erp` e o usuário `erp` **sem privilégios de superusuário**.
 2. Aplica a estrutura das tabelas (migrações).
 3. Cria os grupos de acesso, o plano de contas, a régua de cobrança, os processos e as pastas padrão.
-4. Cria o administrador definido no `.env` (se você não definiu nenhum, cria o **administrador inicial**, abaixo).
+4. Cria o **administrador inicial** (abaixo).
 
 Acesse **http://IP-DO-SERVIDOR:8000** e entre com o administrador.
 
@@ -170,15 +169,13 @@ Acesse **http://IP-DO-SERVIDOR:8000** e entre com o administrador.
 `GuaraSuperAdmin` com a senha provisória `Admin$Guara`. No **primeiro login** o sistema só deixa abrir a tela
 *Defina uma nova senha*: nada mais funciona até a senha ser trocada (a nova não pode repetir a provisória e
 precisa passar nas regras de senha). Como essa senha provisória é pública, **faça o primeiro login logo após
-instalar** e não deixe o servidor exposto à internet antes disso. Se já existir algum administrador (por exemplo,
-o do `.env`), o usuário inicial não é criado.
+instalar** e não deixe o servidor exposto à internet antes disso. Se já existir algum administrador, o usuário inicial não é criado.
 
 ### 2.5 Pós-instalação (obrigatório)
 
-1. Entre como `GuaraSuperAdmin` e defina a senha nova (o sistema exige no primeiro login). Se usou o administrador do `.env`, troque a senha dele pela tela (menu do usuário → **Alterar senha**).
-2. Apague a linha `DJANGO_SUPERUSER_PASSWORD` do `.env`.
-3. Restrinja o arquivo: `chmod 600 .env` (Linux).
-4. Siga os [Primeiros passos do manual](MANUAL.md#2-primeiros-passos-administrador).
+1. Entre como `GuaraSuperAdmin` e defina a senha nova (o sistema exige no primeiro login).
+2. Restrinja o arquivo: `chmod 600 .env` (Linux).
+3. Siga os [Primeiros passos do manual](MANUAL.md#2-primeiros-passos-administrador).
 
 ### 2.6 HTTPS (recomendado)
 

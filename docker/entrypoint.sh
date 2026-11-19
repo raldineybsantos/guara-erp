@@ -14,10 +14,6 @@ fi
 python manage.py migrate --noinput
 python manage.py setup_erp
 
-if [ -n "$DJANGO_SUPERUSER_USERNAME" ] && [ -n "$DJANGO_SUPERUSER_PASSWORD" ]; then
-  python manage.py createsuperuser --noinput 2>/dev/null || true
-fi
-
 # Instalação nova sem administrador: cria GuaraSuperAdmin (senha provisória, troca obrigatória no 1º login)
 python manage.py criar_admin_inicial
 
