@@ -11,7 +11,7 @@ from apps.core.crud import BootstrapMixin
 from apps.financeiro.models import ContaBancaria, ContaPagar, ContaReceber, PlanoConta
 
 from . import ofx
-from .models import Bordero, Extrato, LinhaExtrato, processar_retorno
+from .models import Bordero, Extrato, LinhaExtrato, RemessaCobranca, processar_retorno, processar_retorno_cobranca
 
 
 # --------------------------------------------------------------------------- conciliação
@@ -139,4 +139,73 @@ def importar_retorno(request):
                 messages.warning(request, d)
             return redirect("bancario:bordero_list")
     return render(request, "form_simples.html", {"form": form, "titulo": "Importar retorno do banco (CNAB 240)",
+                                                 "icone": "upload", "multipart": True})
+
+
+# --------------------------------------------------------------------------- cobrança CNAB
+@login_required
+@permission_required("bancario.change_remessacobranca", raise_exception=True)
+def remessa_titulos(request, pk):
+    r = get_object_or_404(RemessaCobranca, pk=pk)
+    if request.method == "POST":
+        try:
+            r.adicionar(list(ContaReceber.objects.filter(pk__in=request.POST.getlist("contas"))))
+            messages.success(request, "Títulos adicionados.")
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+        return redirect(r.get_absolute_url())
+    return render(request, "bancario/remessa_titulos.html", {
+        "titulo": f"Adicionar títulos à {r}", "icone": "plus-circle", "remessa": r,
+        "contas": RemessaCobranca.elegiveis()[:300]})
+
+
+@login_required
+@permission_required("bancario.gerar_remessa_cobranca", raise_exception=True)
+def remessa_arquivo(request, pk):
+    r = get_object_or_404(RemessaCobranca, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {
+            "titulo": f"Gerar remessa de cobrança {r}", "voltar": r.get_absolute_url(),
+            "mensagem": f"Gerar o arquivo CNAB 240 de cobrança com {r.itens.count()} título(s), total de R$ {r.total}? "
+                        "Envie o arquivo pelo internet banking. Os títulos só são baixados quando o retorno do banco "
+                        "confirmar o pagamento."})
+    try:
+        texto = r.gerar_arquivo(request.user)
+    except ValidationError as e:
+        for m in e.messages:
+            messages.error(request, m)
+        return redirect(r.get_absolute_url())
+    resp = HttpResponse(texto.encode("ascii"), content_type="text/plain; charset=ascii")
+    resp["Content-Disposition"] = f'attachment; filename="{r.numero}.rem"'
+    return resp
+
+
+@login_required
+@permission_required("bancario.change_remessacobranca", raise_exception=True)
+def remessa_cancelar(request, pk):
+    r = get_object_or_404(RemessaCobranca, pk=pk)
+    return acoes.confirmar(request, r, f"Cancelar {r}", "Cancelar a remessa e liberar os títulos? Se o arquivo já foi "
+                           "enviado ao banco, cancele a cobrança lá também.", r.cancelar, "Remessa cancelada.")
+
+
+@login_required
+@permission_required("bancario.change_remessacobranca", raise_exception=True)
+def importar_retorno_cobranca(request):
+    form = RetornoForm(request.POST or None, request.FILES or None)
+    if request.method == "POST" and form.is_valid():
+        arq = form.cleaned_data["arquivo"]
+        try:
+            if arq.size > 5 * 1024 * 1024:
+                raise ValidationError("Arquivo maior que 5 MB.")
+            r = processar_retorno_cobranca(arq.read().decode("latin-1"))
+        except ValidationError as e:
+            form.add_error("arquivo", e)
+        else:
+            messages.success(request, f"Retorno processado: {r['liquidados']} liquidado(s), {r['registrados']} "
+                                      f"registrado(s), {r['rejeitados']} rejeitado(s), {r['baixados']} baixado(s), "
+                                      f"{r['ignorados']} ignorado(s).")
+            for d in r["detalhes"]:
+                messages.warning(request, d)
+            return redirect("bancario:remessacobranca_list")
+    return render(request, "form_simples.html", {"form": form, "titulo": "Importar retorno de cobrança (CNAB 240)",
                                                  "icone": "upload", "multipart": True})

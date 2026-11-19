@@ -252,3 +252,6 @@ def processar_retorno(texto):
         item.save(update_fields=["status", "ocorrencia"])
         item.bordero.atualizar_status()
     return resumo
+
+
+from .cobranca import ItemCobranca, RemessaCobranca, processar_retorno_cobranca  # noqa: E402,F401

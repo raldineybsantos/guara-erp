@@ -15,7 +15,7 @@ DETALHE_TITULO = ["descricao", "documento", "parcela", "total_parcelas", "plano_
 class ContaBancariaCrud(Crud):
     model = ContaBancaria
     fields = ["empresa", "nome", "tipo", "banco", "codigo_banco", "agencia", "conta", "convenio",
-              "saldo_inicial", "data_saldo_inicial", "ativa"]
+              "convenio_cobranca", "carteira", "saldo_inicial", "data_saldo_inicial", "ativa"]
     list_display = ("nome", "tipo", "banco", "agencia", "conta", "saldo_atual", "ativa")
     search_fields = ("nome", "banco")
     filter_fields = ("tipo", "ativa")

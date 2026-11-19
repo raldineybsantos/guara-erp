@@ -26,6 +26,11 @@ class ContaBancaria(ModeloBase, PorEmpresaMixin):
     conta = models.CharField(max_length=20, blank=True)
     convenio = models.CharField("convênio de pagamentos", max_length=20, blank=True,
                                 help_text="Código do convênio informado pelo banco para a remessa CNAB.")
+    convenio_cobranca = models.CharField("convênio de cobrança", max_length=20, blank=True,
+                                         help_text="Código do cedente/convênio de cobrança informado pelo banco.")
+    carteira = models.CharField("carteira de cobrança", max_length=2, blank=True, default="1",
+                                help_text="Carteira registrada (1 = cobrança simples, na maioria dos bancos).")
+    nosso_numero_seq = models.PositiveBigIntegerField("último nosso número", default=0, editable=False)
     saldo_inicial = models.DecimalField("saldo inicial", max_digits=14, decimal_places=2, default=0)
     data_saldo_inicial = models.DateField("data do saldo inicial", default=timezone.localdate)
     ativa = models.BooleanField(default=True)

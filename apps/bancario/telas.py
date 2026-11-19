@@ -2,7 +2,7 @@ from django.core.exceptions import ValidationError
 
 from apps.core.crud import Crud, FormBase
 
-from .models import Bordero, Extrato
+from .models import Bordero, Extrato, RemessaCobranca
 
 
 class ExtratoCrud(Crud):
@@ -55,3 +55,34 @@ class BorderoCrud(Crud):
     icon = "bank"
     menu = "Financeiro"
     menu_order = 8
+
+
+class RemessaCobrancaForm(FormBase):
+    class Meta:
+        model = RemessaCobranca
+        fields = ["conta_bancaria"]
+
+    def clean(self):
+        d = super().clean()
+        if self.instance.pk and self.instance.status != "aberta":
+            raise ValidationError("Só remessas abertas podem ser alteradas.")
+        return d
+
+
+class RemessaCobrancaCrud(Crud):
+    model = RemessaCobranca
+    form_class = RemessaCobrancaForm
+    list_display = ("numero", "conta_bancaria", "total", "status", "gerada_em")
+    filter_fields = ("status", "conta_bancaria")
+    detail_fields = ["numero", "conta_bancaria", "total", "status", "sequencial", "gerada_em", "gerada_por"]
+    related = (("itens", "Títulos", ["conta_receber", "nosso_numero", "status", "ocorrencia"]),)
+    actions = (
+        ("bancario:remessa_titulos", "Adicionar títulos", "plus-circle", "bancario.change_remessacobranca"),
+        ("bancario:remessa_arquivo", "Gerar arquivo de remessa", "download", "bancario.gerar_remessa_cobranca"),
+        ("bancario:remessa_cancelar", "Cancelar", "x-octagon", "bancario.change_remessacobranca"),
+    )
+    can_delete = False
+    icon = "receipt-cutoff"
+    menu = "Cobrança"
+    menu_label = "Remessas de cobrança (CNAB)"
+    menu_order = 9
