@@ -630,3 +630,4 @@ from .treinamentos import Curso, Participacao, Turma  # noqa: E402,F401
 from .desempenho import (AcaoDesenvolvimento, Avaliacao, CicloAvaliacao, Competencia, ItemModelo,  # noqa: E402,F401
                          ModeloAvaliacao, Resposta)
 from .recrutamento import Candidato, Candidatura, Entrevista, HistoricoEtapa, Vaga  # noqa: E402,F401
+from .salarios import Enquadramento, FaixaSalarial, MovimentoSalarial  # noqa: E402,F401

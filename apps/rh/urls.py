@@ -2,7 +2,7 @@ from django.urls import path
 
 from apps.core.crud import crud_urls
 
-from . import telas, views, views_desempenho, views_recrutamento, views_treinamento
+from . import telas, views, views_desempenho, views_recrutamento, views_salarios, views_treinamento
 
 app_name = "rh"
 
@@ -58,6 +58,12 @@ urlpatterns = [
     path("recrutamento/candidatura/<int:pk>/contratar/", views_recrutamento.candidatura_contratar, name="candidatura_contratar"),
     path("recrutamento/candidatura/<int:pk>/reprovar/", views_recrutamento.candidatura_reprovar, name="candidatura_reprovar"),
     path("recrutamento/candidatura/<int:pk>/desistir/", views_recrutamento.candidatura_desistir, name="candidatura_desistir"),
+    path("salarios/movimento/<int:pk>/aprovar/", views_salarios.movimento_aprovar, name="movimento_aprovar"),
+    path("salarios/movimento/<int:pk>/rejeitar/", views_salarios.movimento_rejeitar, name="movimento_rejeitar"),
+    path("salarios/movimento/<int:pk>/cancelar/", views_salarios.movimento_cancelar, name="movimento_cancelar"),
+    path("salarios/reajuste-coletivo/", views_salarios.reajuste_coletivo_view, name="reajuste_coletivo"),
+    path("salarios/aprovar-lote/", views_salarios.aprovar_lote_view, name="aprovar_lote"),
+    path("salarios/posicao-na-faixa/", views_salarios.posicao_faixa, name="posicao_faixa"),
     path("rescisao/<int:pk>/calcular/", views.rescisao_calcular, name="rescisao_calcular"),
     path("rescisao/<int:pk>/efetivar/", views.rescisao_efetivar, name="rescisao_efetivar"),
 ]
@@ -68,4 +74,5 @@ urlpatterns += crud_urls(
     telas.ConfiguracaoESocialCrud, telas.LancamentoFolhaCrud, telas.FolhaCrud, telas.RescisaoCrud, telas.EventoESocialCrud,
     telas.CursoCrud, telas.TurmaCrud, telas.ParticipacaoCrud,
     telas.CompetenciaCrud, telas.ModeloAvaliacaoCrud, telas.ItemModeloCrud, telas.CicloAvaliacaoCrud, telas.AvaliacaoCrud,
-    telas.AcaoDesenvolvimentoCrud, telas.VagaCrud, telas.CandidatoCrud, telas.CandidaturaCrud, telas.EntrevistaCrud)
+    telas.AcaoDesenvolvimentoCrud, telas.VagaCrud, telas.CandidatoCrud, telas.CandidaturaCrud, telas.EntrevistaCrud,
+    telas.FaixaSalarialCrud, telas.EnquadramentoCrud, telas.MovimentoSalarialCrud)

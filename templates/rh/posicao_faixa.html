@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="mb-3 d-flex gap-2" method="get">
+  <select class="form-select w-auto" name="situacao" onchange="this.form.submit()">
+    <option value="">Todas as situações</option>
+    <option value="abaixo da faixa" {% if situacao == "abaixo da faixa" %}selected{% endif %}>Abaixo da faixa</option>
+    <option value="dentro da faixa" {% if situacao == "dentro da faixa" %}selected{% endif %}>Dentro da faixa</option>
+    <option value="acima da faixa" {% if situacao == "acima da faixa" %}selected{% endif %}>Acima da faixa</option>
+    <option value="sem enquadramento" {% if situacao == "sem enquadramento" %}selected{% endif %}>Sem enquadramento</option>
+  </select>
+</form>
+<div class="card"><table class="table table-sm mb-0">
+  <thead><tr><th>Colaborador</th><th>Cargo</th><th>Faixa</th><th class="text-end">Salário</th><th class="text-end">Compa-ratio</th><th>Situação</th></tr></thead>
+  <tbody>{% for l in linhas %}
+    <tr><td>{{ l.colaborador }}</td><td>{{ l.colaborador.cargo|default:"—" }}</td>
+      <td>{% if l.faixa %}{{ l.faixa.get_nivel_display }} ({{ l.faixa.minimo }} a {{ l.faixa.maximo }}){% else %}—{% endif %}</td>
+      <td class="text-end">{{ l.colaborador.salario }}</td><td class="text-end">{{ l.compa|default_if_none:"—" }}</td><td>{{ l.situacao }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-secondary text-center py-3">Nada a mostrar.</td></tr>{% endfor %}</tbody>
+</table></div>
+<p class="text-secondary small mt-2">Compa-ratio = salário ÷ ponto médio da faixa. Abaixo de 1,00 o colaborador ganha menos que o meio da faixa.</p>
+{% endblock %}

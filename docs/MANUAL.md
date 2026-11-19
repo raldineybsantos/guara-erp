@@ -1676,6 +1676,26 @@ Menu **RH**: *Vagas*, *Candidatos*, *Candidaturas* e *Entrevistas*. Permissão `
    candidatos em andamento são reprovados com o motivo “Vaga preenchida”.
 7. **Entrevistas** guardam tipo, data, entrevistador, nota de 1 a 5 e parecer de cada conversa.
 
+### 26.10 Plano de cargos e salários
+Menu **RH**: *Faixas salariais*, *Enquadramentos*, *Movimentações salariais*, *Posição na faixa salarial*, *Reajuste coletivo* e
+*Aprovar lote de reajuste*. Permissões: `rh.gerir_salarios` (manter o plano e solicitar) e `rh.aprovar_salarios` (aprovar).
+
+1. **Faixas salariais:** para cada cargo e nível (Júnior, Pleno, Sênior…), o salário mínimo e o máximo. O sistema calcula o ponto médio.
+2. **Enquadramentos:** em que faixa cada colaborador está. O enquadramento precisa seguir o cargo do colaborador.
+3. **Movimentação salarial** (mérito, promoção, dissídio, correção): informe o novo salário, a vigência e a justificativa; em
+   promoção, o novo cargo e/ou a nova faixa. O salário deve estar **dentro da faixa**; fora dela só com **exceção** marcada e
+   justificada (ao menos 10 caracteres).
+4. **Aprovação por outra pessoa:** quem solicitou não aprova a própria movimentação (segregação de funções; o administrador do sistema é
+   a única exceção). Ao aprovar, se a vigência já chegou o novo salário/cargo é gravado na hora; se for futura, a **rotina diária**
+   aplica na data. O histórico guarda salário e cargo anteriores, quem decidiu e o parecer. Rejeitar exige o motivo.
+5. **Reajuste coletivo (dissídio):** informe o percentual, a vigência e a justificativa (convenção coletiva), com recorte opcional por
+   empresa, cargo ou departamento. O sistema cria uma movimentação pendente por colaborador, num único **lote**, e o aprovador libera
+   tudo de uma vez em **Aprovar lote de reajuste**. Aceita vírgula decimal (4,5).
+6. **Posição na faixa salarial:** lista cada colaborador com a faixa, o **compa-ratio** (salário ÷ ponto médio; abaixo de 1,00 ganha
+   menos que o meio da faixa) e se está abaixo, dentro, acima ou sem enquadramento.
+
+O salário aplicado é o que a folha de pagamento usa a partir da vigência.
+
 ---
 
 ## 27. Segurança da conta e backups

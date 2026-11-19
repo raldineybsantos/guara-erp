@@ -3,6 +3,7 @@ from django import forms
 from apps.core.crud import Crud, FormBase
 
 from .desempenho import AcaoDesenvolvimento, Avaliacao, CicloAvaliacao, Competencia, ItemModelo, ModeloAvaliacao
+from .salarios import Enquadramento, FaixaSalarial, MovimentoSalarial
 from .recrutamento import Candidato, Candidatura, Entrevista, Vaga
 from .treinamentos import Curso, Participacao, Turma
 from .models import (AbonoPonto, AjusteBancoHoras, Beneficio, BeneficioColaborador, DadosTrabalhistas, Dependente,
@@ -539,3 +540,53 @@ class EntrevistaCrud(Crud):
     menu = "RH"
     menu_label = "Entrevistas"
     menu_order = 93
+
+
+# ------------------------------------------------------------------ plano de cargos e salários
+class FaixaSalarialCrud(Crud):
+    model = FaixaSalarial
+    fields = ["cargo", "nivel", "minimo", "maximo", "ativo"]
+    list_display = ("cargo", "nivel", "minimo", "maximo", "ativo")
+    search_fields = ("cargo__nome",)
+    filter_fields = ("nivel", "ativo")
+    related = (("enquadrados", "Colaboradores na faixa", ["colaborador"]),)
+    can_delete = False
+    icon = "bar-chart-steps"
+    menu = "RH"
+    menu_label = "Faixas salariais"
+    menu_order = 100
+
+
+class EnquadramentoCrud(Crud):
+    model = Enquadramento
+    empresa_campo = "colaborador__empresa"
+    fields = ["colaborador", "faixa"]
+    list_display = ("colaborador", "faixa")
+    search_fields = ("colaborador__nome", "faixa__cargo__nome")
+    icon = "diagram-2"
+    menu = "RH"
+    menu_label = "Enquadramentos"
+    menu_order = 101
+
+
+class MovimentoSalarialCrud(Crud):
+    model = MovimentoSalarial
+    empresa_campo = "colaborador__empresa"
+    fields = ["colaborador", "tipo", "data_efetiva", "salario_novo", "cargo_novo", "faixa_nova", "excecao", "motivo"]
+    list_display = ("colaborador", "tipo", "data_efetiva", "salario_novo", "status")
+    search_fields = ("colaborador__nome", "motivo", "lote")
+    filter_fields = ("status", "tipo")
+    detail_fields = ["colaborador", "tipo", "data_efetiva", "salario_anterior", "salario_novo", "cargo_anterior",
+                     "cargo_novo", "faixa_nova", "excecao", "motivo", "lote", "status", "decidido_por", "decidido_em",
+                     "parecer", "aplicado_em", "criado_por"]
+    actions = (
+        ("rh:movimento_aprovar", "Aprovar", "check2-circle", "rh.aprovar_salarios"),
+        ("rh:movimento_rejeitar", "Rejeitar", "x-circle", "rh.aprovar_salarios"),
+        ("rh:movimento_cancelar", "Cancelar", "slash-circle", "rh.gerir_salarios"),
+    )
+    can_edit = False
+    can_delete = False
+    icon = "graph-up-arrow"
+    menu = "RH"
+    menu_label = "Movimentações salariais"
+    menu_order = 102
