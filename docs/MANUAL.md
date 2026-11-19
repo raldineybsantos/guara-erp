@@ -74,6 +74,11 @@ botão ☰.
 
 Siga esta ordem logo depois da instalação:
 
+0. **Primeiro acesso:** entre com o usuário `GuaraSuperAdmin` e a senha provisória indicada no guia de
+   instalação. O sistema abre direto a tela *Defina uma nova senha* e não libera mais nada até você trocá-la
+   (a nova não pode repetir a provisória). Faça isso logo após instalar. Depois, crie o seu próprio usuário em
+   *Administração → Usuários e grupos* e, se quiser, desative o `GuaraSuperAdmin`.
+
 1. **Empresa** (Cadastros → Empresas): razão social, CNPJ, regime tributário, endereço e a
    **chave PIX**. Sem a chave PIX, as cobranças não geram o PIX copia-e-cola.
 2. **Contas bancárias** (Financeiro → Contas bancárias): uma por conta. Informe o **saldo inicial**
