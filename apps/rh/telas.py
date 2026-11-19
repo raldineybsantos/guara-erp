@@ -2,6 +2,7 @@ from django import forms
 
 from apps.core.crud import Crud, FormBase
 
+from .desempenho import AcaoDesenvolvimento, Avaliacao, CicloAvaliacao, Competencia, ItemModelo, ModeloAvaliacao
 from .treinamentos import Curso, Participacao, Turma
 from .models import (AbonoPonto, AjusteBancoHoras, Beneficio, BeneficioColaborador, DadosTrabalhistas, Dependente,
                      ConfiguracaoESocial, EventoESocial, FaixaINSS, FaixaIRRF, Feriado, Folha, Jornada, LancamentoFolha, Marcacao,
@@ -359,3 +360,101 @@ class ParticipacaoCrud(Crud):
     menu = "RH"
     menu_label = "Histórico de treinamentos"
     menu_order = 72
+
+
+# ------------------------------------------------------------------ avaliação de desempenho
+class CompetenciaCrud(Crud):
+    model = Competencia
+    fields = ["nome", "descricao", "ativo"]
+    list_display = ("nome", "ativo")
+    search_fields = ("nome",)
+    icon = "stars"
+    menu = "RH"
+    menu_label = "Competências"
+    menu_order = 80
+
+
+class ModeloAvaliacaoCrud(Crud):
+    model = ModeloAvaliacao
+    fields = ["nome", "escala_max", "descricao", "ativo"]
+    list_display = ("nome", "escala_max", "ativo")
+    search_fields = ("nome",)
+    related = (("itens", "Competências e pesos", ["competencia", "peso"]),)
+    icon = "ui-checks-grid"
+    menu = "RH"
+    menu_label = "Modelos de avaliação"
+    menu_order = 81
+
+
+class ItemModeloCrud(Crud):
+    model = ItemModelo
+    fields = ["modelo", "competencia", "peso"]
+    list_display = ("modelo", "competencia", "peso")
+    search_fields = ("modelo__nome", "competencia__nome")
+    icon = "list-check"
+    menu = "RH"
+    menu_label = "Itens do modelo"
+    menu_order = 82
+
+
+class CicloAvaliacaoCrud(Crud):
+    model = CicloAvaliacao
+    fields = ["empresa", "nome", "modelo", "data_inicio", "data_fim", "inclui_auto", "peso_gestor"]
+    list_display = ("nome", "modelo", "data_inicio", "data_fim", "status")
+    search_fields = ("nome",)
+    filter_fields = ("status",)
+    detail_fields = ["nome", "modelo", "data_inicio", "data_fim", "inclui_auto", "peso_gestor", "status"]
+    related = (("avaliacoes", "Avaliações",
+                ["colaborador", "gestor", "status", "nota_auto", "nota_gestor", "nota_final", "nota_calibrada"]),)
+    actions = (
+        ("rh:ciclo_abrir", "Abrir ciclo", "play-circle", "rh.gerir_avaliacao"),
+        ("rh:ciclo_calibrar", "Calibrar notas", "sliders", "rh.gerir_avaliacao"),
+        ("rh:ciclo_encerrar", "Encerrar ciclo", "check2-circle", "rh.gerir_avaliacao"),
+    )
+    can_delete = False
+    icon = "clipboard2-data"
+    menu = "RH"
+    menu_label = "Ciclos de avaliação"
+    menu_order = 83
+
+
+class AvaliacaoCrud(Crud):
+    model = Avaliacao
+    empresa_campo = "ciclo__empresa"
+    list_display = ("ciclo", "colaborador", "gestor", "status", "nota_final", "nota_calibrada")
+    search_fields = ("colaborador__nome", "ciclo__nome")
+    filter_fields = ("status", "ciclo")
+    detail_fields = ["ciclo", "colaborador", "gestor", "status", "nota_auto", "nota_gestor", "nota_final",
+                     "nota_calibrada", "calibracao_motivo", "comentario_auto", "comentario_gestor"]
+    related = (("respostas", "Notas por competência", ["item", "tipo", "nota", "comentario"]),
+               ("acoes", "PDI", ["descricao", "competencia", "curso", "prazo", "status"]))
+    actions = (
+        ("rh:avaliacao_responder_auto", "Autoavaliação", "person-check", None),
+        ("rh:avaliacao_responder_gestor", "Avaliar como gestor", "person-lines-fill", None),
+        ("rh:avaliacao_pdi", "Adicionar ação ao PDI", "plus-circle", "rh.gerir_avaliacao"),
+    )
+    can_create = False
+    can_edit = False
+    can_delete = False
+    icon = "clipboard2-check"
+    menu = "RH"
+    menu_label = "Avaliações"
+    menu_order = 84
+
+
+class AcaoDesenvolvimentoCrud(Crud):
+    model = AcaoDesenvolvimento
+    empresa_campo = "avaliacao__ciclo__empresa"
+    list_display = ("avaliacao", "descricao", "competencia", "prazo", "status")
+    search_fields = ("descricao", "avaliacao__colaborador__nome")
+    filter_fields = ("status",)
+    actions = (
+        ("rh:pdi_concluir", "Concluir ação", "check2", "rh.gerir_avaliacao"),
+        ("rh:pdi_cancelar", "Cancelar ação", "x-circle", "rh.gerir_avaliacao"),
+    )
+    can_create = False
+    can_delete = False
+    icon = "signpost-split"
+    menu = "RH"
+    menu_label = "PDI"
+    menu_order = 85

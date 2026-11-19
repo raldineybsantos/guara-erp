@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-3"><div class="card-header">Minha autoavaliação pendente</div>
+  <table class="table table-sm mb-0"><tbody>{% for a in minhas %}
+    <tr><td>{{ a.ciclo }}</td><td>até {{ a.ciclo.data_fim|date:"d/m/Y" }}</td>
+      <td class="text-end"><a class="btn btn-sm btn-primary" href="{% url 'rh:avaliacao_responder_auto' a.pk %}">Responder</a></td></tr>
+  {% empty %}<tr><td class="text-secondary text-center py-3">Nada pendente.</td></tr>{% endfor %}</tbody></table></div>
+<div class="card mb-3"><div class="card-header">Avaliações de minha equipe pendentes</div>
+  <table class="table table-sm mb-0"><tbody>{% for a in a_fazer %}
+    <tr><td>{{ a.colaborador }}</td><td>{{ a.ciclo }}</td><td>até {{ a.ciclo.data_fim|date:"d/m/Y" }}</td>
+      <td class="text-end"><a class="btn btn-sm btn-primary" href="{% url 'rh:avaliacao_responder_gestor' a.pk %}">Avaliar</a></td></tr>
+  {% empty %}<tr><td class="text-secondary text-center py-3">Nada pendente.</td></tr>{% endfor %}</tbody></table></div>
+<div class="card"><div class="card-header">Meus resultados</div>
+  <table class="table table-sm mb-0"><thead><tr><th>Ciclo</th><th>Nota</th><th>Conceito</th><th>PDI</th></tr></thead><tbody>{% for a in concluidas %}
+    <tr><td>{{ a.ciclo }}</td><td>{{ a.nota_efetiva }} / {{ a.ciclo.modelo.escala_max }}</td><td>{{ a.conceito }}</td>
+      <td>{% for x in a.acoes.all %}<div>{{ x.descricao }} <span class="text-secondary">({{ x.get_status_display }})</span></div>{% empty %}—{% endfor %}</td></tr>
+  {% empty %}<tr><td colspan="4" class="text-secondary text-center py-3">Nenhum ciclo encerrado ainda.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

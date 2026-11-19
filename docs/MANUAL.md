@@ -1641,6 +1641,24 @@ Em **RH → Cursos** fica o catálogo; em **RH → Turmas de treinamento**, cada
 
 Os treinamentos de NR da segurança do trabalho continuam em *SST*, com o alerta próprio; os dois não se misturam.
 
+### 26.8 Avaliação de desempenho
+Menu **RH**: *Competências*, *Modelos de avaliação*, *Ciclos de avaliação*, *Avaliações* e *PDI*.
+
+1. **Competências** (ex.: Entrega, Trabalho em equipe) e **Modelo de avaliação**: escolha a escala (2 a 10 pontos) e cadastre em
+   *Itens do modelo* as competências com seus **pesos**.
+2. **Ciclo de avaliação:** modelo, prazo, se inclui **autoavaliação** e o **peso do gestor** na nota final (o resto é da
+   autoavaliação). Ciclo: *Rascunho → Aberto → Em calibração → Encerrado*.
+3. **Abrir ciclo:** cria uma avaliação para cada colaborador ativo admitido até o início; o avaliador é o **gestor do cadastro**
+   (sem gestor, quem avalia é o RH, com a permissão `rh.gerir_avaliacao`).
+4. Em **Minhas avaliações** cada colaborador responde a própria autoavaliação e o gestor avalia a equipe. Cada parte é enviada
+   **uma única vez**, com a nota de todas as competências (1 até a escala) e observações. Com as duas partes, a avaliação fica
+   *Concluída* e a **nota final** sai ponderada.
+5. **Calibrar notas:** encerra as respostas e permite ao RH ajustar a nota final, **com motivo obrigatório**. A nota original é
+   preservada junto da calibrada.
+6. **Encerrar ciclo:** avaliações sem as duas partes ficam *Incompletas* e não geram nota. O colaborador vê o resultado, o
+   conceito e o PDI em *Minhas avaliações*.
+7. **PDI:** em cada avaliação o RH adiciona ações de desenvolvimento (competência, curso sugerido, prazo) e as conclui ou cancela.
+
 ---
 
 ## 27. Segurança da conta e backups

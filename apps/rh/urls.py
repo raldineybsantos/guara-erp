@@ -2,7 +2,7 @@ from django.urls import path
 
 from apps.core.crud import crud_urls
 
-from . import telas, views, views_treinamento
+from . import telas, views, views_desempenho, views_treinamento
 
 app_name = "rh"
 
@@ -38,6 +38,15 @@ urlpatterns = [
     path("treinamentos/turma/<int:pk>/cancelar/", views_treinamento.turma_cancelar, name="turma_cancelar"),
     path("treinamentos/pendencias/", views_treinamento.pendencias_treinamento, name="pendencias_treinamento"),
     path("treinamentos/meus/", views_treinamento.meus_treinamentos, name="meus_treinamentos"),
+    path("desempenho/ciclo/<int:pk>/abrir/", views_desempenho.ciclo_abrir, name="ciclo_abrir"),
+    path("desempenho/ciclo/<int:pk>/calibrar/", views_desempenho.ciclo_calibrar, name="ciclo_calibrar"),
+    path("desempenho/ciclo/<int:pk>/encerrar/", views_desempenho.ciclo_encerrar, name="ciclo_encerrar"),
+    path("desempenho/avaliacao/<int:pk>/auto/", views_desempenho.avaliacao_responder_auto, name="avaliacao_responder_auto"),
+    path("desempenho/avaliacao/<int:pk>/gestor/", views_desempenho.avaliacao_responder_gestor, name="avaliacao_responder_gestor"),
+    path("desempenho/avaliacao/<int:pk>/pdi/", views_desempenho.avaliacao_pdi, name="avaliacao_pdi"),
+    path("desempenho/pdi/<int:pk>/concluir/", views_desempenho.pdi_concluir, name="pdi_concluir"),
+    path("desempenho/pdi/<int:pk>/cancelar/", views_desempenho.pdi_cancelar, name="pdi_cancelar"),
+    path("desempenho/minhas/", views_desempenho.minhas_avaliacoes, name="minhas_avaliacoes"),
     path("rescisao/<int:pk>/calcular/", views.rescisao_calcular, name="rescisao_calcular"),
     path("rescisao/<int:pk>/efetivar/", views.rescisao_efetivar, name="rescisao_efetivar"),
 ]
@@ -46,4 +55,6 @@ urlpatterns += crud_urls(
     telas.BeneficioCrud, telas.BeneficioColaboradorCrud, telas.RubricaCrud, telas.MarcacaoCrud, telas.AbonoPontoCrud,
     telas.AjusteBancoHorasCrud, telas.FeriadoCrud, telas.PeriodoAquisitivoCrud, telas.SolicitacaoFeriasCrud,
     telas.ConfiguracaoESocialCrud, telas.LancamentoFolhaCrud, telas.FolhaCrud, telas.RescisaoCrud, telas.EventoESocialCrud,
-    telas.CursoCrud, telas.TurmaCrud, telas.ParticipacaoCrud)
+    telas.CursoCrud, telas.TurmaCrud, telas.ParticipacaoCrud,
+    telas.CompetenciaCrud, telas.ModeloAvaliacaoCrud, telas.ItemModeloCrud, telas.CicloAvaliacaoCrud, telas.AvaliacaoCrud,
+    telas.AcaoDesenvolvimentoCrud)

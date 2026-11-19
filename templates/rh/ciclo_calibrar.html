@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" style="max-width:1000px">{% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header">Altere a nota apenas onde houver ajuste; o motivo é obrigatório. A nota original é preservada.</div>
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Colaborador</th><th>Gestor</th><th>Autoav.</th><th>Final</th><th style="width:110px">Nota calibrada</th><th>Motivo</th></tr></thead>
+      <tbody>{% for a in avaliacoes %}
+        <tr><td>{{ a.colaborador }}</td><td>{{ a.nota_gestor }}</td><td>{{ a.nota_auto|default_if_none:"—" }}</td><td>{{ a.nota_final }}</td>
+          <td><input class="form-control form-control-sm" name="nota_{{ a.pk }}" inputmode="decimal" value="{{ a.nota_calibrada|default_if_none:a.nota_final }}"></td>
+          <td><input class="form-control form-control-sm" name="motivo_{{ a.pk }}" maxlength="300" value="{{ a.calibracao_motivo }}"></td></tr>
+      {% empty %}<tr><td colspan="6" class="text-secondary text-center py-3">Nenhuma avaliação concluída.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar calibração</button>
+  <a href="{{ ciclo.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}

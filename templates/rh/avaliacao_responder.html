@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" style="max-width:900px">{% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header">Notas de 1 a {{ av.ciclo.modelo.escala_max }} (1 = abaixo do esperado). Depois de enviada, a avaliação não pode ser alterada.</div>
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Competência</th><th>Peso</th><th>Nota</th><th>Observação</th></tr></thead>
+      <tbody>{% for it in itens %}
+        <tr><td><strong>{{ it.competencia.nome }}</strong>{% if it.competencia.descricao %}<div class="small text-secondary">{{ it.competencia.descricao }}</div>{% endif %}</td>
+          <td>{{ it.peso }}</td>
+          <td><select class="form-select form-select-sm" name="nota_{{ it.pk }}" required style="width:90px"><option value="">—</option>
+            {% for n in escala %}<option value="{{ n }}">{{ n }}</option>{% endfor %}</select></td>
+          <td><input class="form-control form-control-sm" name="obs_{{ it.pk }}" maxlength="500"></td></tr>
+      {% endfor %}</tbody>
+    </table>
+  </div>
+  <div class="mb-3"><label class="form-label">Comentário geral</label><textarea class="form-control" name="comentario" rows="3"></textarea></div>
+  <button class="btn btn-primary"><i class="bi bi-send"></i> Enviar avaliação</button>
+  <a href="{% url 'rh:minhas_avaliacoes' %}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}
