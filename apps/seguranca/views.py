@@ -6,12 +6,16 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.models import User
+from django.contrib.auth.forms import PasswordChangeForm
+from django.contrib.auth.views import PasswordChangeView
+from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_POST
 
 from . import mfa, totp
+from .models import TrocaSenhaObrigatoria
 
 
 def _destino(request):
@@ -149,3 +153,33 @@ def redefinir(request, pk):
         mfa.redefinir(alvo, request.user, request)
         messages.success(request, f"2FA de {alvo.username} redefinido. No próximo login ele cadastrará outro aparelho.")
     return redirect("seguranca:mfa_usuarios")
+
+
+class SenhaNovaForm(PasswordChangeForm):
+    def clean_new_password1(self):
+        nova = self.cleaned_data.get("new_password1")
+        if nova and nova == self.data.get("old_password"):
+            raise ValidationError("A senha nova não pode ser igual à atual.")
+        return nova
+
+
+class TrocarSenhaView(PasswordChangeView):
+    """Troca de senha; ao concluir, libera quem estava com senha provisória e não aceita repetir a antiga."""
+
+    template_name = "form_simples.html"
+    extra_context = {"titulo": "Alterar senha", "icone": "key"}
+    success_url = "/"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        if TrocaSenhaObrigatoria.pendente(self.request.user):
+            ctx["titulo"] = "Defina uma nova senha"
+            ctx["aviso"] = "Esta é uma senha provisória. Escolha uma senha nova para continuar usando o sistema."
+        return ctx
+
+    form_class = SenhaNovaForm
+
+    def form_valid(self, form):
+        resposta = super().form_valid(form)
+        TrocaSenhaObrigatoria.objects.filter(usuario=self.request.user).delete()
+        return resposta

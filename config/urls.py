@@ -9,6 +9,7 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 
 from apps.core import views as core_views
+from apps.seguranca import views as seguranca_views
 
 handler500 = "apps.core.views_auditoria.erro_500"
 
@@ -22,9 +23,7 @@ urlpatterns = [
     path("empresa/trocar/", core_views.trocar_empresa, name="trocar_empresa"),
     path("login/", core_views.LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
-    path("senha/", auth_views.PasswordChangeView.as_view(template_name="form_simples.html",
-                                                          extra_context={"titulo": "Alterar senha", "icone": "key"},
-                                                          success_url="/"), name="password_change"),
+    path("senha/", seguranca_views.TrocarSenhaView.as_view(), name="password_change"),
     path("banco-de-dados/", core_views.banco_dados, name="banco_dados"),
     path("banco-de-dados/backup/", core_views.banco_backup, name="banco_backup"),
     path("banco-de-dados/manutencao/", core_views.banco_manutencao, name="banco_manutencao"),

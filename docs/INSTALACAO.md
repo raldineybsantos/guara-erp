@@ -162,13 +162,20 @@ Na primeira subida, o sistema faz sozinho:
 1. Cria o banco `erp` e o usuário `erp` **sem privilégios de superusuário**.
 2. Aplica a estrutura das tabelas (migrações).
 3. Cria os grupos de acesso, o plano de contas, a régua de cobrança, os processos e as pastas padrão.
-4. Cria o administrador definido no `.env`.
+4. Cria o administrador definido no `.env` (se você não definiu nenhum, cria o **administrador inicial**, abaixo).
 
 Acesse **http://IP-DO-SERVIDOR:8000** e entre com o administrador.
 
+**Administrador inicial.** Numa instalação nova, sem nenhum administrador, o ERP cria o usuário
+`GuaraSuperAdmin` com a senha provisória `Admin$Guara`. No **primeiro login** o sistema só deixa abrir a tela
+*Defina uma nova senha*: nada mais funciona até a senha ser trocada (a nova não pode repetir a provisória e
+precisa passar nas regras de senha). Como essa senha provisória é pública, **faça o primeiro login logo após
+instalar** e não deixe o servidor exposto à internet antes disso. Se já existir algum administrador (por exemplo,
+o do `.env`), o usuário inicial não é criado.
+
 ### 2.5 Pós-instalação (obrigatório)
 
-1. Troque a senha do administrador pela tela (menu do usuário → **Alterar senha**).
+1. Entre como `GuaraSuperAdmin` e defina a senha nova (o sistema exige no primeiro login). Se usou o administrador do `.env`, troque a senha dele pela tela (menu do usuário → **Alterar senha**).
 2. Apague a linha `DJANGO_SUPERUSER_PASSWORD` do `.env`.
 3. Restrinja o arquivo: `chmod 600 .env` (Linux).
 4. Siga os [Primeiros passos do manual](MANUAL.md#2-primeiros-passos-administrador).
@@ -260,7 +267,8 @@ O script:
   contratos, todo dia às 08:00);
 - libera a porta 8000 no `ufw`, se ele estiver ativo.
 
-Ao final, crie o administrador:
+O instalador já cria o administrador inicial `GuaraSuperAdmin` (senha provisória e troca obrigatória no primeiro
+login, veja a seção 2.4). Para criar outro administrador depois:
 
 ```bash
 sudo -u $USER .venv/bin/python manage.py createsuperuser
@@ -311,7 +319,7 @@ Set-ExecutionPolicy -Scope Process Bypass
    - aplica a estrutura e a configuração inicial;
    - cria a regra de firewall da porta 8000 só para as redes **Privada/Domínio**;
    - restringe o `.env` ao seu usuário;
-   - pede os dados do primeiro administrador.
+   - cria o administrador inicial `GuaraSuperAdmin` (troca de senha obrigatória no primeiro login).
 3. Se o script avisar que o PostgreSQL está escutando na rede (`listen_addresses = '*'`), edite
    `C:\Program Files\PostgreSQL\16\data\postgresql.conf` para `listen_addresses = 'localhost'` e
    reinicie o serviço **postgresql-x64-16**.

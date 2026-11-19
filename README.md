@@ -79,7 +79,7 @@ docker compose up -d --build
 
 | Serviço | Endereço |
 |---|---|
-| ERP | http://localhost:8000 (usuário/senha do `DJANGO_SUPERUSER_*` do `.env`) |
+| ERP | http://localhost:8000 (usuário/senha do `DJANGO_SUPERUSER_*` do `.env`; sem isso, `GuaraSuperAdmin` com a senha provisória da [instalação](docs/INSTALACAO.md), trocada no 1º login) |
 | pgAdmin | http://localhost:5050, **só no próprio servidor** (`PGADMIN_EMAIL` / `PGADMIN_PASSWORD`; conecte com o usuário `postgres` e a `POSTGRES_ADMIN_PASSWORD`) |
 
 O serviço `agendador` executa a régua de cobrança todo dia às 08:00.

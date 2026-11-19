@@ -93,6 +93,8 @@ if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
 fi
 
 echo
-echo "Pronto! Crie o administrador com:"
-echo "  sudo -u ${USUARIO_APP} ${DIR}/.venv/bin/python ${DIR}/manage.py createsuperuser"
+sudo -u "${USUARIO_APP}" "${DIR}/.venv/bin/python" "${DIR}/manage.py" criar_admin_inicial
+echo
+echo "Pronto! Primeiro acesso: usuário GuaraSuperAdmin (a senha provisória está em docs/INSTALACAO.md)."
+echo "O sistema pedirá uma senha nova logo no primeiro login."
 echo "Acesse: http://$(hostname -I | awk '{print $1}'):8000"

@@ -7,8 +7,10 @@ from django.shortcuts import redirect
 from django.urls import reverse
 
 from . import mfa
+from .models import TrocaSenhaObrigatoria
 
 ISENTOS = ("/login/", "/logout/", "/seguranca/2fa/", "/static/", "/admin/login/")
+ISENTOS_SENHA = ("/senha/", "/logout/", "/static/")
 
 
 class MFAMiddleware:
@@ -25,4 +27,18 @@ class MFAMiddleware:
             if request.method == "GET" and not request.headers.get("x-requested-with"):
                 destino += f"?next={quote(request.get_full_path(), safe='/')}"
             return redirect(destino)
+        return self.get_response(request)
+
+
+class TrocaSenhaMiddleware:
+    """Quem tem senha provisória (administrador inicial, senha redefinida) só alcança a tela de trocar a senha."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        user = getattr(request, "user", None)
+        if (user is not None and user.is_authenticated and not request.path.startswith(ISENTOS_SENHA)
+                and TrocaSenhaObrigatoria.pendente(user)):
+            return redirect(reverse("password_change"))
         return self.get_response(request)

@@ -54,9 +54,8 @@ Write-Host "==> Aplicando estrutura do banco e configuração inicial" -Foregrou
 & .\.venv\Scripts\python.exe manage.py setup_erp
 & .\.venv\Scripts\python.exe manage.py collectstatic --noinput
 
-Write-Host "==> Criando o administrador (se ainda não existir)" -ForegroundColor Cyan
-& .\.venv\Scripts\python.exe manage.py shell -c "from django.contrib.auth.models import User; import sys; sys.exit(0 if User.objects.filter(is_superuser=True).exists() else 1)"
-if ($LASTEXITCODE -ne 0) { & .\.venv\Scripts\python.exe manage.py createsuperuser }
+Write-Host "==> Criando o administrador inicial (se ainda não existir)" -ForegroundColor Cyan
+& .\.venv\Scripts\python.exe manage.py criar_admin_inicial
 
 Write-Host "==> Restringindo o .env ao usuário atual" -ForegroundColor Cyan
 icacls .env /inheritance:r /grant:r "$($env:USERNAME):(R,W)" | Out-Null

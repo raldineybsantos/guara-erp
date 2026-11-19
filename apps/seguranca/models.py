@@ -99,3 +99,25 @@ class RegistroBackup(models.Model):
 
     def __str__(self):
         return f"Backup {self.iniciado_em:%d/%m/%Y %H:%M} ({self.get_situacao_display()})"
+
+
+class TrocaSenhaObrigatoria(models.Model):
+    """Marca o usuário que precisa definir uma senha nova antes de usar o sistema (ex.: administrador inicial)."""
+
+    usuario = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="troca_senha")
+    criado_em = models.DateTimeField(default=timezone.now, editable=False)
+
+    class Meta:
+        verbose_name = "troca de senha obrigatória"
+        verbose_name_plural = "trocas de senha obrigatórias"
+
+    def __str__(self):
+        return f"Troca de senha pendente de {self.usuario}"
+
+    @classmethod
+    def exigir(cls, usuario):
+        cls.objects.get_or_create(usuario=usuario)
+
+    @classmethod
+    def pendente(cls, usuario):
+        return cls.objects.filter(usuario=usuario).exists()
