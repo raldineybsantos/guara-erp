@@ -169,7 +169,8 @@ Acesse **http://IP-DO-SERVIDOR:8000** e entre com o administrador.
 `GuaraSuperAdmin` com a senha provisória `Admin$Guara`. No **primeiro login** o sistema só deixa abrir a tela
 *Defina uma nova senha*: nada mais funciona até a senha ser trocada (a nova não pode repetir a provisória e
 precisa passar nas regras de senha). Como essa senha provisória é pública, **faça o primeiro login logo após
-instalar** e não deixe o servidor exposto à internet antes disso. Se já existir algum administrador, o usuário inicial não é criado.
+instalar** e não deixe o servidor exposto à internet antes disso. Se já existir algum administrador, o usuário
+inicial não é criado.
 
 ### 2.5 Pós-instalação (obrigatório)
 
@@ -553,6 +554,7 @@ lançamentos dos títulos, baixas e movimentos de estoque **anteriores**, rode u
 | E-mails da régua não chegam | SMTP não configurado | Preencha `EMAIL_*` no `.env`. Veja o motivo da falha em Cobrança → Histórico de envios |
 | "O CPF do certificado não é o mesmo do seu cadastro" | Usuário ligado a outro colaborador, ou certificado de outra pessoa | Confira o campo *Usuário do sistema* no cadastro do colaborador |
 | Assinatura "Cadeia ICP-Brasil: Não verificada" | Raízes ICP-Brasil não instaladas | Seção 2.8 |
+| Esqueci a senha do `GuaraSuperAdmin` (ou ele ficou bloqueado) | Senha trocada no primeiro login e perdida | Defina outra pelo terminal: `docker compose exec web python manage.py changepassword GuaraSuperAdmin` (nativo: `python manage.py changepassword GuaraSuperAdmin`) |
 | "Não vejo a aba Minha equipe" | Usuário sem vínculo de gestor | Preencha *Gestor* nos colaboradores ou *Responsável* no departamento |
 | Página Banco de dados mostra "superusuário" em vermelho | O ERP está conectando como superusuário | Crie um usuário sem privilégios, conforme [SEGURANCA.md](../SEGURANCA.md) |
 
