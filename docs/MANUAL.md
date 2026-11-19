@@ -1621,6 +1621,26 @@ restrita, e o sistema **não transmite** ao governo (falta o certificado da empr
 4. Ao validar com o certificado real, ajuste o que o XSD apontar — os pontos mais prováveis são campos opcionais
    dependentes de cada empresa e o evento de cargos/lotações.
 
+### 26.7 Treinamentos
+Em **RH → Cursos** fica o catálogo; em **RH → Turmas de treinamento**, cada realização do curso.
+
+- **Curso:** categoria, modalidade, carga horária, **validade do certificado** em meses (0 = não vence), **frequência mínima**
+  (%), **nota mínima** (0 = sem avaliação) e os **cargos para os quais é obrigatório**.
+- **Turma** (numerada `TRM-AAAA-NNNN`): período, instrutor, local, vagas (0 = sem limite) e custo total (o sistema mostra o custo por
+  participante). Ciclo: *Planejada → Em andamento → Concluída* (ou *Cancelada*).
+  1. **Inscrever colaboradores** (só com a turma planejada; respeita as vagas e recusa desligados e repetidos).
+  2. **Iniciar turma.**
+  3. **Lançar frequência e nota** de cada inscrito.
+  4. **Concluir turma:** o resultado sai da frequência e da nota mínimas do curso. Quem atinge fica *Aprovado*, com o
+     certificado válido até o fim da turma + a validade do curso. Quem não atinge fica *Reprovado*; quem não teve frequência
+     lançada fica *Ausente*.
+- **Pendências de treinamento:** lista quem **nunca fez** o curso obrigatório do cargo, quem está **vencido** e quem **vence** nos
+  próximos 30 dias. A rotina diária avisa o colaborador e o RH aos 30, 15, 7 e 1 dia do vencimento, no dia, e depois a cada 30 dias.
+- **Meus treinamentos:** cada colaborador vê o próprio histórico e seus obrigatórios em atenção.
+- **Histórico de treinamentos** reúne todas as participações. Permissão `rh.gerir_treinamento` para inscrever e lançar resultados.
+
+Os treinamentos de NR da segurança do trabalho continuam em *SST*, com o alerta próprio; os dois não se misturam.
+
 ---
 
 ## 27. Segurança da conta e backups

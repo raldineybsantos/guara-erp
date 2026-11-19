@@ -2,7 +2,7 @@ from django.urls import path
 
 from apps.core.crud import crud_urls
 
-from . import telas, views
+from . import telas, views, views_treinamento
 
 app_name = "rh"
 
@@ -31,6 +31,13 @@ urlpatterns = [
     path("esocial/evento/<int:pk>/xml/", views.esocial_baixar, name="esocial_baixar"),
     path("esocial/evento/<int:pk>/lote/", views.esocial_lote, name="esocial_lote"),
     path("esocial/evento/<int:pk>/retorno/", views.esocial_recibo, name="esocial_recibo"),
+    path("treinamentos/turma/<int:pk>/inscrever/", views_treinamento.turma_inscrever, name="turma_inscrever"),
+    path("treinamentos/turma/<int:pk>/iniciar/", views_treinamento.turma_iniciar, name="turma_iniciar"),
+    path("treinamentos/turma/<int:pk>/resultados/", views_treinamento.turma_resultados, name="turma_resultados"),
+    path("treinamentos/turma/<int:pk>/concluir/", views_treinamento.turma_concluir, name="turma_concluir"),
+    path("treinamentos/turma/<int:pk>/cancelar/", views_treinamento.turma_cancelar, name="turma_cancelar"),
+    path("treinamentos/pendencias/", views_treinamento.pendencias_treinamento, name="pendencias_treinamento"),
+    path("treinamentos/meus/", views_treinamento.meus_treinamentos, name="meus_treinamentos"),
     path("rescisao/<int:pk>/calcular/", views.rescisao_calcular, name="rescisao_calcular"),
     path("rescisao/<int:pk>/efetivar/", views.rescisao_efetivar, name="rescisao_efetivar"),
 ]
@@ -38,4 +45,5 @@ urlpatterns += crud_urls(
     telas.ParametroFolhaCrud, telas.FaixaIRRFCrud, telas.JornadaCrud, telas.DadosTrabalhistasCrud, telas.DependenteCrud,
     telas.BeneficioCrud, telas.BeneficioColaboradorCrud, telas.RubricaCrud, telas.MarcacaoCrud, telas.AbonoPontoCrud,
     telas.AjusteBancoHorasCrud, telas.FeriadoCrud, telas.PeriodoAquisitivoCrud, telas.SolicitacaoFeriasCrud,
-    telas.ConfiguracaoESocialCrud, telas.LancamentoFolhaCrud, telas.FolhaCrud, telas.RescisaoCrud, telas.EventoESocialCrud)
+    telas.ConfiguracaoESocialCrud, telas.LancamentoFolhaCrud, telas.FolhaCrud, telas.RescisaoCrud, telas.EventoESocialCrud,
+    telas.CursoCrud, telas.TurmaCrud, telas.ParticipacaoCrud)

@@ -18,6 +18,8 @@ LINKS_EXTRAS = [
     ("RH", "Meu espelho de ponto", "rh:meu_espelho", "calendar3", None, 1),
     ("RH", "Minhas férias", "rh:minhas_ferias", "umbrella", None, 2),
     ("RH", "Meus holerites", "rh:meus_holerites", "receipt", None, 3),
+    ("RH", "Meus treinamentos", "rh:meus_treinamentos", "mortarboard", None, 4),
+    ("RH", "Pendências de treinamento", "rh:pendencias_treinamento", "patch-exclamation", "rh.view_turma", 73),
     ("RH", "Banco de horas", "rh:banco_horas", "hourglass-split", "rh.gerir_ponto", 24),
     ("RH", "Gerar evento eSocial", "rh:esocial_gerar", "cloud-plus", "rh.add_eventoesocial", 58),
     ("RH", "Montar lote do eSocial", "rh:esocial_montar_lote", "box-arrow-down", "rh.view_eventoesocial", 61),

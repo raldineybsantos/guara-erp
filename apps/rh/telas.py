@@ -2,6 +2,7 @@ from django import forms
 
 from apps.core.crud import Crud, FormBase
 
+from .treinamentos import Curso, Participacao, Turma
 from .models import (AbonoPonto, AjusteBancoHoras, Beneficio, BeneficioColaborador, DadosTrabalhistas, Dependente,
                      ConfiguracaoESocial, EventoESocial, FaixaINSS, FaixaIRRF, Feriado, Folha, Jornada, LancamentoFolha, Marcacao,
                      ParametroFolha, PeriodoAquisitivo, Rescisao, Rubrica, SolicitacaoFerias)
@@ -302,3 +303,59 @@ class EventoESocialCrud(Crud):
     menu = "RH"
     menu_label = "Eventos do eSocial"
     menu_order = 60
+
+
+# ------------------------------------------------------------------ treinamentos
+class CursoCrud(Crud):
+    model = Curso
+    list_display = ("nome", "categoria", "modalidade", "carga_horaria", "validade_meses", "ativo")
+    search_fields = ("nome", "descricao")
+    filter_fields = ("categoria", "modalidade", "ativo")
+    detail_fields = ["nome", "categoria", "modalidade", "carga_horaria", "validade_meses", "frequencia_minima",
+                     "nota_minima", "cargos_obrigatorios", "descricao", "ativo"]
+    related = (("turmas", "Turmas", ["numero", "data_inicio", "data_fim", "status"]),)
+    icon = "mortarboard"
+    menu = "RH"
+    menu_label = "Cursos"
+    menu_order = 70
+
+
+class TurmaCrud(Crud):
+    model = Turma
+    fields = ["empresa", "curso", "instrutor", "fornecedor", "local", "data_inicio", "data_fim", "vagas", "custo_total",
+              "observacoes"]
+    list_display = ("numero", "curso", "data_inicio", "data_fim", "vagas", "status")
+    search_fields = ("numero", "curso__nome", "instrutor", "fornecedor")
+    filter_fields = ("status", "curso")
+    detail_fields = ["numero", "curso", "instrutor", "fornecedor", "local", "data_inicio", "data_fim", "vagas",
+                     "custo_total", "status", "observacoes", "criado_por", "criado_em"]
+    related = (("participacoes", "Participantes",
+                ["colaborador", "presenca_pct", "nota", "resultado", "valido_ate"]),)
+    actions = (
+        ("rh:turma_inscrever", "Inscrever colaboradores", "person-plus", "rh.gerir_treinamento"),
+        ("rh:turma_iniciar", "Iniciar turma", "play-circle", "rh.gerir_treinamento"),
+        ("rh:turma_resultados", "Lançar frequência e nota", "ui-checks", "rh.gerir_treinamento"),
+        ("rh:turma_concluir", "Concluir turma", "check2-circle", "rh.gerir_treinamento"),
+        ("rh:turma_cancelar", "Cancelar turma", "x-circle", "rh.gerir_treinamento"),
+    )
+    can_delete = False
+    icon = "easel"
+    menu = "RH"
+    menu_label = "Turmas de treinamento"
+    menu_order = 71
+
+
+class ParticipacaoCrud(Crud):
+    model = Participacao
+    empresa_campo = "turma__empresa"
+    list_display = ("colaborador", "turma", "presenca_pct", "nota", "resultado", "valido_ate")
+    search_fields = ("colaborador__nome", "turma__numero", "turma__curso__nome")
+    filter_fields = ("resultado", "turma__curso")
+    detail_fields = ["colaborador", "turma", "presenca_pct", "nota", "resultado", "concluido_em", "valido_ate"]
+    can_create = False
+    can_edit = False
+    can_delete = False
+    icon = "award"
+    menu = "RH"
+    menu_label = "Histórico de treinamentos"
+    menu_order = 72

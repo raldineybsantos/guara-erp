@@ -624,3 +624,6 @@ class EventoESocial(ModeloBase, PorEmpresaMixin):
 
     def __str__(self):
         return f"{self.tipo} {self.colaborador or self.empresa}"
+
+
+from .treinamentos import Curso, Participacao, Turma  # noqa: E402,F401

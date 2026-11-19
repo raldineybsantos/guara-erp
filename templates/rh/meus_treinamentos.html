@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+{% if pendencias %}<div class="alert alert-warning"><strong>Treinamentos obrigatórios em atenção:</strong>
+  <ul class="mb-0">{% for i in pendencias %}<li>{{ i.curso }} —
+    {% if i.situacao == "vencido" %}vencido em {{ i.valido_ate|date:"d/m/Y" }}{% elif i.situacao == "pendente" %}ainda não feito{% else %}vence em {{ i.valido_ate|date:"d/m/Y" }}{% endif %}</li>{% endfor %}</ul></div>{% endif %}
+<div class="card"><table class="table table-sm mb-0">
+  <thead><tr><th>Curso</th><th>Turma</th><th>Período</th><th>Resultado</th><th>Válido até</th></tr></thead>
+  <tbody>{% for p in participacoes %}
+    <tr><td>{{ p.turma.curso }}</td><td>{{ p.turma.numero }}</td><td>{{ p.turma.data_inicio|date:"d/m/Y" }} a {{ p.turma.data_fim|date:"d/m/Y" }}</td>
+      <td>{{ p.get_resultado_display }}</td><td>{{ p.valido_ate|date:"d/m/Y"|default:"—" }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="text-secondary text-center py-3">Você ainda não participou de treinamentos.</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endblock %}

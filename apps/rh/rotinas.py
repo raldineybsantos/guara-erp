@@ -6,7 +6,7 @@ from django.utils import timezone
 
 from apps.core.models import Colaborador, notificar
 
-from . import ferias
+from . import ferias, treinamentos
 from .models import PeriodoAquisitivo
 
 AVISAR_FALTANDO = (60, 30, 15, 7, 1)   # dias para o fim do período concessivo
@@ -29,4 +29,4 @@ def executar(hoje=None):
             notificar(destinos, f"Férias de {p.colaborador} vencem em {faltam} dia(s) ({p.saldo} dias de saldo).",
                       url=reverse("rh:periodoaquisitivo_detail", args=[p.pk]))
             avisos += 1
-    return {"periodos": novos, "avisos": avisos}
+    return {"periodos": novos, "avisos": avisos, "treinamentos": treinamentos.alertar_reciclagem(hoje)}

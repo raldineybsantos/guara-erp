@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" style="max-width:900px">{% csrf_token %}
+  <div class="card mb-3">
+    <div class="card-header">Curso: {{ turma.curso }} — mínimos: frequência {{ turma.curso.frequencia_minima }}%{% if turma.curso.nota_minima > 0 %}, nota {{ turma.curso.nota_minima }}{% endif %}</div>
+    <table class="table table-sm align-middle mb-0">
+      <thead><tr><th>Colaborador</th><th style="width:140px">Frequência (%)</th><th style="width:140px">Nota</th></tr></thead>
+      <tbody>{% for p in linhas %}
+        <tr><td>{{ p.colaborador }}</td>
+          <td><input class="form-control form-control-sm" name="freq_{{ p.pk }}" type="number" min="0" max="100" value="{{ p.presenca_pct|default_if_none:'' }}"></td>
+          <td><input class="form-control form-control-sm" name="nota_{{ p.pk }}" inputmode="decimal" value="{{ p.nota|default_if_none:'' }}"></td></tr>
+      {% empty %}<tr><td colspan="3" class="text-secondary text-center py-3">Nenhum inscrito aguardando resultado.</td></tr>{% endfor %}</tbody>
+    </table>
+  </div>
+  <button class="btn btn-primary"><i class="bi bi-check-lg"></i> Salvar</button>
+  <a href="{{ turma.get_absolute_url }}" class="btn btn-outline-secondary">Voltar</a>
+</form>
+{% endblock %}
