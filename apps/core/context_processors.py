@@ -43,6 +43,8 @@ LINKS_EXTRAS = [
     ("Financeiro", "Resultado por centro de custo", "financeiro:relatorio_centro_custo", "bullseye", "financeiro.view_centrocusto", 6),
     ("Estoque", "Lotes a vencer", "estoque:lotes_a_vencer", "calendar-x", "estoque.view_saldolote", 8),
     ("Estoque", "Mudar endereço", "estoque:enderecar", "geo-alt", "estoque.add_movimento", 9),
+    ("Financeiro", "Pagar em lote", "financeiro:liquidar_lote_pagar", "cash-stack", "financeiro.liquidar_lote", 11),
+    ("Financeiro", "Receber em lote", "financeiro:liquidar_lote_receber", "cash-stack", "financeiro.liquidar_lote", 12),
     ("Financeiro", "Aging de títulos", "financeiro:aging", "hourglass-split", "financeiro.view_contareceber", 7),
     ("Financeiro", "Apurar PDD", "financeiro:pdd_apurar", "calculator", "financeiro.add_apuracaopdd", 8),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),

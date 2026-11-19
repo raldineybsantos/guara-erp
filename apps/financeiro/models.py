@@ -887,3 +887,6 @@ class ApuracaoPDD(ModeloBase, PorEmpresaMixin):
         servicos.estornar_de(self, motivo="Apuração de PDD estornada.")
         self.status = "estornada"
         self.save()
+
+
+from .lote import ItemLiquidacao, LiquidacaoLote  # noqa: E402,F401

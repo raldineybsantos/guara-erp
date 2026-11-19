@@ -1,6 +1,7 @@
 from apps.core.crud import Crud
 
 from .filtros import ContaPagarFilter, ContaReceberFilter
+from .lote import LiquidacaoLote
 from .forms import ContaPagarForm, ContaReceberForm
 from .models import (ApuracaoPDD, FaixaPDD, Compensacao, ItemRenegociacao, Renegociacao, CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
                      RegraRetencao)
@@ -208,3 +209,21 @@ class ApuracaoPDDCrud(Crud):
     icon = "shield-exclamation"
     menu = "Financeiro"
     menu_order = 9
+
+
+class LiquidacaoLoteCrud(Crud):
+    model = LiquidacaoLote
+    list_display = ("numero", "tipo", "data", "conta_bancaria", "quantidade", "total", "status")
+    search_fields = ("numero",)
+    filter_fields = ("tipo", "status")
+    detail_fields = ["numero", "tipo", "data", "conta_bancaria", "forma_pagamento", "quantidade", "total", "liquido",
+                     "status", "criado_por", "criado_em"]
+    related = (("itens", "Títulos liquidados", ["contapagar", "contareceber", "valor"]),)
+    actions = (("financeiro:lote_estornar", "Estornar lote", "arrow-counterclockwise", "financeiro.liquidar_lote"),)
+    can_create = False
+    can_edit = False
+    can_delete = False
+    icon = "collection"
+    menu = "Financeiro"
+    menu_label = "Liquidações em lote"
+    menu_order = 10

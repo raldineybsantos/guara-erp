@@ -1,0 +1,33 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<form class="row g-2 mb-3" method="get">
+  <div class="col-auto"><input class="form-control" name="q" value="{{ q }}" placeholder="Buscar descrição, documento ou nome"></div>
+  <div class="col-auto"><input class="form-control" type="date" name="ate" value="{{ ate }}" title="Vencimento até"></div>
+  <div class="col-auto"><button class="btn btn-outline-secondary">Filtrar</button></div>
+</form>
+<form method="post" novalidate>{% csrf_token %}
+  <div class="card mb-3"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th style="width:36px"><input type="checkbox" id="todos"></th><th>Vencimento</th><th>{% if tipo == "pagar" %}Fornecedor{% else %}Cliente{% endif %}</th><th>Descrição</th><th>Documento</th><th class="text-end">Saldo</th></tr></thead>
+    <tbody>{% for t in titulos %}
+      <tr><td><input type="checkbox" class="sel" name="titulos" value="{{ t.pk }}" data-saldo="{{ t.saldo|stringformat:'.2f' }}" {% if t.pk|stringformat:"s" in marcados %}checked{% endif %}></td>
+        <td>{{ t.vencimento|date:"d/m/Y" }}</td><td>{% if tipo == "pagar" %}{{ t.fornecedor|default:"—" }}{% else %}{{ t.cliente|default:"—" }}{% endif %}</td>
+        <td><a href="{{ t.get_absolute_url }}">{{ t }}</a></td><td>{{ t.documento }}</td><td class="text-end">{{ t.saldo|moeda }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-secondary text-center py-3">Nenhum título em aberto.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  <div class="card mb-3" style="max-width:900px"><div class="card-body">
+    <p class="mb-2">Selecionados: <strong id="qtd">0</strong> · soma: <strong id="soma">0,00</strong></p>
+    {% include "crud/_campos.html" %}
+  </div></div>
+  <button class="btn btn-success"><i class="bi bi-cash-coin"></i> Liquidar selecionados</button>
+</form>
+<script>
+(function(){
+  var sel=[].slice.call(document.querySelectorAll('.sel')), todos=document.getElementById('todos');
+  function atualizar(){var q=0,s=0;sel.forEach(function(c){if(c.checked){q++;s+=parseFloat(c.dataset.saldo)}});
+    document.getElementById('qtd').textContent=q;document.getElementById('soma').textContent=s.toFixed(2).replace('.',',');}
+  sel.forEach(function(c){c.addEventListener('change',atualizar)});
+  todos.addEventListener('change',function(){sel.forEach(function(c){c.checked=todos.checked});atualizar()});
+  atualizar();
+})();
+</script>
+{% endblock %}

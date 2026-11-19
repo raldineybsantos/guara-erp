@@ -2,7 +2,9 @@ import datetime
 from collections import OrderedDict
 from decimal import Decimal
 
+from django import forms
 from django.contrib import messages
+from django.http import Http404
 from django.forms import formset_factory
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied, ValidationError
@@ -12,11 +14,12 @@ from django.db.models.functions import TruncMonth
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.core.crud import restringir_por_empresa
+from apps.core.crud import BootstrapMixin, restringir_por_empresa
 
 from . import aging
+from .lote import LiquidacaoLote
 from .forms import BaixaForm, CompensacaoForm, RenegociacaoForm, RateioLinhaForm, RecolhimentoForm, RetencaoForm, TransferenciaForm
-from .models import (ApuracaoPDD, Compensacao, ContaBancaria, ContaPagar, Renegociacao, ContaReceber, GuiaTributo, Movimentacao, Retencao,
+from .models import (FORMAS_PAGAMENTO, ApuracaoPDD, Compensacao, ContaBancaria, ContaPagar, Renegociacao, ContaReceber, GuiaTributo, Movimentacao, Retencao,
                      definir_rateio, partes_por_centro)
 
 MODELOS = {"pagar": ContaPagar, "receber": ContaReceber}
@@ -447,3 +450,70 @@ def estornar_pdd(request, pk):
     except ValidationError as e:
         messages.error(request, e.messages[0])
     return redirect(ap.get_absolute_url())
+
+
+# ---------------------------------------------------------------- liquidação em lote
+class LoteForm(BootstrapMixin, forms.Form):
+    conta_bancaria = forms.ModelChoiceField(ContaBancaria.objects.filter(ativa=True), label="Conta bancária")
+    data = forms.DateField(initial=timezone.localdate)
+    forma_pagamento = forms.ChoiceField(choices=[("", "---------")] + FORMAS_PAGAMENTO, required=False,
+                                        label="Forma de pagamento")
+    total_conferido = forms.DecimalField(max_digits=14, decimal_places=2, label="Total conferido", localize=True,
+                                         help_text="Digite o total que você conferiu; precisa bater com a soma dos selecionados.")
+
+
+@login_required
+@permission_required("financeiro.liquidar_lote", raise_exception=True)
+def liquidar_lote(request, tipo):
+    if tipo not in MODELOS:
+        raise Http404
+    modelo = MODELOS[tipo]
+    if not request.user.has_perm(f"financeiro.baixar_{modelo._meta.model_name}"):
+        raise PermissionDenied
+    qs = restringir_por_empresa(modelo.objects.filter(status__in=["aberto", "parcial"]), modelo, request.user)
+    ate = request.GET.get("ate")
+    if ate:
+        try:
+            qs = qs.filter(vencimento__lte=datetime.date.fromisoformat(ate))
+        except ValueError:
+            ate = ""
+    busca = (request.GET.get("q") or "").strip()
+    if busca:
+        campo = "fornecedor__nome" if tipo == "pagar" else "cliente__nome"
+        qs = qs.filter(models_q(descricao__icontains=busca) | models_q(documento__icontains=busca) |
+                       models_q(**{f"{campo}__icontains": busca}))
+    titulos = list(qs.order_by("vencimento", "pk")[:300])
+    form = LoteForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        ids = [int(i) for i in request.POST.getlist("titulos") if i.isdigit()]
+        permitidos = set(restringir_por_empresa(modelo.objects.filter(pk__in=ids), modelo, request.user)
+                         .values_list("pk", flat=True))
+        if len(permitidos) != len(set(ids)):
+            raise PermissionDenied
+        d = form.cleaned_data
+        try:
+            lote = LiquidacaoLote.liquidar(tipo, ids, d["conta_bancaria"], d["data"], d["total_conferido"],
+                                           d["forma_pagamento"], request.user)
+            messages.success(request, f"Lote {lote.numero}: {lote.quantidade} título(s), total {lote.total}.")
+            return redirect(lote.get_absolute_url())
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+    return render(request, "financeiro/liquidar_lote.html", {
+        "titulo": "Pagar em lote" if tipo == "pagar" else "Receber em lote", "tipo": tipo, "titulos": titulos,
+        "form": form, "ate": ate or "", "q": busca, "marcados": request.POST.getlist("titulos")})
+
+
+@login_required
+@permission_required("financeiro.liquidar_lote", raise_exception=True)
+def estornar_lote(request, pk):
+    lote = get_object_or_404(LiquidacaoLote, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {
+            "titulo": "Estornar lote", "voltar": lote.get_absolute_url(),
+            "mensagem": f"Estornar o lote {lote.numero}? Todas as baixas dele serão desfeitas e os títulos voltam a ficar em aberto."})
+    try:
+        lote.estornar()
+        messages.success(request, "Lote estornado.")
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    return redirect(lote.get_absolute_url())
