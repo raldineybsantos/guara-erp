@@ -46,6 +46,7 @@ LINKS_EXTRAS = [
     ("Cobrança", "Importar retorno de cobrança", "bancario:importar_retorno_cobranca", "upload", "bancario.change_remessacobranca", 10),
     ("Financeiro", "Pagar em lote", "financeiro:liquidar_lote_pagar", "cash-stack", "financeiro.liquidar_lote", 11),
     ("Financeiro", "Receber em lote", "financeiro:liquidar_lote_receber", "cash-stack", "financeiro.liquidar_lote", 12),
+    ("Financeiro", "Recolher guias em lote", "financeiro:bordero_imposto", "receipt", "financeiro.recolher_bordero_imposto", 13),
     ("Financeiro", "Aging de títulos", "financeiro:aging", "hourglass-split", "financeiro.view_contareceber", 7),
     ("Financeiro", "Apurar PDD", "financeiro:pdd_apurar", "calculator", "financeiro.add_apuracaopdd", 8),
     ("Financeiro", "Transferência", "financeiro:transferencia", "arrow-left-right", "financeiro.add_movimentacao", 5),

@@ -1,6 +1,7 @@
 from apps.core.crud import Crud
 
 from .filtros import ContaPagarFilter, ContaReceberFilter
+from .borderoimposto import BorderoImposto
 from .lote import LiquidacaoLote
 from .forms import ContaPagarForm, ContaReceberForm
 from .models import (ApuracaoPDD, FaixaPDD, Compensacao, ItemRenegociacao, Renegociacao, CentroCusto, ContaBancaria, ContaPagar, ContaReceber, GuiaTributo, Movimentacao, PlanoConta,
@@ -119,7 +120,7 @@ class MovimentacaoCrud(Crud):
 
 class RegraRetencaoCrud(Crud):
     model = RegraRetencao
-    fields = ["tributo", "nome", "aliquota", "codigo_receita", "dia_vencimento", "base_minima", "ativa"]
+    fields = ["tributo", "nome", "aliquota", "codigo_receita", "dia_vencimento", "base_minima", "teto_mensal", "ativa"]
     list_display = ("tributo", "nome", "aliquota", "codigo_receita", "dia_vencimento", "ativa")
     search_fields = ("nome", "codigo_receita")
     filter_fields = ("tributo", "ativa")
@@ -133,13 +134,14 @@ class GuiaTributoCrud(Crud):
     model = GuiaTributo
     list_display = ("vencimento", "tributo", "codigo_receita", "competencia", "valor", "status")
     filter_fields = ("tributo", "status")
-    detail_fields = ["tributo", "codigo_receita", "competencia", "vencimento", "valor", "status",
+    detail_fields = ["tributo", "codigo_receita", "competencia", "vencimento", "valor", "multa", "juros", "status",
                      "data_pagamento", "conta_bancaria", "empresa"]
     related = (("itens", "Retenções que compõem a guia", ["retencao", "movimentacao", "valor"]),)
     actions = (
         ("financeiro:guia_recolher", "Registrar recolhimento", "bank", "financeiro.baixar_contapagar"),
         ("financeiro:guia_estornar", "Estornar recolhimento", "arrow-counterclockwise",
          "financeiro.baixar_contapagar"),
+        ("financeiro:guia_darf", "Imprimir DARF", "printer", "financeiro.view_guiatributo"),
     )
     can_create = can_edit = can_delete = False
     icon = "receipt-cutoff"
@@ -227,3 +229,19 @@ class LiquidacaoLoteCrud(Crud):
     menu = "Financeiro"
     menu_label = "Liquidações em lote"
     menu_order = 10
+
+
+class BorderoImpostoCrud(Crud):
+    model = BorderoImposto
+    list_display = ("numero", "data", "conta_bancaria", "total", "status")
+    search_fields = ("numero",)
+    filter_fields = ("status",)
+    detail_fields = ["numero", "data", "conta_bancaria", "selic_pct", "total", "status", "criado_por", "criado_em"]
+    related = (("itens", "Guias recolhidas", ["guia", "valor", "multa", "juros"]),)
+    actions = (("financeiro:bordero_imposto_estornar", "Estornar borderô", "arrow-counterclockwise",
+                "financeiro.recolher_bordero_imposto"),)
+    can_create = can_edit = can_delete = False
+    icon = "receipt"
+    menu = "Financeiro"
+    menu_label = "Borderôs de impostos"
+    menu_order = 15

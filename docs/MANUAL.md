@@ -742,6 +742,9 @@ ao Fisco. O ERP controla isso assim:
    1% (código 5952), todos com vencimento no dia 20 do mês seguinte. **São pontos de partida: a alíquota, o
    código de receita, o prazo e a base mínima dependem do tipo de serviço e do fornecedor, e quem confere
    é o contador.** Altere na tela, sem mexer no sistema.
+   O campo **teto de retenção por fornecedor no mês** (opcional, 0 = sem teto) limita a soma retida de um
+   mesmo fornecedor naquela regra dentro do mês de competência; ao atingir o teto, os títulos seguintes
+   deixam de reter.
 2. No título a pagar, **Tributos retidos → marque o que se aplica** e informe a base de cálculo. Só dá para
    definir antes do primeiro pagamento; refazer substitui o que estava marcado.
 3. Ao **pagar**, informe o valor do título que está sendo quitado: o dinheiro que sai da conta é menor (valor
@@ -754,8 +757,9 @@ ao Fisco. O ERP controla isso assim:
 
 A contabilidade acompanha: a retenção debita Fornecedores e credita *Impostos a recolher* (2.1.3), e o
 recolhimento baixa essa conta contra o banco. Conciliação de extrato, borderô e retorno CNAB já tratam o
-valor líquido (o borderô paga o líquido; o extrato é casado pelo líquido). **O ERP não gera DARF nem o
-arquivo da DCTFWeb/EFD-Reinf**: a guia é o controle interno do que recolher.
+valor líquido (o borderô paga o líquido; o extrato é casado pelo líquido). **O ERP imprime um demonstrativo
+para conferência do DARF (§14.13), mas não gera o DARF oficial nem o arquivo da DCTFWeb/EFD-Reinf**: emita o
+oficial no Sicalc/e-CAC.
 
 ### 14.8 Compensação entre contas a pagar e a receber
 
@@ -810,6 +814,44 @@ conforme a política da empresa.
 
 Limites: a PDD é apurada sobre contas a receber (não sobre outros créditos), e o ERP não baixa o título como
 perda efetiva nem calcula o efeito fiscal da provisão (dedutibilidade).
+
+### 14.11 Liquidação em lote
+
+**Financeiro → Pagar em lote / Receber em lote** baixa vários títulos de uma vez, na mesma conta bancária,
+data e forma de pagamento. Marque os títulos, informe o **total conferido** (a soma que você espera ver no
+extrato) e confirme. O lote é "tudo ou nada": se o total não bate, se algum título já foi pago ou se a
+conta está inativa, nada é baixado. Cada título é quitado pelo saldo (títulos parcialmente pagos entram
+pelo que falta). Limite de 200 títulos por lote, todos da mesma empresa. O lote recebe número `LQL-AAAA-NNNN`
+e pode ser **estornado** inteiro, desde que nenhum título tenha recebido outra movimentação depois.
+Permissão: `liquidar_lote` (grupo Financeiro).
+
+### 14.12 Cobrança por arquivo CNAB 240 (remessa e retorno)
+
+Para cobrar clientes pelo banco (carteira registrada), cadastre na **conta bancária** o **convênio de
+cobrança** e a **carteira**. Depois:
+
+1. **Cobrança → Remessas de cobrança → Nova:** escolha os títulos a receber em aberto e o ERP atribui o
+   **nosso número** (sequência da conta) e gera o arquivo `.rem` (CNAB 240, layout 040: segmentos P e Q).
+2. Envie o arquivo ao banco pelo internet banking. A remessa pode ser cancelada enquanto não processada,
+   liberando os títulos.
+3. **Cobrança → Importar retorno de cobrança:** envie o `.ret`. Liquidação (06/17) baixa o título pelo valor
+   pago; registro (02) marca o título como registrado; rejeição (03/27) libera o título para nova remessa;
+   baixa (09) é anotada. Importar o mesmo arquivo duas vezes não duplica nada.
+
+**Confira o layout com o seu banco:** o CNAB 240 tem variações por banco; faça um teste em homologação antes
+de usar em produção. Permissão: `gerar_remessa_cobranca`.
+
+### 14.13 Recolhimento de guias, DARF e multa e juros
+
+- **Multa e juros:** ao registrar o recolhimento de uma guia (ou em lote), o ERP sugere os encargos de uma
+  guia vencida: multa de mora de 0,33% ao dia, máximo 20%, e juros de 1% mais a SELIC acumulada informada.
+  É uma **estimativa** — confira no Sicalc/e-CAC e ajuste os valores. Multa e juros saem do banco como
+  despesa avulsa (contabilizada à parte do tributo); o estorno do recolhimento desfaz tudo.
+- **Borderô de impostos (Financeiro → Recolher guias em lote):** marque várias guias, informe a conta, a
+  data e a SELIC acumulada (para as vencidas). Tudo ou nada, até 100 guias de uma empresa; número
+  `BIM-AAAA-NNNN`; pode ser **estornado** por inteiro. Permissão: `recolher_bordero_imposto`.
+- **Imprimir DARF:** na guia, o botão mostra o demonstrativo com os campos do DARF (código da receita,
+  período, vencimento, principal, multa, juros, total) para conferência e digitação no documento oficial.
 
 ## 15. Contabilidade
 

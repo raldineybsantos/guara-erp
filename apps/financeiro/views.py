@@ -17,10 +17,11 @@ from django.utils import timezone
 from apps.core.crud import BootstrapMixin, restringir_por_empresa
 
 from . import aging
+from .borderoimposto import BorderoImposto
 from .lote import LiquidacaoLote
 from .forms import BaixaForm, CompensacaoForm, RenegociacaoForm, RateioLinhaForm, RecolhimentoForm, RetencaoForm, TransferenciaForm
 from .models import (FORMAS_PAGAMENTO, ApuracaoPDD, Compensacao, ContaBancaria, ContaPagar, Renegociacao, ContaReceber, GuiaTributo, Movimentacao, Retencao,
-                     definir_rateio, partes_por_centro)
+                     definir_rateio, partes_por_centro, valor_retencao)
 
 MODELOS = {"pagar": ContaPagar, "receber": ContaReceber}
 
@@ -189,7 +190,7 @@ def calcular_retencoes(request, pk):
                 for regra in regras:
                     if base < regra.base_minima:
                         continue
-                    valor = (base * regra.aliquota / 100).quantize(Decimal("0.01"))
+                    valor = valor_retencao(titulo, regra, base)
                     if valor > 0:
                         Retencao.objects.create(conta_pagar=titulo, regra=regra, base=base,
                                                 aliquota=regra.aliquota, valor=valor)
@@ -208,7 +209,8 @@ def recolher_guia(request, pk):
     if not request.user.has_perm("financeiro.baixar_contapagar"):
         messages.error(request, "Você não tem permissão para pagar guias.")
         return redirect(guia.get_absolute_url())
-    form = RecolhimentoForm(request.POST or None)
+    multa_est, juros_est = guia.calcular_encargos(timezone.localdate())
+    form = RecolhimentoForm(request.POST or None, initial={"multa": multa_est, "juros": juros_est})
     if request.method == "POST" and form.is_valid():
         try:
             guia.recolher(**form.cleaned_data)
@@ -216,8 +218,13 @@ def recolher_guia(request, pk):
             return redirect(guia.get_absolute_url())
         except ValidationError as e:
             form.add_error(None, e)
+    aviso = None
+    if multa_est or juros_est:
+        aviso = (f"Guia vencida em {guia.vencimento:%d/%m/%Y}. Valores sugeridos: multa {multa_est} (0,33% ao dia, "
+                 f"máx. 20%) e juros {juros_est} (1%, sem a SELIC acumulada). Confira o cálculo no sistema da "
+                 "Receita Federal e ajuste se precisar.")
     return render(request, "form_simples.html", {"form": form, "titulo": f"Recolher {guia} — {guia.valor}",
-                                                 "icone": "bank"})
+                                                 "icone": "bank", "aviso": aviso})
 
 
 @login_required
@@ -517,3 +524,67 @@ def estornar_lote(request, pk):
     except ValidationError as e:
         messages.error(request, " ".join(e.messages))
     return redirect(lote.get_absolute_url())
+
+
+# ---------------------------------------------------------------- borderô de impostos e DARF
+class BorderoImpostoForm(BootstrapMixin, forms.Form):
+    conta_bancaria = forms.ModelChoiceField(ContaBancaria.objects.filter(ativa=True), label="Conta bancária")
+    data = forms.DateField(label="Data do recolhimento", initial=timezone.localdate)
+    selic_pct = forms.DecimalField(max_digits=6, decimal_places=2, min_value=Decimal("0"), required=False, initial=0,
+                                   label="SELIC acumulada (%)", localize=True,
+                                   help_text="Para as guias vencidas: SELIC acumulada do mês seguinte ao vencimento até o mês anterior ao pagamento.")
+
+
+@login_required
+@permission_required("financeiro.recolher_bordero_imposto", raise_exception=True)
+def bordero_imposto(request):
+    qs = restringir_por_empresa(GuiaTributo.objects.filter(status="aberta"), GuiaTributo, request.user)
+    guias = list(qs.order_by("vencimento", "tributo"))
+    form = BorderoImpostoForm(request.POST or None)
+    if request.method == "POST" and form.is_valid():
+        ids = [int(i) for i in request.POST.getlist("guias") if i.isdigit()]
+        permitidas = set(restringir_por_empresa(GuiaTributo.objects.filter(pk__in=ids), GuiaTributo, request.user)
+                         .values_list("pk", flat=True))
+        if len(permitidas) != len(set(ids)):
+            raise PermissionDenied
+        d = form.cleaned_data
+        try:
+            b = BorderoImposto.recolher(ids, d["conta_bancaria"], d["data"], d["selic_pct"], request.user)
+            messages.success(request, f"Borderô {b.numero}: total recolhido {b.total}.")
+            return redirect(b.get_absolute_url())
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+    hoje = timezone.localdate()
+    return render(request, "financeiro/bordero_imposto.html", {
+        "titulo": "Recolher guias em lote (borderô de impostos)", "guias": guias, "form": form, "hoje": hoje,
+        "marcadas": request.POST.getlist("guias")})
+
+
+@login_required
+@permission_required("financeiro.recolher_bordero_imposto", raise_exception=True)
+def estornar_bordero_imposto(request, pk):
+    b = get_object_or_404(BorderoImposto, pk=pk)
+    if request.method != "POST":
+        return render(request, "confirmar.html", {
+            "titulo": "Estornar borderô de impostos", "voltar": b.get_absolute_url(),
+            "mensagem": f"Estornar o borderô {b.numero}? Todos os recolhimentos dele serão desfeitos e as guias voltam a ficar a recolher."})
+    try:
+        b.estornar()
+        messages.success(request, "Borderô estornado.")
+    except ValidationError as e:
+        messages.error(request, " ".join(e.messages))
+    return redirect(b.get_absolute_url())
+
+
+@login_required
+@permission_required("financeiro.view_guiatributo", raise_exception=True)
+def guia_darf(request, pk):
+    guia = get_object_or_404(restringir_por_empresa(GuiaTributo.objects.all(), GuiaTributo, request.user), pk=pk)
+    empresa = guia.empresa
+    if empresa is None:
+        from apps.core.models import Empresa
+        empresa = Empresa.padrao()
+    multa, juros = (guia.multa, guia.juros) if guia.status == "paga" else guia.calcular_encargos(timezone.localdate())
+    return render(request, "financeiro/darf.html", {
+        "titulo": f"{guia}", "guia": guia, "empresa": empresa, "multa": multa, "juros": juros,
+        "total": guia.valor + multa + juros})

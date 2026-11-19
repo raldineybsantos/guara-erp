@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<form method="post" novalidate>{% csrf_token %}
+  <div class="card mb-3"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+    <thead><tr><th style="width:36px"></th><th>Vencimento</th><th>Guia</th><th>Competência</th><th class="text-end">Valor</th><th></th></tr></thead>
+    <tbody>{% for g in guias %}
+      <tr><td><input type="checkbox" name="guias" value="{{ g.pk }}" {% if g.pk|stringformat:"s" in marcadas %}checked{% endif %}></td>
+        <td>{{ g.vencimento|date:"d/m/Y" }}</td><td><a href="{{ g.get_absolute_url }}">{{ g }}</a></td>
+        <td>{{ g.competencia|date:"m/Y" }}</td><td class="text-end">{{ g.valor|moeda }}</td>
+        <td>{% if g.vencimento < hoje %}<span class="badge bg-danger">vencida</span>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6" class="text-secondary text-center py-3">Nenhuma guia a recolher.</td></tr>{% endfor %}</tbody>
+  </table></div></div>
+  <div class="card mb-3" style="max-width:900px"><div class="card-body">{% include "crud/_campos.html" %}
+    <p class="small text-secondary mb-0">Multa (0,33% ao dia, máx. 20%) e juros (SELIC informada + 1%) são calculados para as guias vencidas na data do recolhimento.</p>
+  </div></div>
+  <button class="btn btn-success"><i class="bi bi-bank"></i> Recolher selecionadas</button>
+</form>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% extends "base.html" %}{% load erp %}
+{% block content %}
+<div class="card" style="max-width:760px"><div class="card-body">
+  <h5 class="mb-3">Documento de Arrecadação de Receitas Federais — DARF</h5>
+  <table class="table table-bordered table-sm mb-3">
+    <tr><th style="width:42%">01 Nome / telefone</th><td>{{ empresa.razao_social }}</td></tr>
+    <tr><th>02 Período de apuração</th><td>{{ guia.competencia|date:"m/Y" }}</td></tr>
+    <tr><th>03 CNPJ</th><td>{{ empresa.cnpj }}</td></tr>
+    <tr><th>04 Código da receita</th><td>{{ guia.codigo_receita|default:"—" }} ({{ guia.get_tributo_display }})</td></tr>
+    <tr><th>06 Data de vencimento</th><td>{{ guia.vencimento|date:"d/m/Y" }}</td></tr>
+    <tr><th>07 Valor do principal</th><td class="text-end">{{ guia.valor|moeda }}</td></tr>
+    <tr><th>08 Valor da multa</th><td class="text-end">{{ multa|moeda }}</td></tr>
+    <tr><th>09 Valor dos juros / encargos</th><td class="text-end">{{ juros|moeda }}</td></tr>
+    <tr class="table-light"><th>10 Valor total</th><td class="text-end"><strong>{{ total|moeda }}</strong></td></tr>
+  </table>
+  <p class="small text-secondary">Este documento é um demonstrativo para conferência. Emita o DARF oficial no Sicalc ou no e-CAC (a multa e os juros são calculados lá, com a SELIC do período) e use este quadro como base. {% if guia.status == "paga" %}Guia recolhida em {{ guia.data_pagamento|date:"d/m/Y" }}.{% endif %}</p>
+  <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+  <a class="btn btn-outline-secondary" href="{{ guia.get_absolute_url }}">Voltar</a>
+</div></div>
+{% endblock %}

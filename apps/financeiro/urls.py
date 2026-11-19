@@ -27,6 +27,9 @@ urlpatterns = [
     path("lote/pagar/", views.liquidar_lote, {"tipo": "pagar"}, name="liquidar_lote_pagar"),
     path("lote/receber/", views.liquidar_lote, {"tipo": "receber"}, name="liquidar_lote_receber"),
     path("lote/<int:pk>/estornar/", views.estornar_lote, name="lote_estornar"),
+    path("impostos/recolher/", views.bordero_imposto, name="bordero_imposto"),
+    path("impostos/<int:pk>/estornar/", views.estornar_bordero_imposto, name="bordero_imposto_estornar"),
+    path("guias/<int:pk>/darf/", views.guia_darf, name="guia_darf"),
     path("aging/", views.aging_view, name="aging"),
     path("pdd/apurar/", views.apurar_pdd, name="pdd_apurar"),
     path("pdd/<int:pk>/estornar/", views.estornar_pdd, name="pdd_estornar"),
@@ -35,4 +38,4 @@ urlpatterns = [
 ] + crud_urls(telas.ContaPagarCrud, telas.ContaReceberCrud, telas.MovimentacaoCrud, telas.ContaBancariaCrud,
               telas.PlanoContaCrud, telas.CentroCustoCrud, telas.RegraRetencaoCrud, telas.GuiaTributoCrud,
               telas.CompensacaoCrud, telas.RenegociacaoCrud,
-              telas.ApuracaoPDDCrud, telas.FaixaPDDCrud, telas.LiquidacaoLoteCrud)
+              telas.ApuracaoPDDCrud, telas.FaixaPDDCrud, telas.LiquidacaoLoteCrud, telas.BorderoImpostoCrud)

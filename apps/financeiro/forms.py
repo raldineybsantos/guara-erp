@@ -127,6 +127,10 @@ class RateioLinhaForm(BootstrapMixin, forms.Form):
 class RecolhimentoForm(BootstrapMixin, forms.Form):
     conta_bancaria = forms.ModelChoiceField(ContaBancaria.objects.filter(ativa=True), label="Conta bancária")
     data = forms.DateField(label="Data do recolhimento", initial=timezone.localdate)
+    multa = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0"), required=False, initial=0,
+                               label="Multa de mora", localize=True)
+    juros = forms.DecimalField(max_digits=14, decimal_places=2, min_value=Decimal("0"), required=False, initial=0,
+                               label="Juros (SELIC)", localize=True)
 
 
 class CompensacaoForm(BootstrapMixin, forms.Form):

@@ -353,6 +353,8 @@ class Movimentacao(ModeloBase, PorEmpresaMixin):
                                      on_delete=models.CASCADE, related_name="movimentacoes", editable=False)
     guia = models.ForeignKey("GuiaTributo", verbose_name="guia de tributo", null=True, blank=True,
                              on_delete=models.CASCADE, related_name="movimentacoes", editable=False)
+    guia_encargos = models.ForeignKey("GuiaTributo", verbose_name="guia (multa e juros)", null=True, blank=True,
+                                      on_delete=models.CASCADE, related_name="movimentacoes_encargos", editable=False)
     conciliado = models.BooleanField(default=False)
     transferencia = models.BooleanField("transferência entre contas", default=False, editable=False)
     observacoes = models.TextField("observações", blank=True)
@@ -392,6 +394,9 @@ class RegraRetencao(ModeloBase):
     dia_vencimento = models.PositiveSmallIntegerField("dia de vencimento (mês seguinte)", default=20)
     base_minima = models.DecimalField("base mínima", max_digits=14, decimal_places=2, default=0,
                                       help_text="Abaixo deste valor a retenção não é calculada.")
+    teto_mensal = models.DecimalField("teto de retenção por fornecedor no mês", max_digits=14, decimal_places=2,
+                                      default=0, help_text="0 = sem teto. Usado, por exemplo, no INSS, cuja retenção "
+                                      "mensal por prestador tem limite (teto previdenciário).")
     ativa = models.BooleanField(default=True)
 
     class Meta:
@@ -432,6 +437,20 @@ class Retencao(ModeloBase):
     retido.fget.short_description = "já retido"
 
 
+def valor_retencao(titulo, regra, base):
+    """Valor a reter de uma regra sobre a base, respeitando o teto mensal por fornecedor (se a regra tiver)."""
+    valor = (Decimal(base) * regra.aliquota / 100).quantize(Decimal("0.01"))
+    if regra.teto_mensal and regra.teto_mensal > 0 and titulo.fornecedor_id:
+        mes = (titulo.competencia or titulo.data_emissao).replace(day=1)
+        outras = (Retencao.objects.filter(regra=regra, conta_pagar__fornecedor_id=titulo.fornecedor_id)
+                  .exclude(conta_pagar=titulo).exclude(conta_pagar__status="cancelado")
+                  .select_related("conta_pagar"))
+        ja = sum((r.valor for r in outras
+                  if (r.conta_pagar.competencia or r.conta_pagar.data_emissao).replace(day=1) == mes), Decimal("0"))
+        valor = min(valor, max(regra.teto_mensal - ja, Decimal("0")))
+    return valor
+
+
 class GuiaTributo(ModeloBase, PorEmpresaMixin):
     """Guia (DARF etc.) com os tributos retidos de um mês, por código de receita."""
 
@@ -441,6 +460,8 @@ class GuiaTributo(ModeloBase, PorEmpresaMixin):
     competencia = models.DateField("competência", help_text="Mês em que o tributo foi retido.")
     vencimento = models.DateField()
     valor = models.DecimalField(max_digits=14, decimal_places=2, default=0, editable=False)
+    multa = models.DecimalField(max_digits=14, decimal_places=2, default=0, editable=False)
+    juros = models.DecimalField(max_digits=14, decimal_places=2, default=0, editable=False)
     status = models.CharField(max_length=10, choices=STATUS, default="aberta", editable=False)
     data_pagamento = models.DateField("data do recolhimento", null=True, blank=True, editable=False)
     conta_bancaria = models.ForeignKey(ContaBancaria, verbose_name="conta bancária", null=True, blank=True,
@@ -475,23 +496,47 @@ class GuiaTributo(ModeloBase, PorEmpresaMixin):
         self.valor = total
         self.save(update_fields=["valor", "atualizado_em"])
 
+    @property
+    def total(self):
+        return self.valor + self.multa + self.juros
+
+    def calcular_encargos(self, data, selic_pct=0):
+        """Multa de mora (0,33% ao dia, máximo 20%) e juros (SELIC acumulada informada + 1% no mês do pagamento)
+        quando o recolhimento é feito depois do vencimento. Devolve (multa, juros)."""
+        if data <= self.vencimento:
+            return Decimal("0"), Decimal("0")
+        dias = (data - self.vencimento).days
+        multa = min(self.valor * Decimal("0.0033") * dias, self.valor * Decimal("0.20")).quantize(Decimal("0.01"))
+        juros = (self.valor * (Decimal(selic_pct or 0) + Decimal("1")) / 100).quantize(Decimal("0.01"))
+        return multa, juros
+
     @transaction.atomic
-    def recolher(self, conta_bancaria, data):
+    def recolher(self, conta_bancaria, data, multa=0, juros=0):
         if self.status == "paga":
             raise ValidationError("Guia já recolhida.")
+        multa, juros = Decimal(multa or 0), Decimal(juros or 0)
+        if multa < 0 or juros < 0:
+            raise ValidationError("Multa e juros não podem ser negativos.")
         Movimentacao.objects.create(
             empresa=self.empresa, conta_bancaria=conta_bancaria, data=data, valor=self.valor, tipo="saida",
             descricao=f"Recolhimento: {self}"[:200], guia=self)
+        if multa + juros > 0:
+            Movimentacao.objects.create(
+                empresa=self.empresa, conta_bancaria=conta_bancaria, data=data, valor=multa + juros, tipo="saida",
+                descricao=f"Multa e juros: {self}"[:200], guia_encargos=self)
         self.status, self.data_pagamento, self.conta_bancaria = "paga", data, conta_bancaria
-        self.save(update_fields=["status", "data_pagamento", "conta_bancaria", "atualizado_em"])
+        self.multa, self.juros = multa, juros
+        self.save(update_fields=["status", "data_pagamento", "conta_bancaria", "multa", "juros", "atualizado_em"])
 
     @transaction.atomic
     def estornar_recolhimento(self):
         if self.status != "paga":
             raise ValidationError("A guia não está recolhida.")
         self.movimentacoes.all().delete()
+        self.movimentacoes_encargos.all().delete()
         self.status, self.data_pagamento, self.conta_bancaria = "aberta", None, None
-        self.save(update_fields=["status", "data_pagamento", "conta_bancaria", "atualizado_em"])
+        self.multa = self.juros = Decimal("0")
+        self.save(update_fields=["status", "data_pagamento", "conta_bancaria", "multa", "juros", "atualizado_em"])
 
 
 class RetencaoBaixa(models.Model):
@@ -895,3 +940,4 @@ class ApuracaoPDD(ModeloBase, PorEmpresaMixin):
 
 
 from .lote import ItemLiquidacao, LiquidacaoLote  # noqa: E402,F401
+from .borderoimposto import BorderoImposto, ItemBorderoImposto  # noqa: E402,F401
