@@ -14,9 +14,9 @@ vendas, contabilidade) e implantação no servidor vsl01.
 | 5 | Primeiro acesso | Sem orientação do que configurar primeiro; o usuário novo ficava perdido | Tela "Primeiros passos" com checklist e aviso no painel | b66644b |
 | 6 | Parceiros | Sem consulta de CNPJ nem validação de CPF no cadastro | Botão "Consultar CNPJ" (BrasilAPI) preenche razão social, endereço, CNAE e situação; CPF/CNPJ validados | 34b8765 |
 | 7 | Contabilidade | Contratos não geravam apropriação mensal (despesa/receita) | Modelos `ContratoContabil` e `ApropriacaoContrato`, tela de apropriação e estorno por competência | 34b8765 |
-| 8 | Colaboradores | Matrícula ficava vazia e precisava ser digitada à mão | Gerada automaticamente (6 dígitos, sequencial por empresa) quando em branco; matrícula manual é respeitada | pendente de commit |
-| 9 | Colaboradores | CPF sem máscara ao digitar e gravado ora com pontos, ora só com dígitos | Máscara visual 000.000.000-00; gravação sempre só com dígitos; lista continua mostrando formatado | pendente de commit |
-| 10 | Endereço (todos os cadastros) | CEP não preenchia o endereço | Ao sair do campo CEP, logradouro, bairro, cidade e UF são preenchidos (BrasilAPI) | pendente de commit |
+| 8 | Colaboradores | Matrícula ficava vazia e precisava ser digitada à mão | Gerada automaticamente (6 dígitos, sequencial por empresa) quando em branco; matrícula manual é respeitada | a393e6c |
+| 9 | Colaboradores | CPF sem máscara ao digitar e gravado ora com pontos, ora só com dígitos | Máscara visual 000.000.000-00; gravação sempre só com dígitos; lista continua mostrando formatado | a393e6c |
+| 10 | Endereço (todos os cadastros) | CEP não preenchia o endereço | Ao sair do campo CEP, logradouro, bairro, cidade e UF são preenchidos (BrasilAPI) | a393e6c |
 
 Nota: a suspeita de que o preço do produto não era aplicado ao pedido foi alarme falso; o modelo já usava a tabela ou
 o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibilidade na tela.
