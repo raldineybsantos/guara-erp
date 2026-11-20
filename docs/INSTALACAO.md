@@ -52,7 +52,7 @@ O Docker baixa e configura sozinho o restante: Python 3.12, PostgreSQL 16, pgAdm
 | Cliente PostgreSQL (`pg_dump`) | mesma versão do servidor, para o backup pela tela |
 | Git | 2.30 ou mais recente |
 
-As bibliotecas Python ficam em `requirements.txt`: Django 5.1, psycopg 3, django-filter, whitenoise,
+As bibliotecas Python ficam em `requirements.txt`: Django 5.2, psycopg 3, django-filter, whitenoise,
 gunicorn (Linux), waitress (Windows), python-dotenv, tzdata, defusedxml, cryptography e **pyHanko**
 (assinatura digital PAdES/CAdES).
 

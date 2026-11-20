@@ -8,6 +8,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
+from apps.core.crud import restringir_por_empresa
 from apps.core.models import Colaborador
 
 from .models import (ConjuntoUniforme, EntregaUniforme, ItemUniforme, ModeloUniforme, TamanhoColaborador)
@@ -54,9 +55,15 @@ class EntregarForm(forms.Form):
     data = forms.DateField(label="Data da entrega", initial=timezone.localdate, widget=forms.DateInput(attrs={"type": "date"}))
     observacoes = forms.CharField(label="Observações", max_length=300, required=False)
 
-    def __init__(self, *a, **kw):
+    def __init__(self, *a, user=None, **kw):
         super().__init__(*a, **kw)
-        self.fields["colaborador"].queryset = Colaborador.objects.exclude(status="desligado").order_by("nome")
+        qs = Colaborador.objects.exclude(status="desligado").order_by("nome")
+        self.fields["colaborador"].queryset = restringir_por_empresa(qs, Colaborador, user) if user else qs.none()
+
+
+def _entrega_visivel(request, pk, select=()):
+    qs = restringir_por_empresa(EntregaUniforme.objects.all(), EntregaUniforme, request.user, "colaborador__empresa")
+    return get_object_or_404(qs.select_related(*select), pk=pk)
 
 
 def _sugerir(colab, modelo, itens):
@@ -75,7 +82,7 @@ def entregar(request, pk=None):
     if conjunto is None:
         modelos = ModeloUniforme.objects.filter(ativo=True).order_by("nome")
         pecas = [type("P", (), {"modelo": m, "quantidade": 0, "pk": m.pk})() for m in modelos]
-    form = EntregarForm(request.POST or None, initial={"colaborador": request.GET.get("colaborador")})
+    form = EntregarForm(request.POST or None, user=request.user, initial={"colaborador": request.GET.get("colaborador")})
     escolhas = []
     for p in pecas:
         itens = p.modelo.itens_ordenados
@@ -83,7 +90,7 @@ def entregar(request, pk=None):
         sugerido = None
         colab_id = request.POST.get("colaborador") or request.GET.get("colaborador")
         if colab_id and str(colab_id).isdigit():
-            colab = Colaborador.objects.filter(pk=colab_id).first()
+            colab = form.fields["colaborador"].queryset.filter(pk=colab_id).first()
             sugerido = _sugerir(colab, p.modelo, itens) if colab else None
         escolhas.append({"peca": p, "itens": [(i, disp.get(i.pk, 0)) for i in itens], "sugerido": sugerido,
                          "campo": f"item_{p.modelo.pk}", "qtd": f"qtd_{p.modelo.pk}"})
@@ -113,7 +120,7 @@ def entregar(request, pk=None):
 @login_required
 @permission_required("uniformes.view_entregauniforme", raise_exception=True)
 def entrega_termo(request, pk):
-    entrega = get_object_or_404(EntregaUniforme.objects.select_related("colaborador"), pk=pk)
+    entrega = _entrega_visivel(request, pk, ("colaborador",))
     return render(request, "uniformes/termo.html", {"entrega": entrega, "itens": entrega.itens.select_related("item__modelo"),
                                                     "hoje": timezone.localdate()})
 
@@ -121,7 +128,7 @@ def entrega_termo(request, pk):
 @login_required
 @permission_required("uniformes.change_entregauniforme", raise_exception=True)
 def entrega_assinada(request, pk):
-    entrega = get_object_or_404(EntregaUniforme, pk=pk)
+    entrega = _entrega_visivel(request, pk)
     if request.method == "POST" and entrega.status == "entregue":
         entrega.recebido_confirmado = True
         entrega.save(update_fields=["recebido_confirmado", "atualizado_em"])
@@ -132,7 +139,7 @@ def entrega_assinada(request, pk):
 @login_required
 @permission_required("uniformes.change_entregauniforme", raise_exception=True)
 def entrega_estornar(request, pk):
-    entrega = get_object_or_404(EntregaUniforme, pk=pk)
+    entrega = _entrega_visivel(request, pk)
     if request.method == "POST":
         try:
             entrega.estornar()

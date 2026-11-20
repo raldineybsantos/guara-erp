@@ -206,3 +206,40 @@ class TelasTest(Base):
         self.client.force_login(u)
         self.assertEqual(self.client.get(reverse("uniformes:catalogo")).status_code, 403)
         self.assertEqual(self.client.post(reverse("uniformes:entrega_estornar", args=[1])).status_code, 403)
+
+
+class IsolamentoPorEmpresaTest(Base):
+    """Usuário só enxerga e mexe em entregas de colaboradores das empresas a que tem acesso."""
+
+    def setUp(self):
+        super().setUp()
+        from django.contrib.auth.models import Permission
+        self.outra = Empresa.objects.create(razao_social="Outra", cnpj="45723174000110")
+        self.dela = Colaborador.objects.create(empresa=self.outra, nome="Zeca", cpf="39053344705", tipo_contrato="clt")
+        self.estoque("M", 5)
+        self.entrega_outra = EntregaUniforme.registrar(self.dela, [(self.item("M"), 1)])
+        self.u = get_user_model().objects.create_user("op", "o@o.com", "x")
+        self.u.user_permissions.set(Permission.objects.filter(content_type__app_label="uniformes"))
+        self.emp.usuarios.add(self.u)
+        self.outra.usuarios.add(get_user_model().objects.create_user("outro", "x@x.com", "x"))
+        self.client.force_login(self.u)
+
+    def test_nao_ve_termo_nem_estorna_de_outra_empresa(self):
+        self.assertEqual(self.client.get(reverse("uniformes:entrega_termo", args=[self.entrega_outra.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse("uniformes:entrega_estornar", args=[self.entrega_outra.pk])).status_code, 404)
+        self.assertEqual(self.client.post(reverse("uniformes:entrega_assinada", args=[self.entrega_outra.pk])).status_code, 404)
+        self.entrega_outra.refresh_from_db()
+        self.assertEqual(self.entrega_outra.status, "entregue")
+
+    def test_nao_entrega_a_colaborador_de_outra_empresa(self):
+        r = self.client.post(reverse("uniformes:entregar_avulso"), {
+            "colaborador": self.dela.pk, "data": "2026-11-20", f"item_{self.polo.pk}": self.item("M").pk,
+            f"qtd_{self.polo.pk}": "1"})
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(EntregaUniforme.objects.filter(colaborador=self.dela).count(), 1)
+
+    def test_a_propria_empresa_continua_funcionando(self):
+        r = self.client.post(reverse("uniformes:entregar_avulso"), {
+            "colaborador": self.c.pk, "data": "2026-11-20", f"item_{self.polo.pk}": self.item("M").pk,
+            f"qtd_{self.polo.pk}": "1"})
+        self.assertEqual(r.status_code, 302)

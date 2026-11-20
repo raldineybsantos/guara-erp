@@ -6,7 +6,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="Licença GPL-3.0" src="https://img.shields.io/badge/licen%C3%A7a-GPL--3.0-blue"></a>
   <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-3776AB">
-  <img alt="Django 5.1" src="https://img.shields.io/badge/django-5.1-0C4B33">
+  <img alt="Django 5.2" src="https://img.shields.io/badge/django-5.2-0C4B33">
   <img alt="PostgreSQL 14+" src="https://img.shields.io/badge/postgresql-14%2B-336791">
   <img alt="Linux e Windows" src="https://img.shields.io/badge/plataforma-Linux%20%7C%20Windows-lightgrey">
 </p>

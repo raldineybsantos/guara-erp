@@ -308,3 +308,28 @@ aponte `TMPDIR` para um disco cifrado.
   entrar no ERP. O usuário desfaz o vínculo pelo ERP ou com `/desvincular`.
 - **Segredos:** chave de API e token do bot ficam cifrados (mesmo cofre do certificado A1), fora da
   auditoria, e não voltam para a tela.
+
+## Revisão de segurança de 20/11/2026
+
+Método: `manage.py check --deploy`, análise estática (bandit), auditoria de dependências (pip-audit), busca por
+padrões de risco no código (SQL bruto, `|safe`, `csrf_exempt`, `shell=True`, `eval`, segredos no código) e varredura
+de todas as rotas, anônima e com usuário sem permissão (teste permanente `tests/test_rotas_acesso.py`).
+
+| Achado | Gravidade | Situação |
+|---|---|---|
+| **Django 5.1.15 sem suporte e com 9 vulnerabilidades conhecidas** (pip-audit) | Alta | **CORRIGIDO.** Atualizado para o Django 5.2 LTS (`>=5.2.17,<5.3`); suíte completa aprovada (917 testes). No servidor: `git pull && docker compose up -d --build`. |
+| Uniformes: telas de termo, estorno e assinatura abriam entregas de colaboradores de **outra empresa** pelo número na URL, e a lista de colaboradores na entrega não respeitava a empresa do usuário | Média | **CORRIGIDO** (404 fora da empresa; 3 testes novos). |
+| `/relatorios/` redirecionava sem exigir login | Baixa | **CORRIGIDO.** |
+| Nenhuma rota de dados abre sem login; usuário sem permissão não abre nenhuma tela de cadastro ou movimentação | Informativo | Agora garantido por teste automático: rota nova sem proteção quebra a suíte. |
+| `csrf_exempt` em 9 pontos | Informativo | Revisados: webhooks (Asaas, Efí, Telegram) autenticam por token em tempo constante, SCIM por token em hash, SAML pelo RelayState, e os dois envios de certificado reativam o CSRF logo após trocar o manipulador de upload. |
+| Bandit: SHA-1 e `urlopen` | Informativo | SHA-1 só como impressão digital de erros e para ler assinaturas de terceiros; `urlopen` só com `https://` fixo ou endereço do administrador validado. Sem ação. |
+
+Recomendações que dependem de configuração ou decisão:
+
+1. **Porta 8000 em HTTP aberta na rede** (`WEB_BIND=0.0.0.0` é o padrão): com o proxy HTTPS ligado, use `WEB_BIND=127.0.0.1`.
+   Com `CONFIAR_X_FORWARDED_FOR=1` e a 8000 exposta, qualquer cliente pode forjar o IP usado no bloqueio de tentativas e na auditoria.
+2. **Tipo real dos arquivos enviados** (PDF/JPG/PNG) ainda é conferido pela extensão; o antivírus cobre o conteúdo, mas não o tipo.
+3. **Webhook da Efí** leva o segredo no caminho da URL, que pode aparecer em logs de acesso do proxy; mascare esse trecho nos logs.
+4. **Endereço do serviço de IA** é definido pelo administrador e o servidor faz a chamada: restrinja a configuração a administradores de confiança (a consulta pode alcançar a rede interna).
+5. **HSTS** sem `includeSubDomains` e sem `preload`, de propósito; ative se todos os subdomínios usarem HTTPS.
+6. Rode `pip-audit -r requirements.txt` ao menos uma vez por mês, ou automatize no repositório.
