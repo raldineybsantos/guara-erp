@@ -17,7 +17,7 @@ class ModeloUniformeCrud(Crud):
     empresa_campo = "nada"
     icon = "bag"
     menu = "Estoque"
-    menu_label = "Uniformes: peças"
+    menu_label = "Materiais com tamanho (cadastro)"
     menu_order = 60
 
     @classmethod
@@ -40,7 +40,7 @@ class ConjuntoUniformeCrud(Crud):
     actions = (("uniformes:entregar", "Entregar a um colaborador", "box-arrow-right", "uniformes.add_entregauniforme"),)
     icon = "collection"
     menu = "Estoque"
-    menu_label = "Uniformes: conjuntos (kits)"
+    menu_label = "Materiais: kits por função"
     menu_order = 61
 
     @classmethod
@@ -69,7 +69,7 @@ class TamanhoColaboradorCrud(Crud):
     filter_fields = ("numeracao",)
     icon = "rulers"
     menu = "Estoque"
-    menu_label = "Uniformes: tamanhos dos colaboradores"
+    menu_label = "Materiais: tamanhos dos colaboradores"
     menu_order = 62
 
 
@@ -91,5 +91,5 @@ class EntregaUniformeCrud(Crud):
     acao_status = {"uniformes:entrega_assinada": ("entregue",), "uniformes:entrega_estornar": ("entregue",)}
     icon = "box-arrow-right"
     menu = "Estoque"
-    menu_label = "Uniformes: entregas"
+    menu_label = "Materiais: entregas"
     menu_order = 63

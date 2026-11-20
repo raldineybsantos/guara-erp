@@ -487,11 +487,11 @@ Limites: o **inventário** ajusta o total do armazém, sem contar lote por lote 
 automático "inventário-data" e uma falta sai pelo FEFO); não há coletor de código de barras (ACD) nem
 rastreabilidade de lote nas notas fiscais.
 
-### 8.x Uniformes: catálogo, conjuntos e entrega
+### 8.x Materiais com tamanho (uniformes, EPI, calçados): catálogo, kits e entrega
 
-Fazem parte do menu **Estoque** (itens "Uniformes: …"). Serve para organizar o material de trabalho (camisas, calças, botas…) com numeração, imagem e estoque.
+Fazem parte do menu **Estoque** (itens "Materiais: …", ex.: uniformes, EPI e calçados). Serve para organizar o material de trabalho (camisas, calças, botas…) com numeração, imagem e estoque.
 
-1. **Uniformes: peças** → *Nova peça*: código curto (ex.: POLO-AZ), nome, categoria, modelagem, **numeração** (letras PP–XGG, roupa 36–56, calçado 34–48 ou tamanho único), descrição, **imagem** (JPG/PNG/WebP até 5 MB), vida útil em meses (calcula a data de troca) e estoque mínimo por tamanho. Ao salvar, o sistema cria um produto de estoque por tamanho (`UNI-<código>-<tamanho>`).
+1. **Materiais com tamanho (cadastro)** → *Nova peça*: código curto (ex.: POLO-AZ), nome, categoria, modelagem, **numeração** (letras PP–XGG, roupa 36–56, calçado 34–48 ou tamanho único), descrição, **imagem** (JPG/PNG/WebP até 5 MB), vida útil em meses (calcula a data de troca) e estoque mínimo por tamanho. Ao salvar, o sistema cria um produto de estoque por tamanho (`UNI-<código>-<tamanho>`).
 2. **Dar entrada no estoque**: use *Estoque → Movimentação manual* ou o recebimento de compras com o produto do tamanho (o detalhe da peça mostra a grade tamanho × disponível).
 3. **Catálogo**: galeria com foto, tamanhos e disponibilidade (verde = disponível, amarelo = abaixo do mínimo, vermelho = sem estoque); filtros por categoria e situação.
 4. **Conjuntos (kits)**: monte o conjunto de uma função (ex.: 3 camisas + 2 calças + 1 bota), opcionalmente por departamento/cargo. O detalhe mostra, por peça e tamanho, quantos colaboradores precisam (pela numeração cadastrada), quanto há e **quanto falta comprar**.
