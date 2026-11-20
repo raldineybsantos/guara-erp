@@ -16,9 +16,9 @@ class ModeloUniformeCrud(Crud):
     detail_template = "uniformes/modelo_detail.html"
     empresa_campo = "nada"
     icon = "bag"
-    menu = "Uniformes"
-    menu_label = "Peças (cadastro)"
-    menu_order = 2
+    menu = "Estoque"
+    menu_label = "Uniformes: peças"
+    menu_order = 60
 
     @classmethod
     def after_save(cls, request, obj, created):
@@ -39,9 +39,9 @@ class ConjuntoUniformeCrud(Crud):
     empresa_campo = "nada"
     actions = (("uniformes:entregar", "Entregar a um colaborador", "box-arrow-right", "uniformes.add_entregauniforme"),)
     icon = "collection"
-    menu = "Uniformes"
-    menu_label = "Conjuntos (kits)"
-    menu_order = 3
+    menu = "Estoque"
+    menu_label = "Uniformes: conjuntos (kits)"
+    menu_order = 61
 
     @classmethod
     def extra_detalhe(cls, request, obj):
@@ -68,9 +68,9 @@ class TamanhoColaboradorCrud(Crud):
     search_fields = ("colaborador__nome",)
     filter_fields = ("numeracao",)
     icon = "rulers"
-    menu = "Uniformes"
-    menu_label = "Tamanhos dos colaboradores"
-    menu_order = 4
+    menu = "Estoque"
+    menu_label = "Uniformes: tamanhos dos colaboradores"
+    menu_order = 62
 
 
 class EntregaUniformeCrud(Crud):
@@ -90,6 +90,6 @@ class EntregaUniformeCrud(Crud):
                 "uniformes.change_entregauniforme"))
     acao_status = {"uniformes:entrega_assinada": ("entregue",), "uniformes:entrega_estornar": ("entregue",)}
     icon = "box-arrow-right"
-    menu = "Uniformes"
-    menu_label = "Entregas"
-    menu_order = 5
+    menu = "Estoque"
+    menu_label = "Uniformes: entregas"
+    menu_order = 63
