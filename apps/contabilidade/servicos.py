@@ -195,11 +195,18 @@ def escopo_lancamentos(qs, empresa=None, user=None, caminho="lancamento__empresa
     return qs
 
 
-def saldos(ate=None, de=None, empresa=None, user=None):
-    """{conta_id: (débitos, créditos)} das partidas no intervalo [de, ate]."""
+def saldos(ate=None, de=None, empresa=None, user=None, sem_encerramento=False):
+    """{conta_id: (débitos, créditos)} das partidas no intervalo [de, ate].
+
+    sem_encerramento: True ignora todos os lançamentos de encerramento do exercício (movimento "antes do
+    encerramento", como na DRE); um número (ano) ignora só o encerramento daquele ano."""
     from django.db.models import Q, Sum
 
     qs = escopo_lancamentos(Partida.objects.all(), empresa, user)
+    if sem_encerramento is True:
+        qs = qs.exclude(lancamento__evento="encerramento_exercicio")
+    elif sem_encerramento:
+        qs = qs.exclude(lancamento__evento="encerramento_exercicio", lancamento__data__year=sem_encerramento)
     if de:
         qs = qs.filter(lancamento__data__gte=de)
     if ate:

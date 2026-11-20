@@ -947,6 +947,25 @@ contas)** e/ou **centro de custo**, tipo *receita* ou *despesa*. Informe o valor
   realizado é gerencial, não contábil.
 
 
+### 15.5 Encerramento do exercício e SPED Contábil (ECD)
+
+**Encerrar o exercício** (Contabilidade → Encerrar exercício): em 31/12, zera as contas de receita, dedução,
+custo e despesa do ano contra **2.3.2 Lucros ou prejuízos acumulados**, num único lançamento de encerramento.
+Faça depois da última depreciação e de conferir o balancete. A **DRE ignora** esse lançamento (continua
+mostrando o resultado do ano) e o **balanço** o inclui (o resultado passa ao patrimônio líquido). Para refazer,
+estorne o encerramento na mesma tela. O período 12 não pode estar fechado.
+
+**Gerar a ECD** (Contabilidade → SPED Contábil): informe a empresa, o ano, o contador (nome, CPF, CRC) e o
+responsável legal. O ERP valida antes de gerar (exercício encerrado, exercícios anteriores sem resultado em
+aberto, dados da empresa como UF e código IBGE, diários balanceados) e baixa o arquivo `.txt` do **Livro Diário
+completo (livro G)**: bloco 0 (abertura), bloco I (plano de contas, balancetes mensais, diário e apuração do
+resultado), bloco J (balanço, DRE, termo de encerramento e signatários) e bloco 9.
+
+**O que o contador precisa fazer:** o leiaute da ECD muda todo ano. **Valide o arquivo no PVA da Receita**,
+assine com o e-CNPJ e transmita pelo próprio PVA. Ficam de fora o **mapeamento ao plano de contas referencial
+(I051)**, exigido de parte das empresas, os livros auxiliares e as demonstrações adicionais. A versão do leiaute
+está na constante `VERSAO_LEIAUTE` de `apps/contabilidade/ecd.py`.
+
 ## 16. Cobrança
 
 ![Cobrança com PIX](img/cobranca.jpg)

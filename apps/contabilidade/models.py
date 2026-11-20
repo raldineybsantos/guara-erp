@@ -54,6 +54,7 @@ EVENTOS = [
     ("contingencia_reversao", "Contingência judicial: reversão da provisão"),
     ("baixa_bem_perda", "Baixa de bem: perda"),
     ("baixa_bem_ganho", "Baixa de bem: ganho"),
+    ("encerramento_exercicio", "Encerramento do exercício (apuração do resultado)"),
 ]
 
 

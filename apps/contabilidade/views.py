@@ -4,6 +4,7 @@ from decimal import Decimal
 from django import forms
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.http import HttpResponse
 from django.core.exceptions import ValidationError
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -16,6 +17,8 @@ from apps.financeiro.models import CentroCusto
 from . import servicos
 from . import orcamento as orc_servico
 from . import patrimonio
+from . import ecd as ecd_servico
+from . import encerramento as enc_servico
 from .models import Bem, ContaContabil, Lancamento, Orcamento, Partida, PeriodoFechado
 
 ZERO = Decimal("0")
@@ -86,9 +89,9 @@ def balancete(request):
         "fim": fim, "tot_d": tot_d, "tot_c": tot_c, "fecha": tot_d == tot_c})
 
 
-def resultado(ini, fim, empresa=None, user=None):
+def resultado(ini, fim, empresa=None, user=None, sem_encerramento=False):
     """Linhas da DRE e o resultado do intervalo."""
-    mov = servicos.saldos(de=ini, ate=fim, empresa=empresa, user=user)
+    mov = servicos.saldos(de=ini, ate=fim, empresa=empresa, user=user, sem_encerramento=sem_encerramento)
     grupos = {n: [] for n in ("receita", "deducao", "custo", "despesa")}
     for c in ContaContabil.objects.filter(natureza__in=grupos, sintetica=False):
         d, cr = mov.get(c.pk, (ZERO, ZERO))
@@ -107,7 +110,7 @@ def dre(request):
     form, ini, fim, empresa = _periodo(request)
     return render(request, "contabilidade/dre.html", {"titulo": "DRE — demonstração do resultado",
                                                       "icone": "graph-up-arrow", "form": form, "ini": ini,
-                                                      "fim": fim, **resultado(ini, fim, empresa, request.user)})
+                                                      "fim": fim, **resultado(ini, fim, empresa, request.user, sem_encerramento=True)})
 
 
 @login_required
@@ -307,3 +310,87 @@ def orcado_realizado(request, pk):
     return render(request, "contabilidade/orcado_realizado.html", {
         "titulo": f"Orçado × realizado — {orc}", "icone": "bar-chart-steps", "orc": orc, "linhas": linhas,
         "totais": orc_servico.totais(linhas), "ate": ate, "meses": list(range(1, 13))})
+
+
+# --------------------------------------------------------------------------- encerramento do exercício e ECD
+class EncerrarForm(BootstrapMixin, forms.Form):
+    ano = forms.IntegerField(min_value=2000, max_value=2100)
+    empresa = forms.ModelChoiceField(Empresa.objects.none(), label="empresa")
+    acao = forms.ChoiceField(label="o que fazer", choices=[("encerrar", "Encerrar o exercício (apurar o resultado)"),
+                                                           ("estornar", "Estornar o encerramento")])
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["empresa"].queryset = Empresa.acessiveis(user).order_by("-matriz", "razao_social")
+
+
+@login_required
+@permission_required("contabilidade.add_lancamento", raise_exception=True)
+def encerrar_exercicio(request):
+    hoje = timezone.localdate()
+    form = EncerrarForm(request.POST or None, user=request.user,
+                        initial={"ano": hoje.year - 1, "acao": "encerrar"})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        try:
+            if d["acao"] == "encerrar":
+                lanc = enc_servico.encerrar_exercicio(d["ano"], d["empresa"])
+                messages.success(request, f"Exercício {d['ano']} encerrado: lançamento {lanc.numero}.")
+                return redirect(lanc.get_absolute_url())
+            lanc = enc_servico.encerramento_do_ano(d["ano"], d["empresa"])
+            if lanc is None:
+                raise ValidationError(f"O exercício {d['ano']} não está encerrado.")
+            lanc.estornar(motivo="Reabertura do exercício")
+            messages.success(request, f"Encerramento de {d['ano']} estornado.")
+            return redirect("contabilidade:encerrar_exercicio")
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+    return render(request, "form_simples.html", {
+        "form": form, "titulo": "Encerramento do exercício", "icone": "calendar2-check",
+        "aviso": "Zera as contas de receita, custo e despesa do ano contra 2.3.2 (lucros ou prejuízos acumulados), "
+                 "em 31/12. Faça depois da última depreciação e de conferir o balancete. É necessário para a ECD."})
+
+
+class EcdForm(EmpresaFiltroMixin, BootstrapMixin, forms.Form):
+    ano = forms.IntegerField(min_value=2000, max_value=2100)
+    contador_nome = forms.CharField(label="contador: nome", max_length=100)
+    contador_cpf = forms.CharField(label="contador: CPF", max_length=18)
+    contador_crc = forms.CharField(label="contador: nº do CRC", max_length=20, required=False)
+    contador_uf_crc = forms.CharField(label="contador: UF do CRC", max_length=2, required=False)
+    contador_email = forms.EmailField(label="contador: e-mail", required=False)
+    resp_nome = forms.CharField(label="responsável legal: nome", max_length=100)
+    resp_cpf = forms.CharField(label="responsável legal: CPF", max_length=18)
+    resp_qualificacao = forms.CharField(label="responsável legal: qualificação", max_length=100, initial="Administrador")
+    ordem = forms.IntegerField(label="nº de ordem do livro", min_value=1, initial=1)
+
+    def clean_empresa(self):
+        if not self.cleaned_data.get("empresa"):
+            raise forms.ValidationError("Escolha a empresa.")
+        return self.cleaned_data["empresa"]
+
+
+@login_required
+@permission_required("contabilidade.view_lancamento", raise_exception=True)
+def gerar_ecd(request):
+    hoje = timezone.localdate()
+    form = EcdForm(request.POST or None, user=request.user, initial={"ano": hoje.year - 1})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        sig = [{"nome": d["contador_nome"], "cpf": d["contador_cpf"], "qualificacao": "Contador", "codigo": "900",
+                "crc": d["contador_crc"], "uf_crc": d["contador_uf_crc"], "email": d["contador_email"]},
+               {"nome": d["resp_nome"], "cpf": d["resp_cpf"], "qualificacao": d["resp_qualificacao"], "codigo": "203",
+                "responsavel_legal": True}]
+        try:
+            nome, conteudo = ecd_servico.gerar_ecd(d["empresa"], d["ano"], sig, d["ordem"])
+        except ValidationError as e:
+            for m in e.messages:
+                messages.error(request, m)
+        else:
+            resp = HttpResponse(conteudo, content_type="text/plain; charset=iso-8859-1")
+            resp["Content-Disposition"] = f'attachment; filename="{nome}"'
+            return resp
+    return render(request, "form_simples.html", {
+        "form": form, "titulo": "SPED Contábil (ECD) — gerar arquivo", "icone": "file-earmark-text",
+        "aviso": "Gera o arquivo do Livro Diário completo do ano. Antes de transmitir, valide no PVA da Receita e "
+                 "assine com o certificado e-CNPJ. O contador deve conferir o resultado (plano referencial e "
+                 "demais registros exigidos para o seu regime ficam por conta dele)."})

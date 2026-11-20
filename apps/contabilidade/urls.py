@@ -18,4 +18,6 @@ urlpatterns = crud_urls(telas.LancamentoCrud, telas.ContaContabilCrud, telas.Reg
     path("bens/<int:pk>/baixar/", views.bem_baixar, name="bem_baixar"),
     path("orcamento/<int:pk>/orcado-realizado/", views.orcado_realizado, name="orcado_realizado"),
     path("periodos/", views.periodos, name="periodos"),
+    path("encerramento/", views.encerrar_exercicio, name="encerrar_exercicio"),
+    path("ecd/", views.gerar_ecd, name="gerar_ecd"),
 ]
