@@ -20,6 +20,7 @@ from . import contratos, patrimonio
 from . import ecd as ecd_servico
 from . import encerramento as enc_servico
 from .models import Bem, ContaContabil, Lancamento, Orcamento, Partida, PeriodoFechado
+from apps.core.formatacao import moeda
 
 ZERO = Decimal("0")
 VER = "contabilidade.view_lancamento"
@@ -316,13 +317,13 @@ def bem_baixar(request, pk):
     if request.method == "POST" and form.is_valid():
         try:
             r = patrimonio.baixar_bem(bem, **form.cleaned_data)
-            messages.success(request, "Bem baixado. " + (f"Perda de R$ {r}." if r > 0 else
-                                                          f"Ganho de R$ {-r}." if r < 0 else "Sem ganho nem perda."))
+            messages.success(request, "Bem baixado. " + (f"Perda de {moeda(r)}." if r > 0 else
+                                                          f"Ganho de {moeda(-r)}." if r < 0 else "Sem ganho nem perda."))
             return redirect(bem.get_absolute_url())
         except ValidationError as e:
             form.add_error(None, e)
     return render(request, "form_simples.html", {"form": form, "icone": "box-arrow-down",
-                                                 "titulo": f"Baixar {bem} — valor contábil R$ {bem.valor_contabil}"})
+                                                 "titulo": f"Baixar {bem} — valor contábil {moeda(bem.valor_contabil)}"})
 
 
 # --------------------------------------------------------------------------- orçado × realizado

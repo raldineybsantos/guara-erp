@@ -12,6 +12,7 @@ from apps.fiscal.models import NotaFiscal
 
 from .models import Cotacao, PedidoCompra, RecebimentoCompra, SolicitacaoCompra
 from apps.core.formatos import qtd as fq
+from apps.core.formatacao import moeda
 
 
 def _executar(request, obj, func, ok, destino=None):
@@ -76,7 +77,7 @@ def enviar_pedido(request, pk):
     if request.method != "POST":
         return render(request, "confirmar.html", {
             "titulo": "Enviar para aprovação", "voltar": p.get_absolute_url(),
-            "mensagem": f"Enviar o pedido {p} (R$ {p.valor_total}) para aprovação conforme a alçada de compras?"})
+            "mensagem": f"Enviar o pedido {p} ({moeda(p.valor_total)}) para aprovação conforme a alçada de compras?"})
     return _executar(request, p, lambda: p.enviar_para_aprovacao(request.user),
                      "Pedido enviado. Pedidos dentro da alçada automática já ficam aprovados.")
 
@@ -194,9 +195,9 @@ def pdf_pedido(request, pk):
         "Itens:",
     ]
     for i, item in enumerate(p.itens.all(), start=1):
-        linhas.append(f"{i:>2}. {item} - {fq(item.quantidade)} x R$ {item.valor_unitario:.2f} = R$ {item.total:.2f}")
-    linhas += ["", f"Total dos itens: R$ {p.valor_itens:.2f}", f"Frete: R$ {p.valor_frete:.2f}",
-               f"VALOR TOTAL: R$ {p.valor_total:.2f}"]
+        linhas.append(f"{i:>2}. {item} - {fq(item.quantidade)} x {moeda(item.valor_unitario)} = {moeda(item.total)}")
+    linhas += ["", f"Total dos itens: {moeda(p.valor_itens)}", f"Frete: {moeda(p.valor_frete)}",
+               f"VALOR TOTAL: {moeda(p.valor_total)}"]
     if p.observacoes:
         linhas += ["", "Observações:", *p.observacoes.splitlines()]
     if p.status not in ("aprovado", "parcial", "recebido"):

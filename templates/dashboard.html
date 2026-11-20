@@ -1,5 +1,12 @@
 {% extends "base.html" %}{% load erp static %}
 {% block content %}
+{% if passos_pendentes %}
+<div class="alert alert-info d-flex align-items-center gap-3">
+  <i class="bi bi-list-check fs-4"></i>
+  <div class="flex-grow-1">Faltam <strong>{{ passos_pendentes }}</strong> passo(s) da configuração inicial do sistema.</div>
+  <a class="btn btn-sm btn-primary" href="{% url 'primeiros_passos' %}">Ver primeiros passos</a>
+</div>
+{% endif %}
 <div class="row g-3 mb-3">
   {% if saldo_total is not None %}
   <div class="col-sm-6 col-xl-3"><div class="card kpi h-100"><div class="card-body">

@@ -13,6 +13,7 @@ from apps.core.middleware import usuario_atual
 from apps.core.models import Cliente, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin
 from apps.core.formatos import qtd as fq
+from apps.core.formatacao import moeda
 
 D2 = Decimal("0.01")
 
@@ -109,8 +110,8 @@ class PedidoVenda(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         limite = self.cliente.limite_credito or Decimal(0)
         em_uso = self.credito_em_uso()
         if limite > 0 and em_uso + self.valor_total > limite:
-            self._mudar("bloqueado", f"Limite de crédito R$ {limite:.2f}; em aberto R$ {em_uso:.2f} + "
-                                     f"este pedido R$ {self.valor_total:.2f}.")
+            self._mudar("bloqueado", f"Limite de crédito {moeda(limite)}; em aberto {moeda(em_uso)} + "
+                                     f"este pedido {moeda(self.valor_total)}.")
             return False
         self._mudar("aprovado")
         return True

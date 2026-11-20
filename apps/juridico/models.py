@@ -9,6 +9,7 @@ from django.db.models import Max
 from django.utils import timezone
 
 from apps.core.models import Cliente, Departamento, Fornecedor, ModeloBase, PorEmpresaMixin
+from apps.core.formatacao import moeda
 
 
 def somar_meses(data, meses):
@@ -160,7 +161,7 @@ class Contrato(ModeloBase, PorEmpresaMixin):
         if processo is None:
             raise ValidationError("Processo 'aprovacao-contrato' não encontrado. Rode `python manage.py setup_erp`.")
         inst = processo.iniciar(f"Aprovar contrato {self}"[:200], usuario,
-                                f"Parte: {self.parte}\nValor total: R$ {self.valor_total}\n"
+                                f"Parte: {self.parte}\nValor total: {moeda(self.valor_total)}\n"
                                 f"Vigência: {self.inicio_vigencia:%d/%m/%Y} a "
                                 f"{self.fim_vigencia.strftime('%d/%m/%Y') if self.fim_vigencia else 'indeterminado'}",
                                 objeto=self)

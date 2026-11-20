@@ -24,6 +24,9 @@ def dashboard(request):
     hoje = timezone.localdate()
     u = request.user
     ctx = {"titulo": "Painel", "icone": "speedometer2", "hoje": hoje}
+    if u.has_perm("core.add_empresa"):
+        from .views_inicio import pendentes_para
+        ctx["passos_pendentes"] = len(pendentes_para(u))
 
     if u.has_perm("financeiro.view_contapagar"):
         pagar = ContaPagar.objects.em_aberto()

@@ -184,6 +184,19 @@ O **CPF** não tem consulta pública gratuita: o sistema valida os dígitos veri
 confirma nome nem situação na Receita.
 
 
+### 4.2 Primeiros passos e botões por situação
+
+- **Primeiros passos** (menu Principal) é o checklist de configuração inicial: empresa, departamentos, cargos,
+  usuários, colaboradores, plano de contas, conta bancária, produtos, armazém, alçada de compras e áreas do Service
+  Desk. O que falta aparece em aberto, com o botão *Fazer agora*; o painel mostra um aviso enquanto houver passos
+  pendentes.
+- Nos pedidos de compra e de venda, solicitações e cotações, os botões de ação só aparecem quando fazem sentido para a
+  situação atual (por exemplo, *Faturar* só em pedido aprovado e *Enviar para aprovação* só em rascunho ou recusado).
+- No pedido de venda, ao escolher o produto de um item com valor zerado, o sistema sugere o preço da tabela do cliente
+  ou, sem ela, o do cadastro do produto. Deixar zerado também funciona: o preço é aplicado ao salvar.
+- Valores em mensagens e confirmações seguem o padrão brasileiro (R$ 1.234,56).
+
+
 ## 5. Cadastros
 
 | Tela | Para que serve | Observações |

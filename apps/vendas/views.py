@@ -9,13 +9,14 @@ from django.utils import timezone
 
 from apps.core.crud import BootstrapMixin
 
-from .models import Comissao, PedidoVenda
+from .models import Comissao, PedidoVenda, TabelaPreco
+from apps.core.formatacao import moeda
 
 
 def _confirmar_e_executar(request, pk, titulo, mensagem, func, ok):
     p = get_object_or_404(PedidoVenda, pk=pk)
     if request.method != "POST":
-        return render(request, "confirmar.html", {"titulo": titulo, "mensagem": mensagem.format(p=p),
+        return render(request, "confirmar.html", {"titulo": titulo, "mensagem": mensagem.format(p=p, total=moeda(p.valor_total)),
                                                   "voltar": p.get_absolute_url()})
     try:
         resultado = func(p)
@@ -29,7 +30,7 @@ def _confirmar_e_executar(request, pk, titulo, mensagem, func, ok):
 @permission_required("vendas.change_pedidovenda", raise_exception=True)
 def confirmar(request, pk):
     return _confirmar_e_executar(
-        request, pk, "Confirmar pedido", "Conferir estoque e crédito do cliente para o pedido {p} (R$ {p.valor_total})?",
+        request, pk, "Confirmar pedido", "Conferir estoque e crédito do cliente para o pedido {p} ({total})?",
         lambda p: p.confirmar(),
         lambda p, ok: "Pedido aprovado." if ok else f"Pedido bloqueado por crédito. {p.motivo_status}")
 
@@ -86,10 +87,41 @@ def lancar_comissao(request, pk):
     if request.method == "POST" and form.is_valid():
         try:
             titulo = c.lancar_conta_pagar(form.cleaned_data["vencimento"])
-            messages.success(request, f"Conta a pagar criada: R$ {titulo.valor}.")
+            messages.success(request, f"Conta a pagar criada: {moeda(titulo.valor)}.")
             return redirect(c.get_absolute_url())
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))
             return redirect(c.get_absolute_url())
     return render(request, "form_simples.html", {
-        "form": form, "titulo": f"Lançar comissão — a lançar agora: R$ {c.a_lancar}", "icone": "cash-coin"})
+        "form": form, "titulo": f"Lançar comissão — a lançar agora: {moeda(c.a_lancar)}", "icone": "cash-coin"})
+
+
+@login_required
+def preco_item(request):
+    """GET ?produto=&cliente=&quantidade=&data= → preço sugerido (tabela do cliente ou cadastro do produto)."""
+    from decimal import Decimal, InvalidOperation
+
+    from django.http import JsonResponse
+
+    from apps.core.models import Cliente
+    from apps.fiscal.models import Produto
+
+    produto = Produto.objects.filter(pk=request.GET.get("produto") or 0).first()
+    if not produto:
+        return JsonResponse({"erro": "Produto não encontrado."}, status=404)
+    try:
+        qtd = Decimal(request.GET.get("quantidade") or "1")
+    except InvalidOperation:
+        qtd = Decimal("1")
+    try:
+        data = datetime.date.fromisoformat(request.GET.get("data") or "")
+    except ValueError:
+        data = timezone.localdate()
+    cliente = Cliente.objects.filter(pk=request.GET.get("cliente") or 0).first()
+    preco, origem = produto.preco, "cadastro do produto"
+    if cliente:
+        tabela = TabelaPreco.para_cliente(cliente, data)
+        p = tabela.preco_para(produto, qtd, data) if tabela else None
+        if p is not None:
+            preco, origem = p, f"tabela “{tabela}”"
+    return JsonResponse({"preco": str(preco), "origem": origem})

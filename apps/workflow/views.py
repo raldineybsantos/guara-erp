@@ -8,6 +8,7 @@ from apps.core.crud import BootstrapMixin
 from apps.financeiro.models import ContaPagar
 
 from .models import Instancia, Processo
+from apps.core.formatacao import moeda
 
 
 class NovaSolicitacaoForm(BootstrapMixin, forms.Form):
@@ -77,7 +78,7 @@ def iniciar_aprovacao_pagar(request, pk):
             "mensagem": f"Abrir solicitação de aprovação de pagamento para “{conta}” ({conta.fornecedor})?",
         })
     inst = processo.iniciar(f"Aprovar pagamento: {conta}"[:200], request.user,
-                            f"Fornecedor: {conta.fornecedor}\nValor: R$ {conta.valor_total}\n"
+                            f"Fornecedor: {conta.fornecedor}\nValor: {moeda(conta.valor_total)}\n"
                             f"Vencimento: {conta.vencimento:%d/%m/%Y}", objeto=conta)
     messages.success(request, f"Solicitação {inst} aberta.")
     return redirect(inst.get_absolute_url())

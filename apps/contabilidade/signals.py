@@ -8,6 +8,7 @@ from apps.core.models import notificar
 from apps.financeiro.models import ContaPagar, ContaReceber, Movimentacao
 
 from . import servicos
+from apps.core.formatacao import moeda
 
 
 @receiver(post_save, sender=ContaPagar)
@@ -44,5 +45,5 @@ def _orcamento(sender, instance, created, **kwargs):
     e = orcamento.estouro(instance)
     if e and e["orcamento"].responsavel_id:
         notificar([e["orcamento"].responsavel],
-                  f"Orçamento estourado ({e['orcamento']}): {e['linha']} — orçado até o mês R$ {e['orcado']}, "
-                  f"realizado R$ {e['realizado']}.", "")
+                  f"Orçamento estourado ({e['orcamento']}): {e['linha']} — orçado até o mês {moeda(e['orcado'])}, "
+                  f"realizado {moeda(e['realizado'])}.", "")

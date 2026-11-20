@@ -17,6 +17,7 @@ from apps.core.middleware import usuario_atual
 from apps.core.models import Departamento, Fornecedor, ModeloBase, PorEmpresaMixin
 from apps.core.numeracao import NumeradoMixin, proximo_numero  # noqa: F401
 from apps.core.formatos import qtd as fq
+from apps.core.formatacao import moeda
 
 D2 = Decimal("0.01")
 
@@ -318,12 +319,12 @@ class PedidoCompra(NumeradoMixin, ModeloBase, PorEmpresaMixin):
         self.aprovador_gerente = niveis.get("gerente")
         self.aprovador_diretor = niveis.get("diretor")
         self.save(update_fields=["aprovador_coordenador", "aprovador_gerente", "aprovador_diretor"])
-        itens = "\n".join(f"- {i} · {fq(i.quantidade)} x R$ {i.valor_unitario:.2f} = R$ {i.total:.2f}"
+        itens = "\n".join(f"- {i} · {fq(i.quantidade)} x {moeda(i.valor_unitario)} = {moeda(i.total)}"
                           for i in self.itens.all())
         inst = processo.iniciar(
             f"Aprovar pedido {self.numero} — {self.fornecedor}"[:200], usuario,
             f"Fornecedor: {self.fornecedor}\nDepartamento: {self.departamento or '—'}\n"
-            f"Valor total: R$ {self.valor_total}\nAprovação: "
+            f"Valor total: {moeda(self.valor_total)}\nAprovação: "
             f"{' → '.join(n.capitalize() for n in niveis)}\n\nItens:\n{itens}", objeto=self)
         self._mudar("em_aprovacao")
         return inst
@@ -515,13 +516,13 @@ class RecebimentoCompra(ModeloBase, PorEmpresaMixin):
                 div.append(f"{ip}: nota fatura {fq(q_nota)}, foram recebidos {fq(r.quantidade)}.")
             preco_nota = notas_item[0].valor_unitario
             if abs(preco_nota - ip.valor_unitario) > ip.valor_unitario * tolerancia + D2:
-                div.append(f"{ip}: preço na nota R$ {preco_nota:.2f}, no pedido R$ {ip.valor_unitario:.2f}.")
+                div.append(f"{ip}: preço na nota {moeda(preco_nota)}, no pedido {moeda(ip.valor_unitario)}.")
 
         esperado = sum((r.quantidade * r.item_pedido.valor_unitario for r in recebidos), Decimal(0)).quantize(D2)
         faturado = sum((i.quantidade * i.valor_unitario for i in itens_nota), Decimal(0)).quantize(D2)
         if abs(faturado - esperado) > esperado * tolerancia + D2:
-            div.append(f"Total dos produtos na nota R$ {faturado:.2f}; esperado pelo pedido e recebimento "
-                       f"R$ {esperado:.2f} (tolerância {settings.COMPRAS_TOLERANCIA_PRECO_PCT}%).")
+            div.append(f"Total dos produtos na nota {moeda(faturado)}; esperado pelo pedido e recebimento "
+                       f"{moeda(esperado)} (tolerância {settings.COMPRAS_TOLERANCIA_PRECO_PCT}%).")
 
         self.conferencia = "divergente" if div else "ok"
         self.divergencias = "\n".join(div)

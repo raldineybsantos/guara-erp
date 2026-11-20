@@ -30,6 +30,7 @@ class SolicitacaoCompraCrud(Crud):
     related = (("cotacoes", "Cotações", ["numero", "status"]), ("pedidos", "Pedidos", ["numero", "fornecedor",
                                                                                      "valor_total", "status"]))
     actions = (("compras:gerar_cotacao", "Gerar cotação", "clipboard-data", "compras.add_cotacao"),)
+    acao_status = {"compras:gerar_cotacao": ("aberta", "em_cotacao")}
     icon = "cart-plus"
     menu = "Compras"
     menu_order = 1
@@ -52,6 +53,7 @@ class CotacaoCrud(Crud):
     search_fields = ("numero", "descricao")
     filter_fields = ("status",)
     actions = (("compras:mapa_cotacao", "Mapa de cotação", "bar-chart-steps", "compras.add_pedidocompra"),)
+    acao_status = {"compras:mapa_cotacao": ("aberta",)}
     related = (("pedidos", "Pedido gerado", ["numero", "fornecedor", "valor_total", "status"]),)
     icon = "clipboard-data"
     menu = "Compras"
@@ -92,6 +94,9 @@ class PedidoCompraCrud(Crud):
         ("compras:pdf_pedido", "PDF para o fornecedor", "filetype-pdf", "compras.view_pedidocompra"),
         ("compras:cancelar_pedido", "Cancelar", "x-octagon", "compras.change_pedidocompra"),
     )
+    acao_status = {"compras:enviar_pedido": ("rascunho", "recusado"),
+                   "compras:receber_pedido": ("aprovado", "parcial"),
+                   "compras:cancelar_pedido": ("rascunho", "em_aprovacao", "aprovado", "recusado")}
     icon = "cart-check"
     menu = "Compras"
     menu_order = 3

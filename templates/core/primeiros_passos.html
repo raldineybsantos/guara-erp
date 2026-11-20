@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-3" style="max-width:900px">
+  <div class="card-body">
+    <p class="mb-2">Configure o essencial na ordem abaixo. O que já está pronto aparece marcado.</p>
+    <div class="progress mb-3" style="height:.8rem"><div class="progress-bar bg-success" style="width:{{ percentual }}%"></div></div>
+    <p class="small text-secondary">{{ feitos }} de {{ total }} passos concluídos.</p>
+    <ul class="list-group list-group-flush">
+      {% for i in itens %}
+      <li class="list-group-item d-flex align-items-start gap-3 px-0">
+        <i class="bi {% if i.feito %}bi-check-circle-fill text-success{% else %}bi-circle text-secondary{% endif %} fs-5"></i>
+        <div class="flex-grow-1">
+          <strong>{{ i.titulo }}</strong>
+          <div class="small text-secondary">{{ i.ajuda }}</div>
+        </div>
+        {% if i.url and i.pode %}<a class="btn btn-sm {% if i.feito %}btn-outline-secondary{% else %}btn-primary{% endif %}" href="{{ i.url }}">{% if i.feito %}Adicionar mais{% else %}Fazer agora{% endif %}</a>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

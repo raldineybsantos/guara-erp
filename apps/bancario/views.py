@@ -12,6 +12,7 @@ from apps.financeiro.models import ContaBancaria, ContaPagar, ContaReceber, Plan
 
 from . import ofx
 from .models import Bordero, Extrato, LinhaExtrato, RemessaCobranca, processar_retorno, processar_retorno_cobranca
+from apps.core.formatacao import moeda
 
 
 # --------------------------------------------------------------------------- conciliação
@@ -94,7 +95,7 @@ def bordero_remessa(request, pk):
     if request.method != "POST":
         return render(request, "confirmar.html", {
             "titulo": f"Gerar remessa do {b}", "voltar": b.get_absolute_url(),
-            "mensagem": f"Gerar o arquivo CNAB 240 com {b.itens.count()} título(s), total de R$ {b.total}, para "
+            "mensagem": f"Gerar o arquivo CNAB 240 com {b.itens.count()} título(s), total de {moeda(b.total)}, para "
                         f"pagamento em {b.data_pagamento:%d/%m/%Y}? Envie o arquivo pelo internet banking da "
                         "empresa. Os títulos só são baixados quando o retorno do banco confirmar o pagamento."})
     try:
@@ -166,7 +167,7 @@ def remessa_arquivo(request, pk):
     if request.method != "POST":
         return render(request, "confirmar.html", {
             "titulo": f"Gerar remessa de cobrança {r}", "voltar": r.get_absolute_url(),
-            "mensagem": f"Gerar o arquivo CNAB 240 de cobrança com {r.itens.count()} título(s), total de R$ {r.total}? "
+            "mensagem": f"Gerar o arquivo CNAB 240 de cobrança com {r.itens.count()} título(s), total de {moeda(r.total)}? "
                         "Envie o arquivo pelo internet banking. Os títulos só são baixados quando o retorno do banco "
                         "confirmar o pagamento."})
     try:

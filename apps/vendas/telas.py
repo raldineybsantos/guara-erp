@@ -34,6 +34,8 @@ class PedidoVendaCrud(Crud):
         ("vendas:faturar", "Faturar", "receipt", "vendas.change_pedidovenda"),
         ("vendas:cancelar", "Cancelar", "x-octagon", "vendas.change_pedidovenda"),
     )
+    acao_status = {"vendas:confirmar": ("rascunho", "bloqueado"), "vendas:liberar_credito": ("bloqueado",),
+                   "vendas:faturar": ("aprovado",), "vendas:cancelar": ("rascunho", "bloqueado", "aprovado")}
     icon = "bag-check"
     menu = "Vendas"
     menu_order = 1

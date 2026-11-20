@@ -212,6 +212,7 @@ class Crud:
     inline = None                  # (ModelFilho, [campos], extra)
     inline_no_detalhe = True       # False quando `related` já mostra os filhos com mais colunas
     actions = ()                   # [(url_name, rótulo, ícone, permissão)] mostrados no detalhe
+    acao_status = {}               # {url_name: (status, …)}: a ação só aparece nesses status do registro
     list_template = "crud/list.html"
     detail_template = "crud/detail.html"
     form_template = "crud/form.html"
@@ -486,7 +487,9 @@ class DetalheView(CrudMixin, generic.DetailView):
         u = self.request.user
         ctx["acoes"] = [
             {"url": reverse(nome, args=[obj.pk]), "rotulo": rot, "icone": ico}
-            for nome, rot, ico, perm in c.actions if not perm or u.has_perm(perm)
+            for nome, rot, ico, perm in c.actions
+            if (not perm or u.has_perm(perm))
+            and (nome not in c.acao_status or getattr(obj, "status", None) in c.acao_status[nome])
         ]
         ctx.update(c.extra_detalhe(self.request, obj))
         from .signals import _auditado

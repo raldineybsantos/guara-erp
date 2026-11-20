@@ -12,6 +12,7 @@ ICONES_GRUPOS = {"Relatórios": "bar-chart-line", "Contabilidade": "journal-text
 # (grupo, rótulo, url_name, ícone, permissão, ordem)
 LINKS_EXTRAS = [
     ("Principal", "Painel", "dashboard", "speedometer2", None, 1),
+    ("Principal", "Primeiros passos", "primeiros_passos", "list-check", "core.add_empresa", 2),
     ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
     ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
     ("RH", "Bater ponto", "rh:bater_ponto", "fingerprint", None, 0),

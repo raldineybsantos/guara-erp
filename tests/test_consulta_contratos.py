@@ -161,3 +161,43 @@ class MenuProdutosTest(TestCase):
         self.client.force_login(u)
         html = self.client.get("/").content.decode()
         self.assertIn(reverse("fiscal:produto_list"), html)
+
+
+class AjustesUsabilidadeTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("setup_erp", verbosity=0)
+        cls.adm = User.objects.create_superuser("adm2", "a@b.com", "x")
+
+    def setUp(self):
+        self.client.force_login(self.adm)
+
+    def test_primeiros_passos(self):
+        r = self.client.get(reverse("primeiros_passos"))
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Alçada de compras", r.content.decode())
+        self.assertIn("passo(s) da configuração inicial", self.client.get("/").content.decode())
+
+    def test_moeda_brasileira(self):
+        from apps.core.formatacao import moeda
+        self.assertEqual(moeda(D("1234.5")), "R$ 1.234,50")
+        self.assertEqual(moeda(None), "")
+
+    def test_botoes_por_status(self):
+        from apps.core.models import Fornecedor
+        from apps.compras.models import PedidoCompra
+        f = Fornecedor.objects.create(nome="F", prazo_pagamento_dias=30)
+        p = PedidoCompra.objects.create(fornecedor=f)
+        html = self.client.get(p.get_absolute_url()).content.decode()
+        self.assertIn(reverse("compras:enviar_pedido", args=[p.pk]), html)
+        self.assertNotIn(reverse("compras:receber_pedido", args=[p.pk]), html)
+        PedidoCompra.objects.filter(pk=p.pk).update(status="em_aprovacao")
+        html = self.client.get(p.get_absolute_url()).content.decode()
+        self.assertNotIn(reverse("compras:enviar_pedido", args=[p.pk]), html)
+
+    def test_preco_item(self):
+        from apps.fiscal.models import Produto
+        pr = Produto.objects.create(codigo="X1", descricao="Item", unidade="UN", preco=D("28.90"))
+        r = self.client.get(reverse("vendas:preco_item"), {"produto": pr.pk})
+        self.assertEqual(r.json()["preco"], "28.90")
+        self.assertEqual(self.client.get(reverse("vendas:preco_item"), {"produto": 999999}).status_code, 404)

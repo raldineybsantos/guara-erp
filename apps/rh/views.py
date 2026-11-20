@@ -19,6 +19,7 @@ from . import folha as folha_svc
 from . import ponto
 from . import esocial
 from .models import (EventoESocial, Folha, Holerite, PeriodoAquisitivo, Rescisao, SolicitacaoFerias, rotulo_competencia)
+from apps.core.formatacao import moeda
 
 
 def _meu_colaborador(request):
@@ -276,7 +277,7 @@ def rescisao_efetivar(request, pk):
     return acoes.confirmar(
         request, r, "Efetivar rescisão",
         f"Desligar {r.colaborador} em {r.data_desligamento:%d/%m/%Y} e gerar a conta a pagar de "
-        f"R$ {r.total_liquido}? O colaborador passa a 'desligado'.",
+        f"{moeda(r.total_liquido)}? O colaborador passa a 'desligado'.",
         lambda: folha_svc.efetivar_rescisao(r), "Rescisão efetivada e conta a pagar gerada.")
 
 

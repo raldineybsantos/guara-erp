@@ -9,6 +9,7 @@ from django.urls import include, path
 from django.views.generic import RedirectView
 
 from apps.core import views as core_views
+from apps.core import views_inicio
 from apps.seguranca import views as seguranca_views
 
 handler500 = "apps.core.views_auditoria.erro_500"
@@ -20,6 +21,7 @@ admin.site.index_title = "Administração do sistema"
 urlpatterns = [
     path("", core_views.dashboard, name="dashboard"),
     path("avisos/", core_views.avisos, name="avisos"),
+    path("primeiros-passos/", views_inicio.primeiros_passos, name="primeiros_passos"),
     path("empresa/trocar/", core_views.trocar_empresa, name="trocar_empresa"),
     path("login/", core_views.LoginView.as_view(), name="login"),
     path("logout/", auth_views.LogoutView.as_view(), name="logout"),
