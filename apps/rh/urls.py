@@ -11,6 +11,7 @@ urlpatterns = [
     path("ponto/espelho/", views.espelho, name="meu_espelho"),
     path("ponto/espelho/<int:pk>/", views.espelho, name="espelho"),
     path("ponto/banco-de-horas/", views.banco_horas, name="banco_horas"),
+    path("documentos/pendencias/", views.pendencias_documentos, name="pendencias_documentos"),
     path("ferias/solicitar/", views.solicitar_ferias, name="solicitar_ferias"),
     path("ferias/minhas/", views.minhas_ferias, name="minhas_ferias"),
     path("ferias/gerar-periodos/", views.gerar_periodos, name="gerar_periodos"),
@@ -68,7 +69,7 @@ urlpatterns = [
     path("rescisao/<int:pk>/efetivar/", views.rescisao_efetivar, name="rescisao_efetivar"),
 ]
 urlpatterns += crud_urls(
-    telas.ParametroFolhaCrud, telas.FaixaIRRFCrud, telas.JornadaCrud, telas.DadosTrabalhistasCrud, telas.DependenteCrud,
+    telas.ParametroFolhaCrud, telas.FaixaIRRFCrud, telas.JornadaCrud, telas.DadosTrabalhistasCrud, telas.DependenteCrud, telas.TipoDocumentoPessoalCrud, telas.DocumentoPessoalCrud,
     telas.BeneficioCrud, telas.BeneficioColaboradorCrud, telas.RubricaCrud, telas.MarcacaoCrud, telas.AbonoPontoCrud,
     telas.AjusteBancoHorasCrud, telas.FeriadoCrud, telas.PeriodoAquisitivoCrud, telas.SolicitacaoFeriasCrud,
     telas.ConfiguracaoESocialCrud, telas.LancamentoFolhaCrud, telas.FolhaCrud, telas.RescisaoCrud, telas.EventoESocialCrud,

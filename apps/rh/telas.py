@@ -1,4 +1,6 @@
 from django import forms
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 from apps.core.crud import Crud, FormBase
 
@@ -6,6 +8,10 @@ from .desempenho import AcaoDesenvolvimento, Avaliacao, CicloAvaliacao, Competen
 from .salarios import Enquadramento, FaixaSalarial, MovimentoSalarial
 from .recrutamento import Candidato, Candidatura, Entrevista, Vaga
 from .treinamentos import Curso, Participacao, Turma
+from apps.core.validators import validar_arquivo_seguro
+from apps.seguranca.antivirus import validador as validar_antivirus
+
+from .documentos_pessoais import DocumentoPessoal, TipoDocumentoPessoal, pasta_documentos_pessoais
 from .models import (AbonoPonto, AjusteBancoHoras, Beneficio, BeneficioColaborador, DadosTrabalhistas, Dependente,
                      ConfiguracaoESocial, EventoESocial, FaixaINSS, FaixaIRRF, Feriado, Folha, Jornada, LancamentoFolha, Marcacao,
                      ParametroFolha, PeriodoAquisitivo, Rescisao, Rubrica, SolicitacaoFerias)
@@ -56,8 +62,35 @@ class DadosTrabalhistasCrud(Crud):
     menu_order = 11
 
 
+class DependenteForm(FormBase):
+    class Meta:
+        model = Dependente
+        fields = ["colaborador", "nome", "parentesco", "data_nascimento", "cpf", "deduz_irrf", "invalido"]
+
+    def clean(self):
+        d = super().clean()
+        nasc, parentesco, colab = d.get("data_nascimento"), d.get("parentesco"), d.get("colaborador")
+        hoje = timezone.localdate()
+        if nasc and nasc > hoje:
+            self.add_error("data_nascimento", "A data de nascimento não pode ser futura.")
+        elif nasc and colab and colab.data_nascimento:
+            if parentesco in ("filho", "enteado", "tutelado") and nasc <= colab.data_nascimento:
+                self.add_error("data_nascimento", "O filho(a) deve ter nascido depois do colaborador.")
+            if parentesco == "pai_mae" and nasc >= colab.data_nascimento:
+                self.add_error("data_nascimento", "O pai/mãe deve ter nascido antes do colaborador.")
+        if nasc and parentesco == "conjuge" and (hoje.year - nasc.year) < 16:
+            self.add_error("data_nascimento", "Cônjuge/companheiro(a) deve ter 16 anos ou mais.")
+        if d.get("deduz_irrf") and not d.get("cpf"):
+            self.add_error("cpf", "Informe o CPF: ele é exigido para deduzir o dependente no IRRF e no eSocial.")
+        cpf = d.get("cpf")
+        if cpf and colab and cpf.replace(".", "").replace("-", "") == (colab.cpf or ""):
+            self.add_error("cpf", "O CPF do dependente não pode ser o mesmo do colaborador.")
+        return d
+
+
 class DependenteCrud(Crud):
     model = Dependente
+    form_class = DependenteForm
     empresa_campo = "colaborador__empresa"
     list_display = ("nome", "colaborador", "parentesco", "data_nascimento", "deduz_irrf")
     search_fields = ("nome", "colaborador__nome")
@@ -644,3 +677,91 @@ class MovimentoSalarialCrud(Crud):
     menu = "RH"
     menu_label = "Movimentações salariais"
     menu_order = 102
+
+
+# --------------------------------------------------------------------------- documentos pessoais
+class TipoDocumentoPessoalCrud(Crud):
+    model = TipoDocumentoPessoal
+    fields = ["nome", "alvo", "obrigatorio", "somente_clt", "idade_minima", "idade_maxima", "exige_validade", "ordem", "ativo"]
+    list_display = ("nome", "alvo", "obrigatorio", "somente_clt", "idade_minima", "idade_maxima", "exige_validade", "ativo")
+    filter_fields = ("alvo", "obrigatorio", "ativo")
+    search_fields = ("nome",)
+    icon = "card-checklist"
+    menu = "RH"
+    menu_order = 13
+
+
+class DocumentoPessoalForm(FormBase):
+    precisa_request = True
+    arquivo = forms.FileField(label="Arquivo (PDF ou imagem)", required=False,
+                              validators=[validar_arquivo_seguro, validar_antivirus],
+                              help_text="Fica no GED, na pasta restrita do RH, com antivírus e histórico de versões. "
+                                        "Na edição, enviar um arquivo cria uma nova versão.")
+
+    class Meta:
+        model = DocumentoPessoal
+        fields = ["colaborador", "dependente", "tipo", "numero", "data_emissao", "validade", "observacoes"]
+
+    def __init__(self, *args, request=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.request = request
+        self.fields["tipo"].queryset = TipoDocumentoPessoal.objects.filter(ativo=True)
+        if not self.instance.pk:
+            self.fields["arquivo"].required = True
+
+    def clean(self):
+        d = super().clean()
+        colab, dep, tipo = d.get("colaborador"), d.get("dependente"), d.get("tipo")
+        hoje = timezone.localdate()
+        if tipo:
+            if tipo.alvo == "colaborador" and dep:
+                self.add_error("dependente", "Este documento é do próprio colaborador: deixe o dependente em branco.")
+            if tipo.alvo != "colaborador" and not dep:
+                self.add_error("dependente", f"Informe o dependente: {tipo.nome} é documento de {tipo.get_alvo_display().lower()}.")
+            if dep and colab and dep.colaborador_id != colab.pk:
+                self.add_error("dependente", "Este dependente não pertence ao colaborador escolhido.")
+            if dep and tipo.alvo == "conjuge" and dep.parentesco != "conjuge":
+                self.add_error("tipo", "Tipo de documento de cônjuge, mas o dependente não é cônjuge.")
+            if dep and tipo.alvo == "filho" and dep.parentesco not in ("filho", "enteado", "tutelado"):
+                self.add_error("tipo", "Tipo de documento de filho(a), mas o dependente não é filho(a).")
+            if tipo.exige_validade and not d.get("validade"):
+                self.add_error("validade", "Este documento tem validade: informe até quando vale.")
+        em, val = d.get("data_emissao"), d.get("validade")
+        if em and em > hoje:
+            self.add_error("data_emissao", "A data de emissão não pode ser futura.")
+        if em and val and val < em:
+            self.add_error("validade", "A validade não pode ser anterior à emissão.")
+        return d
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+        arquivo = self.cleaned_data.get("arquivo")
+        if commit:
+            if arquivo:
+                from apps.ged.models import Documento
+
+                if not obj.documento_id:
+                    obj.documento = Documento.objects.create(
+                        pasta=pasta_documentos_pessoais(), titulo=str(obj)[:200], tipo="rh", confidencial=True,
+                        validade=obj.validade, descricao=f"Matrícula {obj.colaborador.matricula or '—'}")
+                obj.documento.adicionar_versao(arquivo, "", getattr(self.request, "user", None))
+            elif obj.documento_id and obj.validade != obj.documento.validade:
+                obj.documento.validade = obj.validade
+                obj.documento.save(update_fields=["validade"])
+            obj.save()
+            self.save_m2m()
+        return obj
+
+
+class DocumentoPessoalCrud(Crud):
+    model = DocumentoPessoal
+    form_class = DocumentoPessoalForm
+    empresa_campo = "colaborador__empresa"
+    list_display = ("colaborador", "dependente", "tipo", "numero", "validade", "atualizado_em")
+    search_fields = ("colaborador__nome", "dependente__nome", "tipo__nome", "numero")
+    filter_fields = ("tipo", "colaborador")
+    detail_template = "rh/documentopessoal_detail.html"
+
+    icon = "file-earmark-person"
+    menu = "RH"
+    menu_order = 14

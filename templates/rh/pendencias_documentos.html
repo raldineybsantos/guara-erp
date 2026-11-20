@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}Pendências de documentos{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center mb-3"><h1 class="h4 mb-0"><i class="bi bi-file-earmark-excel"></i> Pendências de documentos</h1>
+  <a class="btn btn-sm btn-outline-secondary ms-auto" href="{% url 'rh:tipodocumentopessoal_list' %}"><i class="bi bi-card-checklist"></i> Documentos exigidos</a></div>
+{% if linhas %}
+<div class="alert alert-warning">{{ linhas|length }} de {{ total }} colaboradores ativos com documentos pendentes.</div>
+<div class="card"><div class="table-responsive"><table class="table table-sm align-middle mb-0">
+  <thead class="table-light"><tr><th>Colaborador</th><th>Departamento</th><th>Pendências</th><th></th></tr></thead>
+  <tbody>{% for l in linhas %}<tr>
+    <td><a href="{{ l.colaborador.get_absolute_url }}">{{ l.colaborador.nome }}</a></td>
+    <td>{{ l.colaborador.departamento|default:"—" }}</td>
+    <td>{% for p in l.pendencias %}<div><span class="badge text-bg-{% if p.motivo == 'não enviado' %}danger{% else %}warning{% endif %}">{{ p.motivo }}</span> {{ p.tipo.nome }}{% if p.alvo != l.colaborador.nome %} <small class="text-secondary">— {{ p.alvo }}</small>{% endif %}</div>{% endfor %}</td>
+    <td class="text-end">{% if perms.rh.add_documentopessoal %}<a class="btn btn-sm btn-primary" href="{% url 'rh:documentopessoal_create' %}?colaborador={{ l.colaborador.pk }}"><i class="bi bi-upload"></i> Anexar</a>{% endif %}</td>
+  </tr>{% endfor %}</tbody></table></div></div>
+{% else %}<div class="alert alert-success"><i class="bi bi-check-circle"></i> Nenhum colaborador ativo com documento pendente.</div>{% endif %}
+{% endblock %}

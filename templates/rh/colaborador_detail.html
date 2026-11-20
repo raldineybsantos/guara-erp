@@ -1,0 +1,12 @@
+{% extends "crud/detail.html" %}
+{% block antes_detalhe %}
+{% if pendencias_docs is not None %}
+{% if pendencias_docs %}
+<div class="alert alert-warning">
+  <div class="d-flex align-items-center"><strong><i class="bi bi-file-earmark-excel"></i> Documentos pendentes ({{ pendencias_docs|length }})</strong>
+    {% if perms.rh.add_documentopessoal %}<a class="btn btn-sm btn-warning ms-auto" href="{% url 'rh:documentopessoal_create' %}?colaborador={{ object.pk }}"><i class="bi bi-upload"></i> Anexar documento</a>{% endif %}</div>
+  <ul class="mb-0 mt-2">{% for p in pendencias_docs %}<li>{{ p.tipo.nome }}{% if p.alvo != object.nome %} — <em>{{ p.alvo }}</em>{% endif %} <span class="badge text-bg-{% if p.motivo == 'não enviado' %}danger{% else %}secondary{% endif %}">{{ p.motivo }}</span></li>{% endfor %}</ul>
+</div>
+{% else %}<div class="alert alert-success py-2"><i class="bi bi-check-circle"></i> Documentação obrigatória completa.</div>{% endif %}
+{% endif %}
+{% endblock %}

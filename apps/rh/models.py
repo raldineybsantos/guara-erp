@@ -631,3 +631,4 @@ from .desempenho import (AcaoDesenvolvimento, Avaliacao, CicloAvaliacao, Compete
                          ModeloAvaliacao, Resposta)
 from .recrutamento import Candidato, Candidatura, Entrevista, HistoricoEtapa, Vaga  # noqa: E402,F401
 from .salarios import Enquadramento, FaixaSalarial, MovimentoSalarial  # noqa: E402,F401
+from .documentos_pessoais import DocumentoPessoal, TipoDocumentoPessoal  # noqa: E402,F401

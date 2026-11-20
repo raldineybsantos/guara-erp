@@ -1,5 +1,10 @@
 """Telas de cadastro: empresa, departamentos, cargos, colaboradores, fornecedores e clientes."""
-from .crud import Crud
+import re
+
+from django import forms
+from django.utils import timezone
+
+from .crud import Crud, FormBase
 from .models import (Cargo, Cliente, Colaborador, Departamento, Empresa, Fornecedor, LogAuditoria, LogErro,
                      ParceiroNegocio)
 
@@ -48,8 +53,68 @@ class CargoCrud(Crud):
     related = (("colaboradores", "Colaboradores", ["nome", "departamento", "status"]),)
 
 
+OBRIGATORIOS_COLABORADOR = {
+    "rg": "Informe o RG.", "data_nascimento": "Informe a data de nascimento.", "email": "Informe o e-mail.",
+    "telefone": "Informe o telefone.", "departamento": "Informe o departamento.", "cargo": "Informe o cargo.",
+    "cep": "Informe o CEP.", "logradouro": "Informe o logradouro.", "numero": "Informe o número (ou S/N).",
+    "bairro": "Informe o bairro.", "cidade": "Informe a cidade.", "uf": "Informe a UF.",
+}
+
+
+class ColaboradorForm(FormBase):
+    """Cadastro completo: o essencial do contrato, do endereço e dos dados de contato é obrigatório e conferido."""
+
+    class Meta:
+        model = Colaborador
+        fields = ["matricula", "nome", "cpf", "rg", "data_nascimento", "email", "telefone", "empresa",
+                  "departamento", "cargo", "gestor", "tipo_contrato", "status", "data_admissao",
+                  "data_desligamento", "salario", "banco", "agencia", "conta", "chave_pix", "usuario",
+                  *ENDERECO, "observacoes"]
+
+    def clean(self):
+        d = super().clean()
+        hoje = timezone.localdate()
+        for campo, msg in OBRIGATORIOS_COLABORADOR.items():
+            if campo in self.fields and not d.get(campo) and campo not in self.errors:
+                self.add_error(campo, msg)
+        nasc, adm, desl = d.get("data_nascimento"), d.get("data_admissao"), d.get("data_desligamento")
+        if nasc:
+            idade = hoje.year - nasc.year - ((hoje.month, hoje.day) < (nasc.month, nasc.day))
+            if nasc > hoje:
+                self.add_error("data_nascimento", "A data de nascimento não pode ser futura.")
+            elif idade < 14:
+                self.add_error("data_nascimento", "Colaborador com menos de 14 anos não pode ser cadastrado.")
+            elif idade < 16 and d.get("tipo_contrato") != "estagio":
+                self.add_error("data_nascimento", "Menor de 16 anos só pode ser admitido como aprendiz/estagiário.")
+            elif idade > 100:
+                self.add_error("data_nascimento", "Confira a data de nascimento.")
+            elif adm and adm < nasc.replace(year=nasc.year + 14):
+                self.add_error("data_admissao", "A admissão é anterior aos 14 anos do colaborador.")
+        if d.get("salario") is not None and d["salario"] <= 0 and d.get("tipo_contrato") != "socio":
+            self.add_error("salario", "Informe o salário (maior que zero).")
+        if desl and adm and desl < adm:
+            self.add_error("data_desligamento", "O desligamento não pode ser anterior à admissão.")
+        if d.get("status") == "desligado" and not desl:
+            self.add_error("data_desligamento", "Informe a data de desligamento.")
+        if desl and d.get("status") != "desligado":
+            self.add_error("status", "Há data de desligamento: o status deve ser Desligado.")
+        tel = re.sub(r"\D", "", d.get("telefone") or "")
+        if d.get("telefone") and len(tel) not in (10, 11):
+            self.add_error("telefone", "Telefone inválido: informe o DDD e o número (10 ou 11 dígitos).")
+        cep = re.sub(r"\D", "", d.get("cep") or "")
+        if d.get("cep") and len(cep) != 8:
+            self.add_error("cep", "CEP inválido: informe os 8 dígitos.")
+        if any(d.get(c) for c in ("banco", "agencia", "conta")) and not all(d.get(c) for c in ("banco", "agencia", "conta")):
+            self.add_error("conta", "Preencha banco, agência e conta juntos (ou deixe os três em branco e use o PIX).")
+        if not any(d.get(c) for c in ("conta", "chave_pix")) and d.get("status") == "ativo":
+            self.add_error("chave_pix", "Informe uma conta bancária ou a chave PIX para pagamento do salário.")
+        return d
+
+
 class ColaboradorCrud(Crud):
     model = Colaborador
+    form_class = ColaboradorForm
+    detail_template = "rh/colaborador_detail.html"
     fields = ["matricula", "nome", "cpf", "rg", "data_nascimento", "email", "telefone", "empresa",
               "departamento", "cargo", "gestor", "tipo_contrato", "status", "data_admissao",
               "data_desligamento", "salario", "banco", "agencia", "conta", "chave_pix", "usuario",
@@ -60,7 +125,16 @@ class ColaboradorCrud(Crud):
     icon = "people"
     menu = "Cadastros"
     menu_order = 4
-    related = (("liderados", "Liderados", ["nome", "cargo"]),)
+
+    @classmethod
+    def extra_detalhe(cls, request, obj):
+        if not request.user.has_perm("rh.view_documentopessoal"):
+            return {"pendencias_docs": None}
+        from apps.rh.documentos_pessoais import pendencias
+        return {"pendencias_docs": pendencias(obj)}
+    related = (("dependentes", "Dependentes", ["nome", "parentesco", "data_nascimento"]),
+               ("documentos_pessoais", "Documentos anexados", ["tipo", "dependente", "validade"]),
+               ("liderados", "Liderados", ["nome", "cargo"]))
 
 
 class FornecedorCrud(Crud):

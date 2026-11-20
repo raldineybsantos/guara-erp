@@ -16,6 +16,7 @@ LINKS_EXTRAS = [
     ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
     ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
     ("RH", "Bater ponto", "rh:bater_ponto", "fingerprint", None, 0),
+    ("RH", "Pendências de documentos", "rh:pendencias_documentos", "file-earmark-excel", "rh.view_documentopessoal", 15),
     ("RH", "Meu espelho de ponto", "rh:meu_espelho", "calendar3", None, 1),
     ("RH", "Minhas férias", "rh:minhas_ferias", "umbrella", None, 2),
     ("RH", "Meus holerites", "rh:meus_holerites", "receipt", None, 3),

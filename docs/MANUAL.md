@@ -197,6 +197,24 @@ confirma nome nem situação na Receita.
 - Valores em mensagens e confirmações seguem o padrão brasileiro (R$ 1.234,56).
 
 
+### 4.3 Colaborador: campos obrigatórios e documentos anexados
+
+- O cadastro do colaborador exige RG, data de nascimento, e-mail, telefone (com DDD), departamento, cargo, endereço
+  completo (CEP, logradouro, número, bairro, cidade e UF), salário maior que zero e uma forma de pagamento (conta
+  bancária completa ou chave PIX). O sistema confere idade mínima (14 anos; menor de 16 só como estagiário),
+  datas (nascimento não futuro, desligamento depois da admissão) e o tamanho de telefone e CEP.
+- **Dependentes:** CPF obrigatório quando houver dedução no IRRF; filho nasce depois do colaborador; cônjuge tem 16
+  anos ou mais.
+- **Documentos pessoais** (RH → Documentos pessoais): cada arquivo é guardado no GED, na pasta restrita
+  "RH — Documentos pessoais" (confidencial, com antivírus e histórico de versões). O catálogo do que é obrigatório
+  fica em RH → Tipos de documento pessoal e pode ser ajustado: RG ou CNH, CPF, comprovante de residência, título de
+  eleitor, certidão de nascimento/casamento, CTPS e ASO (só CLT), foto 3x4 e carteira de vacinação do colaborador;
+  RG/CPF e certidão de casamento do cônjuge (só se houver cônjuge cadastrado); certidão de nascimento e CPF dos
+  filhos, carteira de vacinação até 7 anos e comprovante de matrícula escolar de 4 a 17 anos.
+- A tela do colaborador mostra a lista de **documentos pendentes** (não enviados, vencidos ou sem validade) e o
+  menu RH → Pendências de documentos reúne todos os colaboradores ativos com pendência, com o botão Anexar.
+
+
 ## 5. Cadastros
 
 | Tela | Para que serve | Observações |

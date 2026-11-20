@@ -427,3 +427,22 @@ def esocial_recibo(request, pk):
 
     return acoes.formulario(request, ev, RetornoForm, "Registrar retorno do governo", func, "Retorno registrado.",
                             initial={"status": ev.status, "recibo": ev.recibo, "retorno": ev.retorno}, icone="receipt")
+
+
+@login_required
+@permission_required("rh.view_documentopessoal", raise_exception=True)
+def pendencias_documentos(request):
+    """Quem está com documento obrigatório faltando ou vencido (colaboradores ativos)."""
+    from apps.core.crud import restringir_por_empresa
+    from apps.core.models import Colaborador
+
+    from .documentos_pessoais import pendencias
+
+    qs = restringir_por_empresa(Colaborador.objects.exclude(status="desligado"), Colaborador, request.user)
+    qs = qs.select_related("departamento").prefetch_related("dependentes", "documentos_pessoais")
+    linhas = []
+    for c in qs.order_by("nome"):
+        p = pendencias(c)
+        if p:
+            linhas.append({"colaborador": c, "pendencias": p})
+    return render(request, "rh/pendencias_documentos.html", {"linhas": linhas, "total": qs.count()})
