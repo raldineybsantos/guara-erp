@@ -17,3 +17,6 @@ PyJWT[crypto]>=2.8
 webauthn>=2.7,<4
 signxml>=4.0
 Pillow>=10.0
+openpyxl>=3.1
+PyMySQL>=1.1
+xlrd>=2.0.1

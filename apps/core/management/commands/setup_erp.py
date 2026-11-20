@@ -6,7 +6,7 @@ from django.contrib.auth.models import Group, Permission
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "rh", "servicedesk", "contabilidade", "bancario", "assistente", "relatorios", "uniformes"]
+APPS_ERP = ["core", "financeiro", "cobranca", "fiscal", "workflow", "ged", "tarefas", "juridico", "compras", "estoque", "vendas", "producao", "qualidade", "manutencao", "projetos", "crm", "sst", "rh", "servicedesk", "contabilidade", "bancario", "assistente", "relatorios", "uniformes", "importacao"]
 
 BASICO = ["workflow.view_processo", "workflow.view_instancia", "workflow.add_instancia",
           "ged.view_documento", "ged.view_pasta", "ged.add_documento", "ged.change_documento",
@@ -52,7 +52,7 @@ GRUPOS = {
     "Fiscal": ["fiscal.*", "vendas.view_pedidovenda", "vendas.view_itempedidovenda", "vendas.change_pedidovenda", *CADASTROS_BASICOS, "core.add_fornecedor", "core.change_fornecedor",
                "core.add_cliente", "core.change_cliente", "core.change_parceironegocio", "financeiro.view_*", "financeiro.add_contapagar",
                "financeiro.add_contareceber"],
-    "RH": ["rh.*", *CADASTROS_BASICOS, "uniformes.view_*", "uniformes.add_entregauniforme", "uniformes.change_entregauniforme",
+    "RH": ["rh.*", "importacao.importar_dados", *CADASTROS_BASICOS, "uniformes.view_*", "uniformes.add_entregauniforme", "uniformes.change_entregauniforme",
            "uniformes.add_tamanhocolaborador", "uniformes.change_tamanhocolaborador", "sst.view_exameocupacional", "sst.add_exameocupacional",
            "sst.change_exameocupacional", "sst.view_treinamentosst", "sst.add_treinamentosst",
            "sst.change_treinamentosst", "sst.view_entregaepi", "core.view_colaborador", "core.add_colaborador", "core.change_colaborador",

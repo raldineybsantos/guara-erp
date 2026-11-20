@@ -37,6 +37,7 @@ Este manual explica o uso diário de cada módulo. Para instalar o sistema, veja
 28. [Login corporativo: LDAP/AD, login único (OIDC, SAML) e SCIM](#28-login-corporativo-ldapad-e-login-único-microsoft-google)
 29. [Antivírus nos uploads](#29-antivírus-nos-uploads)
 30. [Boleto, PIX e cartão com baixa automática](#30-boleto-pix-e-cartão-com-baixa-automática)
+31. [Importação de dados com IA](#31-importação-de-dados-com-ia)
 
 ---
 
@@ -2008,3 +2009,36 @@ Cancelar o título também cancela a cobrança no gateway na próxima conciliaç
 
 **Administrador:** a tela do gateway mostra o endereço e o token do webhook, testa a chave, lista os últimos avisos recebidos e tem **Conciliar agora**.
 
+---
+
+## 31. Importação de dados com IA
+
+Traz cadastros de planilhas e de outros sistemas para o Guará. Menu **Administração → Importar dados (com IA)**.
+
+**O que dá para importar**
+
+| Origem | Como |
+|---|---|
+| Excel (.xlsx, .xlsm, .xls), CSV/TXT (qualquer separador e acentuação) | *Importar de arquivo* |
+| Access (.mdb, .accdb) | *Importar de arquivo* (o servidor usa o mdbtools; vem na imagem Docker) |
+| SQLite (.sqlite, .db) | *Importar de arquivo* |
+| Dump SQL (.sql) de MariaDB/MySQL, PostgreSQL ou SQL Server | *Importar de arquivo*. O sistema só **lê** os comandos `CREATE TABLE`, `INSERT` e `COPY`; nada do arquivo é executado |
+| JSON (Airtable, NocoDB, Baserow, exportações genéricas) | *Importar de arquivo*. Bancos "no code" costumam exportar para CSV, Excel ou JSON |
+| MariaDB/MySQL e PostgreSQL ao vivo | *Importar de um banco de dados* (só administradores, permissão `conectar_banco`) |
+| Oracle, SQL Server e outros | Exporte para CSV, Excel ou dump .sql |
+
+**Passo a passo**
+
+1. Envie o arquivo (ou conecte ao banco) e escolha a **tabela/planilha**. São lidas até 20 mil linhas por tabela (limite `IMPORTACAO_MAX_LINHAS`); divida arquivos maiores.
+2. Escolha o **cadastro de destino**: Colaboradores, Clientes e fornecedores, Produtos e serviços, Departamentos ou Cargos. Só aparecem os que você tem permissão de incluir. O botão *Sugerir com IA* indica o destino mais adequado.
+3. **Mapeie as colunas**: o sistema já propõe a ligação pelo nome e pelo conteúdo (ex.: coluna com 11 dígitos vira CPF). *Sugerir colunas com IA* usa o assistente configurado em *Configuração da IA*. Cada campo do Guará pode receber uma coluna **ou um valor fixo** para todas as linhas (ex.: tipo de contrato = CLT). Campos com * são obrigatórios.
+4. Defina o que fazer com cadastros que **já existem** (pela chave: CPF, CNPJ/CPF, código ou nome): ignorar, atualizar só com os campos preenchidos, ou tratar como erro. Opções: criar departamentos/cargos que não existem, empresa dos novos cadastros, tornar o parceiro cliente e/ou fornecedor, e **tudo ou nada**.
+5. **Simule**: roda tudo e desfaz no fim; mostra quantos seriam criados, atualizados, ignorados e **quais linhas dão erro, com o motivo**. O CSV de erros pode ser baixado para corrigir a planilha.
+6. **Importe de verdade**. Só é possível depois de simular o mapeamento atual. Os dados temporários da leitura são apagados ao concluir.
+7. **Desfazer**: apaga o que a importação criou (registros que já foram usados em outros cadastros são mantidos e avisados). Atualizações não voltam ao valor anterior.
+
+Valores são convertidos automaticamente: datas (dd/mm/aaaa, aaaa-mm-dd e número de série do Excel), números brasileiros (1.234,56) e internacionais, CPF/CNPJ que perderam zeros à esquerda, Sim/Não, e textos de lista (ex.: "Celetista" vira CLT).
+
+**IA e privacidade.** Por padrão a IA recebe **só os nomes das colunas**, nunca o conteúdo. Marcar *enviar exemplos* manda até 3 valores por coluna; se a IA configurada for na nuvem, a tela avisa que podem ser dados pessoais. Com IA local (Ollama) o envio de exemplos já vem marcado. A resposta da IA é validada: só campos e colunas que existem são aceitos, e você sempre confere antes de simular. Sem IA configurada, o mapeamento por regras continua funcionando.
+
+**Segurança.** A conexão com banco é somente leitura, tem tempo limite, recusa endereços de metadados de nuvem e o banco do próprio ERP, e só lê tabelas que o próprio banco listou. A senha não é gravada: fica cifrada na sessão por até 15 minutos. Arquivos passam pelo bloqueio de tipos perigosos e pelo antivírus; cada usuário vê apenas as próprias importações (quem tem a permissão *ver todas as importações* só consulta). Linhas de erro são exportadas com proteção contra fórmulas em planilhas.

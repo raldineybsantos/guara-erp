@@ -15,6 +15,7 @@ LINKS_EXTRAS = [
     ("Principal", "Primeiros passos", "primeiros_passos", "list-check", "core.add_empresa", 2),
     ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
     ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
+    ("Administração", "Importar dados (com IA)", "importacao:lista", "cloud-upload", "importacao.importar_dados", 4),
     ("Estoque", "Uniformes: catálogo", "uniformes:catalogo", "grid", "uniformes.view_modelouniforme", 59),
     ("Estoque", "Uniformes: entregar", "uniformes:entregar_avulso", "box-arrow-right", "uniformes.add_entregauniforme", 64),
     ("RH", "Bater ponto", "rh:bater_ponto", "fingerprint", None, 0),

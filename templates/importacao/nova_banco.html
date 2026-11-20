@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" novalidate style="max-width:700px" autocomplete="off">{% csrf_token %}
+  {{ form.non_field_errors }}
+  <div class="alert alert-warning">Conexão <strong>somente leitura</strong>. A senha não é gravada: fica cifrada na sessão por até 15 minutos, só até você escolher a tabela. Use, de preferência, um usuário do banco com permissão apenas de leitura. Para Access, SQL Server, Oracle e outros, exporte para arquivo (Excel, CSV ou dump .sql) e use "Importar de arquivo".</div>
+  <div class="card mb-3"><div class="card-body row g-3">
+    <div class="col-md-4">{{ form.tipo.label_tag }} {{ form.tipo }}{{ form.tipo.errors }}</div>
+    <div class="col-md-5">{{ form.host.label_tag }} {{ form.host }}{{ form.host.errors }}</div>
+    <div class="col-md-3">{{ form.porta.label_tag }} {{ form.porta }}{{ form.porta.errors }}</div>
+    <div class="col-md-4">{{ form.banco.label_tag }} {{ form.banco }}{{ form.banco.errors }}</div>
+    <div class="col-md-4">{{ form.usuario.label_tag }} {{ form.usuario }}{{ form.usuario.errors }}</div>
+    <div class="col-md-4">{{ form.senha.label_tag }} {{ form.senha }}{{ form.senha.errors }}</div>
+  </div></div>
+  <button class="btn btn-primary"><i class="bi bi-plug"></i> Conectar e listar tabelas</button>
+  <a href="{% url 'importacao:lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+</form>
+<script>document.querySelectorAll("#id_host,#id_banco,#id_usuario,#id_porta,#id_tipo").forEach(function(e){e.classList.add("form-control")});document.getElementById("id_tipo").className="form-select";document.getElementById("id_senha").className="form-control";</script>
+{% endblock %}

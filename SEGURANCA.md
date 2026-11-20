@@ -333,3 +333,14 @@ Recomendações que dependem de configuração ou decisão:
 4. **Endereço do serviço de IA** é definido pelo administrador e o servidor faz a chamada: restrinja a configuração a administradores de confiança (a consulta pode alcançar a rede interna).
 5. **HSTS** sem `includeSubDomains` e sem `preload`, de propósito; ative se todos os subdomínios usarem HTTPS.
 6. Rode `pip-audit -r requirements.txt` ao menos uma vez por mês, ou automatize no repositório.
+
+## Importação de dados (planilhas, bancos e IA)
+
+Recurso que lê arquivos e bancos de terceiros, por isso tem controles próprios:
+
+- **Permissões**: `importar_dados` (usar), `conectar_banco` (só administradores) e `ver_todas_importacoes`; cada cadastro de destino exige a permissão de inclusão do próprio cadastro. Cada usuário só abre e altera as próprias importações (404 para as de outros).
+- **Arquivos**: bloqueio de extensões perigosas, limite de tamanho, antivírus e lista fechada de formatos. Dumps `.sql` são apenas analisados como texto (nunca executados); SQLite é aberto somente leitura; Access é lido pelo mdbtools sem shell.
+- **Conexão a banco**: somente leitura, tempo limite, recusa endereço de metadados de nuvem (169.254.x.x) e o banco do ERP, tabela só se estiver na lista que o próprio banco devolveu, identificadores entre aspas. A senha não vai para o banco do ERP: fica cifrada na sessão por 15 minutos e é descartada ao ler a tabela.
+- **IA**: por padrão só os nomes das colunas saem do servidor; amostras exigem marcação explícita e a tela avisa quando a IA é na nuvem. A resposta é validada contra os campos e colunas reais.
+- **Isolamento por empresa**: a empresa dos novos cadastros precisa ser uma das acessíveis ao usuário; atualização de cadastro existente de empresa sem acesso é recusada.
+- **Dados temporários** (tabela lida) ficam em pasta privada e são apagados ao concluir ou excluir a importação. CSV de erros neutraliza fórmulas (`=`, `+`, `-`, `@`).

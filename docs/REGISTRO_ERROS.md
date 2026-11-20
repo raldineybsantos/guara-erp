@@ -27,6 +27,7 @@ vendas, contabilidade) e implantação no servidor vsl01.
 | 18 | Uniformes (novo) | Sem como organizar uniformes: numeração, peças do conjunto, imagem e disponibilidade em estoque | Módulo Uniformes: catálogo com foto e grade de tamanhos, conjuntos com cobertura x necessidade, entrega com baixa de estoque, termo e estorno | 1b6f180 |
 | 19 | Segurança (dependências) | Django 5.1 sem suporte, com 9 vulnerabilidades conhecidas | Atualização para o Django 5.2 LTS; suíte completa aprovada | 7a6cddc |
 | 20 | Uniformes e Relatórios | Termo, estorno e assinatura abriam entregas de outra empresa; índice de relatórios sem login | Restrição por empresa (404) e login exigido; teste que varre todas as rotas | 7a6cddc |
+| 21 | Importação (novo) | Sem como trazer cadastros de planilhas e de outros sistemas | Importação com IA: Excel, CSV, Access, SQLite, dump SQL, JSON e conexão a MariaDB/PostgreSQL; sugestão de destino e colunas pela IA, simulação, relatório de erros e desfazer | (próximo commit) |
 
 Nota: a suspeita de que o preço do produto não era aplicado ao pedido foi alarme falso; o modelo já usava a tabela ou
 o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibilidade na tela.

@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card mb-3"><div class="card-body">
+  <div class="d-flex flex-wrap gap-3 align-items-center mb-2"><span class="badge text-bg-{% if imp.status == 'concluida' %}success{% elif imp.status == 'recusada' %}danger{% elif imp.status == 'desfeita' %}secondary{% else %}warning{% endif %} fs-6">{{ imp.get_status_display }}</span>
+  <span>{{ imp.descricao }} › {{ imp.tabela_origem|default:"—" }}</span>{% if dest %}<span>→ <strong>{{ dest.rotulo }}</strong></span>{% endif %}{% if imp.usou_ia %}<span class="badge text-bg-info"><i class="bi bi-stars"></i> com IA</span>{% endif %}</div>
+  {% if r %}<div class="row text-center g-2">
+    <div class="col"><div class="fs-3">{{ r.criados }}</div><div class="small text-muted">{% if r.simulacao %}seriam criados{% else %}criados{% endif %}</div></div>
+    <div class="col"><div class="fs-3">{{ r.atualizados }}</div><div class="small text-muted">atualizados</div></div>
+    <div class="col"><div class="fs-3">{{ r.ignorados }}</div><div class="small text-muted">já existiam (ignorados)</div></div>
+    <div class="col"><div class="fs-3 {% if r.erros %}text-danger{% endif %}">{{ r.erros }}</div><div class="small text-muted">com erro</div></div>
+    <div class="col"><div class="fs-3">{{ r.relacionados }}</div><div class="small text-muted">cadastros auxiliares criados</div></div>
+  </div>{% endif %}
+</div></div>
+{% if erros %}<div class="card mb-3"><div class="card-header d-flex justify-content-between">Linhas com problema {% if r.erros_lista|length > 200 %}(200 primeiras){% endif %}<a href="{% url 'importacao:erros_csv' imp.pk %}" class="btn btn-sm btn-outline-secondary">Baixar CSV</a></div>
+<table class="table table-sm mb-0"><thead><tr><th style="width:90px">Linha</th><th>Problema</th></tr></thead><tbody>{% for linha, msg in erros %}<tr><td>{{ linha }}</td><td>{{ msg }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}
+{% if dono %}
+<div class="d-flex flex-wrap gap-2">
+  {% if imp.status == 'simulado' %}
+    <form method="post" action="{% url 'importacao:importar' imp.pk %}">{% csrf_token %}<button class="btn btn-success"><i class="bi bi-check-lg"></i> Importar de verdade</button></form>
+  {% endif %}
+  {% if imp.status == 'simulado' or imp.status == 'mapeado' or imp.status == 'recusada' %}<a href="{% url 'importacao:mapear' imp.pk %}" class="btn btn-outline-primary">Ajustar mapeamento</a>{% endif %}
+  {% if imp.status == 'concluida' and imp.criados %}<form method="post" action="{% url 'importacao:desfazer' imp.pk %}" onsubmit="return confirm('Apagar os registros criados por esta importação? Os atualizados não voltam ao valor anterior.')">{% csrf_token %}<button class="btn btn-outline-danger"><i class="bi bi-arrow-counterclockwise"></i> Desfazer importação</button></form>{% endif %}
+  <form method="post" action="{% url 'importacao:excluir' imp.pk %}" onsubmit="return confirm('Excluir só o registro desta importação (os cadastros importados ficam)?')">{% csrf_token %}<button class="btn btn-outline-secondary">Excluir registro</button></form>
+  <a href="{% url 'importacao:lista' %}" class="btn btn-link">Voltar</a>
+</div>
+{% endif %}
+{% endblock %}

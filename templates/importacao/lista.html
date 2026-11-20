@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+  <a href="{% url 'importacao:nova' %}" class="btn btn-primary"><i class="bi bi-file-earmark-arrow-up"></i> Importar de arquivo</a>
+  {% if pode_banco %}<a href="{% url 'importacao:nova_banco' %}" class="btn btn-outline-primary"><i class="bi bi-database"></i> Importar de um banco de dados</a>{% endif %}
+</div>
+<div class="alert alert-info">Traga cadastros de planilhas e de outros sistemas: <strong>Excel, CSV, Access, SQLite, dump SQL (MariaDB/MySQL, PostgreSQL, SQL Server), JSON</strong> (Airtable, NocoDB, Baserow e similares exportam para CSV/Excel/JSON) ou conecte direto a um <strong>MariaDB/MySQL</strong> ou <strong>PostgreSQL</strong>. A IA sugere para qual cadastro cada tabela vai e liga as colunas aos campos do Guará; você confere, simula e só então importa. Dá para desfazer.</div>
+<div class="card"><table class="table table-hover mb-0 align-middle"><thead><tr><th>#</th><th>Origem</th><th>Tabela</th><th>Destino</th><th>Situação</th><th>Usuário</th><th>Data</th></tr></thead><tbody>
+{% for i in importacoes %}<tr><td><a href="{% url 'importacao:detalhe' i.pk %}">{{ i.pk }}</a></td><td>{{ i.descricao }}</td><td>{{ i.tabela_origem|default:"—" }}</td><td>{{ i.destino|default:"—" }}</td>
+<td><span class="badge text-bg-{% if i.status == 'concluida' %}success{% elif i.status == 'recusada' %}danger{% elif i.status == 'desfeita' %}secondary{% else %}warning{% endif %}">{{ i.get_status_display }}</span></td>
+<td>{{ i.usuario }}</td><td>{{ i.criado_em|date:"d/m/Y H:i" }}</td></tr>
+{% empty %}<tr><td colspan="7" class="text-center text-muted py-4">Nenhuma importação ainda.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

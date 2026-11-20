@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 # postgresql-client: pg_dump/pg_restore para o backup (web e agendador)
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends postgresql-client \
+    && apt-get install -y --no-install-recommends postgresql-client mdbtools \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

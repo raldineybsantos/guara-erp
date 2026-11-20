@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="alert alert-secondary py-2">Origem: <strong>{{ imp.descricao }}</strong> › <strong>{{ imp.tabela_origem }}</strong> · {{ imp.total_linhas }} linhas{% if imp.truncada %} (lidas as primeiras {{ imp.lidas }}){% endif %}, {{ tab.colunas|length }} colunas.</div>
+{% if not dest %}
+<form method="post" style="max-width:760px">{% csrf_token %}
+  <div class="card mb-3"><div class="card-body">
+    <h6>Para qual cadastro do Guará vão estes dados?</h6>
+    {% for d in destinos %}<div class="form-check"><input class="form-check-input" type="radio" name="destino" id="d{{ d.chave }}" value="{{ d.chave }}" {% if d.chave == sugestao %}checked{% endif %}><label class="form-check-label" for="d{{ d.chave }}"><strong>{{ d.rotulo }}</strong> <span class="text-muted small">{{ d.descricao }}</span></label></div>{% endfor %}
+    {% if not destinos %}<p class="text-danger">Você não tem permissão para incluir em nenhum cadastro importável.</p>{% endif %}
+  </div></div>
+  {% if ia %}<div class="form-check mb-3"><input class="form-check-input" type="checkbox" name="amostras" id="am" {% if not na_nuvem %}checked{% endif %}><label class="form-check-label" for="am">Enviar à IA até 3 exemplos de cada coluna {% if na_nuvem %}<span class="text-danger">(a IA configurada é na nuvem: os exemplos podem conter dados pessoais; por padrão vão só os nomes das colunas)</span>{% else %}(IA local){% endif %}</label></div>{% endif %}
+  <button class="btn btn-primary" name="acao" value="destino">Continuar</button>
+  {% if ia %}<button class="btn btn-outline-primary" name="acao" value="destino_ia"><i class="bi bi-stars"></i> Sugerir com IA</button>{% endif %}
+  <a href="{% url 'importacao:lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+</form>
+<h6 class="mt-4">Prévia da origem</h6>
+<div class="table-responsive"><table class="table table-sm table-bordered"><thead><tr>{% for c in tab.colunas %}<th>{{ c }}</th>{% endfor %}</tr></thead><tbody>{% for l in amostra %}<tr>{% for v in l %}<td>{{ v|default_if_none:"" }}</td>{% endfor %}</tr>{% endfor %}</tbody></table></div>
+{% else %}
+<form method="post">{% csrf_token %}
+  <h6>Destino: {{ dest.rotulo }}</h6>
+  {% if imp.observacao_ia %}<div class="alert alert-info py-2"><i class="bi bi-stars"></i> IA: {{ imp.observacao_ia }}</div>{% endif %}
+  <div class="card mb-3"><table class="table table-sm align-middle mb-0"><thead><tr><th>Campo do Guará</th><th>Coluna da origem</th><th>ou valor fixo para todas as linhas</th><th>Exemplos</th></tr></thead><tbody>
+  {% for l in linhas %}<tr>
+    <td>{{ l.campo.rotulo }}{% if l.campo.obrigatorio %} <span class="text-danger">*</span>{% endif %}{% if l.campo.choices %}<div class="small text-muted">{% for v, r in l.campo.choices|slice:":6" %}{{ r }}{% if not forloop.last %}, {% endif %}{% endfor %}</div>{% endif %}</td>
+    <td><select name="col__{{ l.campo.nome }}" class="form-select form-select-sm"><option value="">— não importar —</option>{% for c in tab.colunas %}<option value="{{ c }}" {% if c == l.coluna %}selected{% endif %}>{{ c }}</option>{% endfor %}</select></td>
+    <td><input name="fixo__{{ l.campo.nome }}" class="form-control form-control-sm" value="{{ l.fixo }}" maxlength="200"></td>
+    <td class="small text-muted">{{ l.exemplos|join:" · " }}</td></tr>{% endfor %}</tbody></table></div>
+  <div class="card mb-3"><div class="card-body row g-3">
+    <div class="col-md-6"><label class="form-label">Se o cadastro já existir ({{ dest.unicos|join:", " }})</label><select name="duplicados" class="form-select">{% for v, r in duplicados %}<option value="{{ v }}" {% if opcoes.duplicados == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>
+    {% if dest.por_empresa %}<div class="col-md-6"><label class="form-label">Empresa dos novos cadastros</label><select name="empresa" class="form-select"><option value="">Empresa atual</option>{% for e in empresas %}<option value="{{ e.pk }}" {% if opcoes.empresa == e.pk %}selected{% endif %}>{{ e }}</option>{% endfor %}</select></div>{% endif %}
+    {% if dest.papel %}<div class="col-md-6"><label class="form-label">Tornar também</label><select name="papel" class="form-select">{% for v, r in papeis %}<option value="{{ v }}" {% if opcoes.papel == v %}selected{% endif %}>{{ r }}</option>{% endfor %}</select></div>{% endif %}
+    {% if dest.fks %}<div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="criar_relacionados" id="cr" {% if opcoes.criar_relacionados %}checked{% endif %}><label class="form-check-label" for="cr">Criar departamentos/cargos que ainda não existem (senão, a linha dá erro)</label></div></div>{% endif %}
+    <div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="tudo_ou_nada" id="tn" {% if opcoes.tudo_ou_nada %}checked{% endif %}><label class="form-check-label" for="tn">Tudo ou nada: se alguma linha tiver erro, não importar nada</label></div></div>
+    {% if ia %}<div class="col-12"><div class="form-check"><input class="form-check-input" type="checkbox" name="amostras" id="am2" {% if not na_nuvem %}checked{% endif %}><label class="form-check-label" for="am2">Ao pedir sugestão da IA, enviar até 3 exemplos por coluna {% if na_nuvem %}<span class="text-danger">(IA na nuvem: pode expor dados pessoais)</span>{% endif %}</label></div></div>{% endif %}
+  </div></div>
+  <h6>Prévia (primeiras linhas já convertidas)</h6>
+  <div class="card mb-3"><div class="card-body small">{% for p in previa %}<div class="mb-2"><strong>Linha {{ p.linha }}:</strong> {% for r, v in p.valores %}<span class="badge text-bg-light border">{{ r }}: {{ v|default_if_none:"—" }}</span> {% endfor %}{% for r, m in p.erros %}<span class="badge text-bg-danger">{{ r }}: {{ m }}</span> {% endfor %}</div>{% endfor %}</div></div>
+  <button class="btn btn-primary" name="acao" value="simular"><i class="bi bi-play-circle"></i> Simular (não grava nada)</button>
+  <button class="btn btn-outline-secondary" name="acao" value="salvar">Salvar mapeamento</button>
+  {% if ia %}<button class="btn btn-outline-primary" name="acao" value="ia"><i class="bi bi-stars"></i> Sugerir colunas com IA</button>{% endif %}
+  <a href="{% url 'importacao:lista' %}" class="btn btn-outline-secondary">Sair</a>
+</form>
+{% endif %}
+{% endblock %}
