@@ -19,10 +19,16 @@ class MFAMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+    @staticmethod
+    def _trocando_senha(request, user):
+        """Com senha provisória pendente, a troca da senha vem antes do 2FA (senão um redireciona ao outro, em loop)."""
+        return request.path.startswith("/senha/") and TrocaSenhaObrigatoria.pendente(user)
+
     def __call__(self, request):
         user = getattr(request, "user", None)
         if (user is not None and user.is_authenticated and not request.session.get("mfa_ok")
-                and not request.path.startswith(ISENTOS) and mfa.precisa_verificar(user)):
+                and not request.path.startswith(ISENTOS) and mfa.precisa_verificar(user)
+                and not self._trocando_senha(request, user)):
             destino = reverse("seguranca:mfa_verificar" if mfa.tem_fator(user) else "seguranca:mfa_ativar")
             if request.method == "GET" and not request.headers.get("x-requested-with"):
                 destino += f"?next={quote(request.get_full_path(), safe='/')}"

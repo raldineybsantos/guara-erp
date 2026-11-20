@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.seguranca.models import TrocaSenhaObrigatoria
@@ -71,3 +71,21 @@ class AdminInicialTest(TestCase):
         self.client.login(username="GuaraSuperAdmin", password=SENHA)
         self.assertEqual(self.client.post(reverse("logout")).status_code, 302)
         self.assertEqual(self.client.get(reverse("password_change")).status_code, 302)  # voltou ao login
+
+
+@override_settings(MFA_ATIVO=True)
+class SemLoopTest(TestCase):
+    """Admin inicial (senha provisória + 2FA obrigatório): a troca de senha vem primeiro, sem loop de redirecionamento."""
+
+    def test_primeiro_login_vai_para_a_troca_de_senha_e_depois_para_o_2fa(self):
+        call_command("criar_admin_inicial", verbosity=0)
+        self.assertTrue(self.client.login(username="GuaraSuperAdmin", password="Admin$Guara"))
+        r = self.client.get("/", follow=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.request["PATH_INFO"].startswith("/senha/"))
+        self.assertLess(len(r.redirect_chain), 3)
+        r = self.client.post("/senha/", {"old_password": "Admin$Guara", "new_password1": "Nova#Senha2026x",
+                                         "new_password2": "Nova#Senha2026x"}, follow=True)
+        self.assertEqual(r.status_code, 200)
+        r = self.client.get("/", follow=True)
+        self.assertIn("/seguranca/2fa/ativar/", r.request["PATH_INFO"])
