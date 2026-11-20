@@ -26,7 +26,7 @@
       {% for p in provedores_saml %}<a class="btn btn-outline-secondary w-100 mb-2" href="{% url 'identidade:saml_entrar' p.slug %}{% if next %}?next={{ next|urlencode }}{% endif %}">
         <i class="bi bi-box-arrow-in-right me-1"></i> Entrar com {{ p.nome }}</a>{% endfor %}{% endif %}
     </div></div>
-    <div class="login-rodape">Software livre · <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPL-3.0</a> · Desenvolvido no Brasil</div>
+    <div class="login-rodape">© 2026 Raldiney Santos · Desenvolvido por Raldiney Santos<br>Software livre · <a href="https://www.gnu.org/licenses/gpl-3.0.html" target="_blank" rel="noopener">GPL-3.0</a></div>
   </div>
 </main>
 {% endblock %}
