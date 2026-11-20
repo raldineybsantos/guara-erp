@@ -25,10 +25,17 @@
   var msg = document.createElement('div'); msg.className = 'form-text';
   cep.insertAdjacentElement('afterend', msg);
   cep.addEventListener('input', function () { cep.value = mascaraCep(cep.value); });
+  function limparErro(el) {   // tira a mensagem de erro antiga do campo que acabou de ser preenchido
+    el.classList.remove('is-invalid');
+    var caixa = el.parentElement;
+    if (caixa) caixa.querySelectorAll('.invalid-feedback, .text-danger').forEach(function (m) {
+      if (m !== msg) m.remove();
+    });
+  }
   function set(nome, v) {
     var el = cep.form.elements[nome];
     if (!el || !v) return;
-    el.value = v; el.dispatchEvent(new Event('change', {bubbles: true}));
+    el.value = v; limparErro(el); el.dispatchEvent(new Event('change', {bubbles: true}));
   }
   cep.addEventListener('blur', function () {
     if (digitos(cep.value).length !== 8) { msg.textContent = ''; return; }
@@ -36,6 +43,7 @@
     fetch(url + '?cep=' + digitos(cep.value), {credentials: 'same-origin'}).then(function (r) { return r.json(); })
       .then(function (j) {
         if (j.erro) { msg.textContent = j.erro; msg.className = 'form-text text-danger'; return; }
+        limparErro(cep);
         ['logradouro', 'bairro', 'cidade', 'uf'].forEach(function (n) { set(n, j[n]); });
         msg.textContent = 'Endereço preenchido. Informe o número.'; msg.className = 'form-text text-success';
         var num = cep.form.elements['numero']; if (num && !num.value) num.focus();

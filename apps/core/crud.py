@@ -90,6 +90,17 @@ def valor_exibicao(obj, nome, html=True):
         if nome_base.startswith(("aliquota", "percentual", "quantidade")):
             return number_format(valor, 2, force_grouping=True)
         return moeda(valor)
+    if isinstance(valor, str) and isinstance(nome, str) and valor:
+        base = nome.split("__")[-1]
+        if base in ("cpf", "cnpj"):
+            from .validators import formatar_documento
+            return formatar_documento(valor)
+        if base == "telefone":
+            d = "".join(ch for ch in valor if ch.isdigit())
+            if len(d) == 11:
+                return f"({d[:2]}) {d[2:7]}-{d[7:]}"
+            if len(d) == 10:
+                return f"({d[:2]}) {d[2:6]}-{d[6:]}"
     if hasattr(valor, "all") and hasattr(valor, "model"):  # many-to-many
         return ", ".join(str(v) for v in valor.all())
     if isinstance(valor, FieldFile):  # arquivo

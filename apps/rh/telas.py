@@ -706,6 +706,11 @@ class DocumentoPessoalForm(FormBase):
         super().__init__(*args, **kwargs)
         self.request = request
         self.fields["tipo"].queryset = TipoDocumentoPessoal.objects.filter(ativo=True)
+        colab_id = self.instance.colaborador_id or (self.data.get("colaborador") if self.is_bound else None) \
+            or self.initial.get("colaborador")
+        if str(colab_id or "").isdigit():
+            self.fields["dependente"].queryset = Dependente.objects.filter(colaborador_id=int(colab_id))
+        self.fields["dependente"].label_from_instance = lambda d: f"{d.nome} ({d.get_parentesco_display()}) — {d.colaborador.nome}"
         if not self.instance.pk:
             self.fields["arquivo"].required = True
 

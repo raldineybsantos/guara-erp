@@ -71,6 +71,11 @@ class ColaboradorForm(FormBase):
                   "data_desligamento", "salario", "banco", "agencia", "conta", "chave_pix", "usuario",
                   *ENDERECO, "observacoes"]
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if self.instance.pk and "gestor" in self.fields:   # ninguém é gestor de si mesmo
+            self.fields["gestor"].queryset = self.fields["gestor"].queryset.exclude(pk=self.instance.pk)
+
     def clean(self):
         d = super().clean()
         hoje = timezone.localdate()
@@ -92,6 +97,15 @@ class ColaboradorForm(FormBase):
                 self.add_error("data_admissao", "A admissão é anterior aos 14 anos do colaborador.")
         if d.get("salario") is not None and d["salario"] <= 0 and d.get("tipo_contrato") != "socio":
             self.add_error("salario", "Informe o salário (maior que zero).")
+        gestor = d.get("gestor")
+        if gestor and self.instance.pk:
+            g, vistos = gestor, set()
+            while g is not None and g.pk not in vistos:
+                if g.pk == self.instance.pk:
+                    self.add_error("gestor", "Esse gestor já é subordinado a este colaborador (ciclo na hierarquia).")
+                    break
+                vistos.add(g.pk)
+                g = g.gestor
         if desl and adm and desl < adm:
             self.add_error("data_desligamento", "O desligamento não pode ser anterior à admissão.")
         if d.get("status") == "desligado" and not desl:

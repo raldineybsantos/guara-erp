@@ -185,3 +185,26 @@ class AnexoTest(Base):
         self.assertContains(r, "Ana")
         r = self.client.get(reverse("core:colaborador_detail", args=[self.c.pk]))
         self.assertContains(r, "Documentos pendentes")
+
+
+class AjustesDaRodadaTest(ValidacaoColaboradorTest):
+    def test_gestor_nao_lista_a_si_mesmo_nem_aceita_ciclo(self):
+        chefe = Colaborador.objects.create(empresa=self.emp, nome="Chefe", cpf="11144477735", gestor=self.c)
+        f = ColaboradorForm(instance=self.c)
+        self.assertNotIn(self.c.pk, [g.pk for g in f.fields["gestor"].queryset])
+        dados = self.dados(gestor=chefe.pk, cpf=self.c.cpf, nome="Ana")
+        f = ColaboradorForm(dados, instance=self.c)
+        self.assertIn("gestor", f.errors)
+
+    def test_dependente_do_documento_filtrado_pelo_colaborador(self):
+        outro = Colaborador.objects.create(empresa=self.emp, nome="Outro", cpf="11144477735")
+        d1 = Dependente.objects.create(colaborador=self.c, nome="F1", parentesco="filho", data_nascimento=anos_atras(3))
+        Dependente.objects.create(colaborador=outro, nome="F2", parentesco="filho", data_nascimento=anos_atras(3))
+        f = DocumentoPessoalForm(initial={"colaborador": self.c.pk})
+        self.assertEqual([d.pk for d in f.fields["dependente"].queryset], [d1.pk])
+
+    def test_detalhe_formata_cpf_e_telefone(self):
+        from apps.core.crud import valor_exibicao
+        self.c.telefone = "11987654321"
+        self.assertEqual(valor_exibicao(self.c, "cpf"), "529.982.247-25")
+        self.assertEqual(valor_exibicao(self.c, "telefone"), "(11) 98765-4321")

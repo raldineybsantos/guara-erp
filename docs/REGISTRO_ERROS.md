@@ -20,6 +20,10 @@ vendas, contabilidade) e implantação no servidor vsl01.
 | 11 | Todos os módulos com situação (92 ações) | Botões de ação apareciam em qualquer situação do registro (ex.: Baixar em título pago, Estornar em título aberto, Aprovar férias já aprovadas, Liberar OP já encerrada) | `acao_status` aplicado a 32 telas: financeiro, cobrança, fiscal, jurídico, bancário, RH, produção, manutenção, qualidade, estoque, patrimônio e service desk; teste automático confere ações e situações | ff1f9c8 |
 | 12 | Colaboradores e dependentes | Cadastro aceitava colaborador sem RG, e-mail, telefone, endereço, cargo, departamento ou salário; datas incoerentes e telefone/CEP inválidos passavam; dependente com dedução de IRRF sem CPF | Validações no formulário (obrigatórios, idade, datas, telefone, CEP, conta bancária completa ou PIX) e no dependente (CPF para IRRF, idade do cônjuge e do filho) | c2795fa |
 | 13 | Documentos | Sem como anexar RG, comprovante de residência, certidões e carteira de vacinação, nem saber quem está com documento faltando | Documentos pessoais no GED (pasta restrita, antivírus, versões), catálogo configurável de documentos obrigatórios, checklist no colaborador e tela de pendências | c2795fa |
+| 14 | Colaborador (tela) | Campo Gestor listava o próprio colaborador e aceitava ciclo na hierarquia | Lista sem a própria pessoa; ciclo de gestores é recusado | COMMIT3 |
+| 15 | Documento pessoal (tela) | Lista de dependentes mostrava os de todos os colaboradores | Filtra pelo colaborador escolhido; rótulo traz nome e parentesco | COMMIT3 |
+| 16 | Endereço por CEP | Mensagens de erro antigas continuavam na tela depois do preenchimento automático | Erros dos campos preenchidos somem ao buscar o CEP | COMMIT3 |
+| 17 | Detalhe de cadastros | CPF, CNPJ e telefone apareciam só com dígitos | Exibição formatada (000.000.000-00, (11) 98765-4321) na tela e nas exportações | COMMIT3 |
 
 Nota: a suspeita de que o preço do produto não era aplicado ao pedido foi alarme falso; o modelo já usava a tabela ou
 o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibilidade na tela.
@@ -41,6 +45,7 @@ Servidor vsl01 atualizado em 20/11/2026: containers web, agendador, banco, pgAdm
 1. Saldo inicial da conta bancária não gera lançamento contábil (o Caixa aparece a crédito após o primeiro pagamento).
 2. Formulário de colaborador com cerca de 30 campos numa página só; sugestão: dividir em abas.
 3. Diagrama do workflow mostra as três etapas de aprovação mesmo quando só a primeira é necessária.
-4. Não testados: recebimento com vinculação do XML da NF-e (conferência de 3 vias) e liberação de pagamento.
-5. Treze gerentes ainda sem vínculo com colaborador (faltam CPFs) e departamentos sem responsável.
-6. Transmissão de NFS-e/NF-e e teste com certificado e-CNPJ A1 (deixados para o final).
+4. Documento pessoal aceita qualquer conteúdo com extensão permitida (o teste usou um RTF com nome .pdf); conferir o tipo real do arquivo (PDF/JPG/PNG) ainda não foi feito.
+5. Não testados: recebimento com vinculação do XML da NF-e (conferência de 3 vias) e liberação de pagamento.
+6. Treze gerentes ainda sem vínculo com colaborador (faltam CPFs) e departamentos sem responsável.
+7. Transmissão de NFS-e/NF-e e teste com certificado e-CNPJ A1 (deixados para o final).
