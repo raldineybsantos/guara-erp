@@ -20,10 +20,10 @@ vendas, contabilidade) e implantação no servidor vsl01.
 | 11 | Todos os módulos com situação (92 ações) | Botões de ação apareciam em qualquer situação do registro (ex.: Baixar em título pago, Estornar em título aberto, Aprovar férias já aprovadas, Liberar OP já encerrada) | `acao_status` aplicado a 32 telas: financeiro, cobrança, fiscal, jurídico, bancário, RH, produção, manutenção, qualidade, estoque, patrimônio e service desk; teste automático confere ações e situações | ff1f9c8 |
 | 12 | Colaboradores e dependentes | Cadastro aceitava colaborador sem RG, e-mail, telefone, endereço, cargo, departamento ou salário; datas incoerentes e telefone/CEP inválidos passavam; dependente com dedução de IRRF sem CPF | Validações no formulário (obrigatórios, idade, datas, telefone, CEP, conta bancária completa ou PIX) e no dependente (CPF para IRRF, idade do cônjuge e do filho) | c2795fa |
 | 13 | Documentos | Sem como anexar RG, comprovante de residência, certidões e carteira de vacinação, nem saber quem está com documento faltando | Documentos pessoais no GED (pasta restrita, antivírus, versões), catálogo configurável de documentos obrigatórios, checklist no colaborador e tela de pendências | c2795fa |
-| 14 | Colaborador (tela) | Campo Gestor listava o próprio colaborador e aceitava ciclo na hierarquia | Lista sem a própria pessoa; ciclo de gestores é recusado | COMMIT3 |
-| 15 | Documento pessoal (tela) | Lista de dependentes mostrava os de todos os colaboradores | Filtra pelo colaborador escolhido; rótulo traz nome e parentesco | COMMIT3 |
-| 16 | Endereço por CEP | Mensagens de erro antigas continuavam na tela depois do preenchimento automático | Erros dos campos preenchidos somem ao buscar o CEP | COMMIT3 |
-| 17 | Detalhe de cadastros | CPF, CNPJ e telefone apareciam só com dígitos | Exibição formatada (000.000.000-00, (11) 98765-4321) na tela e nas exportações | COMMIT3 |
+| 14 | Colaborador (tela) | Campo Gestor listava o próprio colaborador e aceitava ciclo na hierarquia | Lista sem a própria pessoa; ciclo de gestores é recusado | e9fff24 |
+| 15 | Documento pessoal (tela) | Lista de dependentes mostrava os de todos os colaboradores | Filtra pelo colaborador escolhido; rótulo traz nome e parentesco | e9fff24 |
+| 16 | Endereço por CEP | Mensagens de erro antigas continuavam na tela depois do preenchimento automático | Erros dos campos preenchidos somem ao buscar o CEP | e9fff24 |
+| 17 | Detalhe de cadastros | CPF, CNPJ e telefone apareciam só com dígitos | Exibição formatada (000.000.000-00, (11) 98765-4321) na tela e nas exportações | e9fff24 |
 
 Nota: a suspeita de que o preço do produto não era aplicado ao pedido foi alarme falso; o modelo já usava a tabela ou
 o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibilidade na tela.
