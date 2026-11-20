@@ -51,3 +51,30 @@ def consultar_cnpj(cnpj, timeout=8):
         "situacao": situacao,
         "inativa": situacao in SITUACOES_INATIVAS,
     }
+
+
+URL_CEP = "https://brasilapi.com.br/api/cep/v2/{}"
+
+
+def consultar_cep(cep, timeout=8):
+    """Endereço a partir do CEP (BrasilAPI). Levanta ValidationError com mensagem amigável."""
+    d = somente_digitos(cep)
+    if len(d) != 8:
+        raise ValidationError("Informe os 8 dígitos do CEP.")
+    req = urllib.request.Request(URL_CEP.format(d), headers={"User-Agent": "GuaraERP", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            dados = json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        if e.code in (400, 404):
+            raise ValidationError("CEP não encontrado.")
+        raise ValidationError("Serviço de consulta indisponível no momento. Tente novamente em instantes.")
+    except (urllib.error.URLError, TimeoutError, ValueError, OSError):
+        raise ValidationError("Não foi possível consultar o CEP agora (sem acesso à internet ou serviço fora do ar).")
+    return {
+        "cep": d[:5] + "-" + d[5:],
+        "logradouro": _txt(dados.get("street")),
+        "bairro": _txt(dados.get("neighborhood")),
+        "cidade": _txt(dados.get("city")),
+        "uf": _txt(dados.get("state")).upper(),
+    }

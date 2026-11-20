@@ -47,3 +47,13 @@ def consulta_cnpj(request):
         return JsonResponse(consultar_cnpj(request.GET.get("cnpj", "")))
     except ValidationError as e:
         return JsonResponse({"erro": " ".join(e.messages)}, status=400)
+
+
+@login_required
+def consulta_cep(request):
+    """GET ?cep=… → JSON com o endereço, para preencher o cadastro."""
+    from .consulta import consultar_cep
+    try:
+        return JsonResponse(consultar_cep(request.GET.get("cep", "")))
+    except ValidationError as e:
+        return JsonResponse({"erro": " ".join(e.messages)}, status=400)

@@ -201,3 +201,44 @@ class AjustesUsabilidadeTest(TestCase):
         r = self.client.get(reverse("vendas:preco_item"), {"produto": pr.pk})
         self.assertEqual(r.json()["preco"], "28.90")
         self.assertEqual(self.client.get(reverse("vendas:preco_item"), {"produto": 999999}).status_code, 404)
+
+
+class ColaboradorMatriculaCepTest(TestCase):
+    def setUp(self):
+        from apps.core.models import Empresa
+        self.emp = Empresa.objects.create(razao_social="E", cnpj="11222333000181")
+
+    def _c(self, nome, cpf, **kw):
+        from apps.core.models import Colaborador
+        return Colaborador.objects.create(empresa=self.emp, nome=nome, cpf=cpf, **kw)
+
+    def test_matricula_automatica_sequencial(self):
+        a = self._c("A", "52998224725")
+        b = self._c("B", "11144477735")
+        self.assertEqual((a.matricula, b.matricula), ("000001", "000002"))
+
+    def test_matricula_manual_preservada_e_ignora_nao_numerica(self):
+        self._c("A", "52998224725", matricula="F-10")
+        b = self._c("B", "11144477735")
+        self.assertEqual(b.matricula, "000001")
+
+    def test_cpf_gravado_so_com_digitos(self):
+        a = self._c("A", "529.982.247-25")
+        a.refresh_from_db()
+        self.assertEqual(a.cpf, "52998224725")
+        self.assertEqual(a.cpf_formatado, "529.982.247-25")
+
+    def test_consultar_cep_valida_tamanho(self):
+        from django.core.exceptions import ValidationError
+        from apps.core.consulta import consultar_cep
+        with self.assertRaises(ValidationError):
+            consultar_cep("123")
+
+    def test_consultar_cep_normaliza(self):
+        from unittest import mock
+        import io, json
+        from apps.core import consulta
+        resp = io.BytesIO(json.dumps({"street": "Rua A", "neighborhood": "Centro", "city": "São Paulo", "state": "sp"}).encode())
+        with mock.patch.object(consulta.urllib.request, "urlopen", return_value=resp):
+            r = consulta.consultar_cep("01001000")
+        self.assertEqual(r, {"cep": "01001-000", "logradouro": "Rua A", "bairro": "Centro", "cidade": "São Paulo", "uf": "SP"})

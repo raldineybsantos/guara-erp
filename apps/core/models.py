@@ -179,7 +179,8 @@ class Colaborador(ModeloBase, PorEmpresaMixin, EnderecoMixin):
                  ("temporario", "Temporário"), ("socio", "Sócio")]
     STATUS = [("ativo", "Ativo"), ("ferias", "Férias"), ("afastado", "Afastado"), ("desligado", "Desligado")]
 
-    matricula = models.CharField("matrícula", max_length=20, blank=True)
+    matricula = models.CharField("matrícula", max_length=20, blank=True,
+                                 help_text="Deixe em branco para gerar automaticamente.")
     nome = models.CharField(max_length=200)
     cpf = models.CharField("CPF", max_length=14, unique=True, validators=[validar_cpf])
     rg = models.CharField("RG", max_length=20, blank=True)
@@ -210,6 +211,25 @@ class Colaborador(ModeloBase, PorEmpresaMixin, EnderecoMixin):
 
     def __str__(self):
         return self.nome
+
+    def clean(self):
+        super().clean()
+        self.cpf = somente_digitos(self.cpf)  # grava sempre só dígitos (a máscara é visual)
+
+    def save(self, *args, **kwargs):
+        self.cpf = somente_digitos(self.cpf)
+        if not self.matricula:
+            self.matricula = self.proxima_matricula(self.empresa_id)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def proxima_matricula(cls, empresa_id):
+        """Próxima matrícula numérica da empresa (6 dígitos), ignorando matrículas não numéricas."""
+        maior = 0
+        for m in cls.objects.filter(empresa_id=empresa_id).values_list("matricula", flat=True):
+            if m and m.isdigit():
+                maior = max(maior, int(m))
+        return f"{maior + 1:06d}"
 
     @property
     def cpf_formatado(self):

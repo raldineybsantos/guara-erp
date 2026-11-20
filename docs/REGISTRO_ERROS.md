@@ -1,6 +1,6 @@
 # Guará ERP — Registro de erros e ajustes encontrados nos testes
 
-Atualizado em 20/11/2026. Origem: rodada de testes pela interface web (empresa, departamentos, usuários, compras,
+Atualizado em 20/11/2026 (2ª rodada). Origem: rodada de testes pela interface web (empresa, departamentos, usuários, compras,
 vendas, contabilidade) e implantação no servidor vsl01.
 
 ## Corrigidos
@@ -14,6 +14,9 @@ vendas, contabilidade) e implantação no servidor vsl01.
 | 5 | Primeiro acesso | Sem orientação do que configurar primeiro; o usuário novo ficava perdido | Tela "Primeiros passos" com checklist e aviso no painel | b66644b |
 | 6 | Parceiros | Sem consulta de CNPJ nem validação de CPF no cadastro | Botão "Consultar CNPJ" (BrasilAPI) preenche razão social, endereço, CNAE e situação; CPF/CNPJ validados | 34b8765 |
 | 7 | Contabilidade | Contratos não geravam apropriação mensal (despesa/receita) | Modelos `ContratoContabil` e `ApropriacaoContrato`, tela de apropriação e estorno por competência | 34b8765 |
+| 8 | Colaboradores | Matrícula ficava vazia e precisava ser digitada à mão | Gerada automaticamente (6 dígitos, sequencial por empresa) quando em branco; matrícula manual é respeitada | pendente de commit |
+| 9 | Colaboradores | CPF sem máscara ao digitar e gravado ora com pontos, ora só com dígitos | Máscara visual 000.000.000-00; gravação sempre só com dígitos; lista continua mostrando formatado | pendente de commit |
+| 10 | Endereço (todos os cadastros) | CEP não preenchia o endereço | Ao sair do campo CEP, logradouro, bairro, cidade e UF são preenchidos (BrasilAPI) | pendente de commit |
 
 Nota: a suspeita de que o preço do produto não era aplicado ao pedido foi alarme falso; o modelo já usava a tabela ou
 o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibilidade na tela.
@@ -32,10 +35,9 @@ Servidor vsl01 atualizado em 20/11/2026: containers web, agendador, banco, pgAdm
 
 ## Em aberto (próximas correções)
 
-1. Matrícula do colaborador não é gerada automaticamente.
-2. Saldo inicial da conta bancária não gera lançamento contábil (o Caixa aparece a crédito após o primeiro pagamento).
-3. Formulário de colaborador com cerca de 30 campos numa página só; sugestão: dividir em abas.
-4. Diagrama do workflow mostra as três etapas de aprovação mesmo quando só a primeira é necessária.
-5. Não testados: recebimento com vinculação do XML da NF-e (conferência de 3 vias) e liberação de pagamento.
-6. Treze gerentes ainda sem vínculo com colaborador (faltam CPFs) e departamentos sem responsável.
-7. Transmissão de NFS-e/NF-e e teste com certificado e-CNPJ A1 (deixados para o final).
+1. Saldo inicial da conta bancária não gera lançamento contábil (o Caixa aparece a crédito após o primeiro pagamento).
+2. Formulário de colaborador com cerca de 30 campos numa página só; sugestão: dividir em abas.
+3. Diagrama do workflow mostra as três etapas de aprovação mesmo quando só a primeira é necessária.
+4. Não testados: recebimento com vinculação do XML da NF-e (conferência de 3 vias) e liberação de pagamento.
+5. Treze gerentes ainda sem vínculo com colaborador (faltam CPFs) e departamentos sem responsável.
+6. Transmissão de NFS-e/NF-e e teste com certificado e-CNPJ A1 (deixados para o final).
