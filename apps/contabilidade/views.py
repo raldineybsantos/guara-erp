@@ -16,7 +16,7 @@ from apps.financeiro.models import CentroCusto
 
 from . import servicos
 from . import orcamento as orc_servico
-from . import patrimonio
+from . import contratos, patrimonio
 from . import ecd as ecd_servico
 from . import encerramento as enc_servico
 from .models import Bem, ContaContabil, Lancamento, Orcamento, Partida, PeriodoFechado
@@ -269,6 +269,36 @@ def depreciar(request):
         except ValidationError as e:
             messages.error(request, " ".join(e.messages))
     return render(request, "form_simples.html", {"form": form, "titulo": "Depreciação mensal", "icone": "calendar-check"})
+
+
+class ApropriarForm(BootstrapMixin, forms.Form):
+    ano = forms.IntegerField(min_value=2000, max_value=2100)
+    mes = forms.IntegerField(label="mês", min_value=1, max_value=12)
+    acao = forms.ChoiceField(label="o que fazer", choices=[("apropriar", "Apropriar até este mês"),
+                                                           ("estornar", "Estornar a apropriação deste mês")])
+
+
+@login_required
+@permission_required("contabilidade.add_apropriacaocontrato", raise_exception=True)
+def apropriar_contratos(request):
+    hoje = timezone.localdate()
+    form = ApropriarForm(request.POST or None, initial={"ano": hoje.year, "mes": hoje.month, "acao": "apropriar"})
+    if request.method == "POST" and form.is_valid():
+        d = form.cleaned_data
+        comp = datetime.date(d["ano"], d["mes"], 1)
+        try:
+            if d["acao"] == "apropriar":
+                n = contratos.apropriar_ate(comp)
+                messages.success(request, f"{n} apropriação(ões) lançada(s) até {comp:%m/%Y}." if n
+                                 else "Nada a apropriar: os contratos já estão em dia.")
+            else:
+                n = contratos.estornar_competencia(comp)
+                messages.success(request, f"{n} apropriação(ões) de {comp:%m/%Y} estornada(s).")
+            return redirect("contabilidade:contratocontabil_list")
+        except ValidationError as e:
+            messages.error(request, " ".join(e.messages))
+    return render(request, "form_simples.html", {"form": form, "titulo": "Apropriação mensal de contratos",
+                                                 "icone": "calendar-check"})
 
 
 class BaixaBemForm(BootstrapMixin, forms.Form):

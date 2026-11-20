@@ -1,6 +1,6 @@
 from apps.core.crud import Crud
 
-from .models import (MESES, Bem, ContaContabil, Depreciacao, Lancamento, LinhaOrcamento, Orcamento,
+from .models import (MESES, Bem, ContratoContabil, ContaContabil, Depreciacao, Lancamento, LinhaOrcamento, Orcamento,
                      RegraContabil)
 
 
@@ -74,3 +74,19 @@ class OrcamentoCrud(Crud):
     menu = "Contabilidade"
     menu_label = "Orçamentos"
     menu_order = 13
+
+
+class ContratoContabilCrud(Crud):
+    model = ContratoContabil
+    fields = ["empresa", "contrato", "natureza", "conta_resultado", "conta_balanco", "valor_mensal",
+              "inicio_apropriacao", "fim_apropriacao", "centro_custo", "ativo"]
+    list_display = ("contrato", "natureza", "valor_mensal", "inicio_apropriacao", "total_apropriado", "ativo")
+    search_fields = ("contrato__numero", "contrato__titulo")
+    filter_fields = ("natureza", "ativo")
+    detail_fields = ["contrato", "natureza", "conta_resultado", "conta_balanco", "valor_mensal", "inicio_apropriacao",
+                     "fim_apropriacao", "centro_custo", "total_apropriado", "ativo", "empresa"]
+    related = (("apropriacoes", "Apropriações lançadas", ["competencia", "valor"]),)
+    icon = "file-earmark-ruled"
+    menu = "Contabilidade"
+    menu_label = "Contratos (apropriação)"
+    menu_order = 12

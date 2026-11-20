@@ -13,6 +13,7 @@ urlpatterns = crud_urls(telas.EmpresaCrud, telas.DepartamentoCrud, telas.CargoCr
     path("logerro/<int:pk>/resolver/", views_auditoria.erro_resolver, name="erro_resolver"),
     path("logerro/<int:pk>/ignorar/", views_auditoria.erro_ignorar, name="erro_ignorar"),
     path("logerro/<int:pk>/analisar/", views_auditoria.erro_analisar, name="erro_analisar"),
+    path("consulta-cnpj/", views_parceiros.consulta_cnpj, name="consulta_cnpj"),
     path("fornecedores/<int:pk>/tornar-cliente/", views_parceiros.tornar_cliente, name="tornar_cliente"),
     path("clientes/<int:pk>/tornar-fornecedor/", views_parceiros.tornar_fornecedor, name="tornar_fornecedor"),
 ]

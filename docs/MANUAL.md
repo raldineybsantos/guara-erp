@@ -171,6 +171,19 @@ e a lixeira 🗑 exclui o registro. A exclusão é recusada se houver registros 
 
 ---
 
+### 4.1 Consulta de CNPJ e validação de CPF
+
+Nos cadastros com CNPJ (Empresa, Fornecedor, Cliente, Parceiro de negócios) aparece o botão **Consultar CNPJ** logo
+abaixo do campo. Digite os 14 dígitos e clique: o sistema consulta os dados públicos da Receita Federal (BrasilAPI) e
+preenche razão social, nome fantasia, e-mail, telefone, endereço, código IBGE do município e CNAE. Campos que você já
+preencheu **não são sobrescritos** (exceto a razão social). A situação cadastral é mostrada ao lado; em vermelho se
+estiver baixada, inapta, suspensa ou nula. Confira os dados antes de salvar. O servidor precisa de acesso à internet;
+sem ele a tela avisa e você segue digitando à mão.
+
+O **CPF** não tem consulta pública gratuita: o sistema valida os dígitos verificadores (CPF falso é recusado), mas não
+confirma nome nem situação na Receita.
+
+
 ## 5. Cadastros
 
 | Tela | Para que serve | Observações |
@@ -965,6 +978,16 @@ resultado), bloco J (balanço, DRE, termo de encerramento e signatários) e bloc
 assine com o e-CNPJ e transmita pelo próprio PVA. Ficam de fora o **mapeamento ao plano de contas referencial
 (I051)**, exigido de parte das empresas, os livros auxiliares e as demonstrações adicionais. A versão do leiaute
 está na constante `VERSAO_LEIAUTE` de `apps/contabilidade/ecd.py`.
+
+### 15.6 Contratos: apropriação mensal por competência
+
+Em **Contabilidade → Contratos (apropriação)** você liga um contrato do Jurídico às contas contábeis: natureza
+(despesa a pagar ou receita a receber), conta de resultado, contrapartida (passivo ou ativo), valor mensal, início e fim.
+Contrato de despesa exige conta de despesa/custo e contrapartida de passivo; contrato de receita, o inverso.
+Em **Apropriar contratos** escolha o mês e clique em *Apropriar até este mês*: o sistema lança, mês a mês, a despesa
+(débito na despesa, crédito no passivo) ou a receita (débito no ativo, crédito na receita), no último dia de cada
+competência. Pode repetir sem medo: o que já foi apropriado é pulado. O fim é o da apropriação ou, se vazio, o da
+vigência do contrato. Para corrigir, *Estornar a apropriação deste mês* (do mês mais recente para o mais antigo).
 
 ## 16. Cobrança
 

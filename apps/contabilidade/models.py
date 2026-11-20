@@ -55,6 +55,7 @@ EVENTOS = [
     ("baixa_bem_perda", "Baixa de bem: perda"),
     ("baixa_bem_ganho", "Baixa de bem: ganho"),
     ("encerramento_exercicio", "Encerramento do exercício (apuração do resultado)"),
+    ("apropriacao_contrato", "Apropriação mensal de contrato (competência)"),
 ]
 
 
@@ -323,6 +324,82 @@ class Depreciacao(models.Model):
 
     def __str__(self):
         return f"{self.bem.codigo} {self.competencia:%m/%Y}: {self.valor}"
+
+
+# --------------------------------------------------------------------------- contratos (apropriação por competência)
+class ContratoContabil(ModeloBase, PorEmpresaMixin):
+    """Parâmetros contábeis de um contrato do Jurídico: reconhece, mês a mês, a despesa (contrato com fornecedor)
+    ou a receita (contrato com cliente) na competência, contra o passivo/ativo correspondente."""
+
+    NATUREZAS_CONTRATO = [("despesa", "Despesa (a pagar)"), ("receita", "Receita (a receber)")]
+
+    contrato = models.OneToOneField("juridico.Contrato", verbose_name="contrato", on_delete=models.PROTECT,
+                                    related_name="contabil")
+    natureza = models.CharField(max_length=8, choices=NATUREZAS_CONTRATO, default="despesa")
+    conta_resultado = models.ForeignKey(ContaContabil, verbose_name="conta de resultado (despesa/receita)",
+                                        on_delete=models.PROTECT, related_name="+",
+                                        limit_choices_to={"sintetica": False})
+    conta_balanco = models.ForeignKey(ContaContabil, verbose_name="contrapartida (passivo/ativo)",
+                                      on_delete=models.PROTECT, related_name="+",
+                                      limit_choices_to={"sintetica": False},
+                                      help_text="Despesa: conta de passivo (ex.: Fornecedores). Receita: conta de ativo "
+                                                "(ex.: Clientes).")
+    valor_mensal = models.DecimalField("valor mensal a apropriar", max_digits=14, decimal_places=2)
+    inicio_apropriacao = models.DateField("início da apropriação", help_text="Qualquer dia do mês de início.")
+    fim_apropriacao = models.DateField("fim da apropriação", null=True, blank=True,
+                                       help_text="Vazio = segue até o fim da vigência do contrato (ou sem fim).")
+    centro_custo = models.ForeignKey("financeiro.CentroCusto", verbose_name="centro de custo", null=True, blank=True,
+                                     on_delete=models.SET_NULL, related_name="+")
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        verbose_name = "contrato (apropriação contábil)"
+        verbose_name_plural = "contratos (apropriação contábil)"
+        ordering = ["contrato__numero"]
+
+    def __str__(self):
+        return f"{self.contrato.numero} — {self.contrato.titulo}"
+
+    def clean(self):
+        erros = {}
+        if self.valor_mensal is not None and self.valor_mensal <= 0:
+            erros["valor_mensal"] = "O valor mensal deve ser maior que zero."
+        if self.inicio_apropriacao and self.fim_apropriacao and self.fim_apropriacao < self.inicio_apropriacao:
+            erros["fim_apropriacao"] = "O fim não pode ser anterior ao início."
+        if self.natureza == "despesa" and self.conta_resultado_id and self.conta_resultado.natureza not in ("despesa", "custo"):
+            erros["conta_resultado"] = "Para contrato de despesa, use uma conta de despesa ou custo."
+        if self.natureza == "receita" and self.conta_resultado_id and self.conta_resultado.natureza != "receita":
+            erros["conta_resultado"] = "Para contrato de receita, use uma conta de receita."
+        if self.natureza == "despesa" and self.conta_balanco_id and self.conta_balanco.natureza != "passivo":
+            erros["conta_balanco"] = "Para contrato de despesa, a contrapartida é uma conta de passivo."
+        if self.natureza == "receita" and self.conta_balanco_id and self.conta_balanco.natureza != "ativo":
+            erros["conta_balanco"] = "Para contrato de receita, a contrapartida é uma conta de ativo."
+        if erros:
+            raise ValidationError(erros)
+
+    @property
+    def ultimo_mes(self):
+        """Último mês a apropriar (fim informado, senão fim da vigência), ou None se sem fim."""
+        return self.fim_apropriacao or self.contrato.fim_vigencia
+
+    @property
+    def total_apropriado(self):
+        return self.apropriacoes.aggregate(t=Sum("valor"))["t"] or ZERO
+
+
+class ApropriacaoContrato(models.Model):
+    contrato = models.ForeignKey(ContratoContabil, on_delete=models.CASCADE, related_name="apropriacoes")
+    competencia = models.DateField("competência", help_text="Primeiro dia do mês.")
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+
+    class Meta:
+        verbose_name = "apropriação de contrato"
+        verbose_name_plural = "apropriações de contratos"
+        ordering = ["-competencia"]
+        constraints = [models.UniqueConstraint(fields=["contrato", "competencia"], name="apropriacao_contrato_mes")]
+
+    def __str__(self):
+        return f"{self.contrato} {self.competencia:%m/%Y}: {self.valor}"
 
 
 # --------------------------------------------------------------------------- orçamento

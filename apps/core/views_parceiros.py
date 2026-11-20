@@ -2,6 +2,8 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import ValidationError
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import Cliente, Fornecedor
@@ -35,3 +37,13 @@ def tornar_cliente(request, pk):
 @permission_required("core.add_fornecedor", raise_exception=True)
 def tornar_fornecedor(request, pk):
     return _tornar(request, get_object_or_404(Cliente, pk=pk), "fornecedor", "fornecedor")
+
+
+@login_required
+def consulta_cnpj(request):
+    """GET ?cnpj=… → JSON com os dados públicos do CNPJ, para preencher o cadastro."""
+    from .consulta import consultar_cnpj
+    try:
+        return JsonResponse(consultar_cnpj(request.GET.get("cnpj", "")))
+    except ValidationError as e:
+        return JsonResponse({"erro": " ".join(e.messages)}, status=400)
