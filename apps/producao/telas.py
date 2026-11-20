@@ -42,6 +42,13 @@ class OrdemProducaoCrud(Crud):
                      "observacoes"]
     related = (("apontamentos", "Apontamentos", ["data", "quantidade", "custo_unitario", "usuario", "observacao"]),)
     detail_template = "producao/ordem_detail.html"
+    acao_status = {
+        "producao:liberar": ('planejada',),
+        "producao:apontar": ('liberada',),
+        "producao:gerar_sc": ('planejada', 'liberada'),
+        "producao:encerrar": ('liberada',),
+        "producao:cancelar": ('planejada', 'liberada'),
+    }
     actions = (
         ("producao:liberar", "Liberar", "play-circle", "producao.change_ordemproducao"),
         ("producao:apontar", "Apontar produção", "check2-square", "producao.change_ordemproducao"),

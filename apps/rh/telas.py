@@ -210,6 +210,11 @@ class SolicitacaoFeriasCrud(_ColabLimitado):
     search_fields = ("colaborador__nome",)
     filter_fields = ("status",)
     can_delete = False
+    acao_status = {
+        "rh:ferias_aprovar": ('solicitada',),
+        "rh:ferias_recusar": ('solicitada',),
+        "rh:ferias_gozada": ('aprovada',),
+    }
     actions = (("rh:ferias_aprovar", "Aprovar", "check2-circle", None),
                ("rh:ferias_recusar", "Recusar", "x-circle", None),
                ("rh:ferias_gozada", "Marcar como gozada", "check2-all", "rh.aprovar_solicitacaoferias"))
@@ -242,6 +247,13 @@ class FolhaCrud(Crud):
     detail_fields = ["empresa", "competencia", "tipo", "status", "total_bruto", "total_descontos", "total_liquido",
                      "total_inss", "total_irrf", "total_fgts", "total_patronal", "fechada_em", "fechada_por",
                      "observacoes"]
+    acao_status = {
+        "rh:folha_importar_ponto": ('aberta', 'calculada'),
+        "rh:folha_calcular": ('aberta', 'calculada'),
+        "rh:folha_fechar": ('calculada',),
+        "rh:folha_reabrir": ('fechada',),
+        "rh:esocial_da_folha": ('calculada', 'fechada'),
+    }
     actions = (("rh:folha_importar_ponto", "Importar ponto (extras e faltas)", "fingerprint", "rh.fechar_folha"),
                ("rh:folha_calcular", "Calcular", "calculator", "rh.fechar_folha"),
                ("rh:folha_fechar", "Fechar e gerar contas a pagar", "lock", "rh.fechar_folha"),
@@ -268,6 +280,11 @@ class RescisaoCrud(Crud):
     detail_template = "rh/rescisao_detalhe.html"
     detail_fields = ["colaborador", "data_desligamento", "motivo", "aviso", "saldo_fgts", "total_proventos",
                      "total_descontos", "total_liquido", "multa_fgts", "status"]
+    acao_status = {
+        "rh:rescisao_calcular": ('calculada',),
+        "rh:esocial_da_rescisao": ('efetivada',),
+        "rh:rescisao_efetivar": ('calculada',),
+    }
     actions = (("rh:rescisao_calcular", "Calcular", "calculator", "rh.change_rescisao"),
                ("rh:esocial_da_rescisao", "Gerar evento eSocial S-2299", "cloud-arrow-up", "rh.add_eventoesocial"),
                ("rh:rescisao_efetivar", "Efetivar (desligar e gerar conta)", "person-x", "rh.efetivar_rescisao"))
@@ -298,6 +315,11 @@ class EventoESocialCrud(Crud):
     can_create = False
     can_delete = False
     fields = ["recibo", "retorno"]
+    acao_status = {
+        "rh:esocial_assinar": ('gerado',),
+        "rh:esocial_lote": ('assinado',),
+        "rh:esocial_recibo": ('enviado',),
+    }
     actions = (("rh:esocial_assinar", "Assinar", "pen", "rh.change_eventoesocial"),
                ("rh:esocial_lote", "Baixar como lote", "box-arrow-down", "rh.view_eventoesocial"),
                ("rh:esocial_baixar", "Baixar XML", "download", "rh.view_eventoesocial"),
@@ -334,6 +356,13 @@ class TurmaCrud(Crud):
                      "custo_total", "status", "observacoes", "criado_por", "criado_em"]
     related = (("participacoes", "Participantes",
                 ["colaborador", "presenca_pct", "nota", "resultado", "valido_ate"]),)
+    acao_status = {
+        "rh:turma_inscrever": ('planejada', 'andamento'),
+        "rh:turma_iniciar": ('planejada',),
+        "rh:turma_resultados": ('andamento',),
+        "rh:turma_concluir": ('andamento',),
+        "rh:turma_cancelar": ('planejada', 'andamento'),
+    }
     actions = (
         ("rh:turma_inscrever", "Inscrever colaboradores", "person-plus", "rh.gerir_treinamento"),
         ("rh:turma_iniciar", "Iniciar turma", "play-circle", "rh.gerir_treinamento"),
@@ -408,6 +437,11 @@ class CicloAvaliacaoCrud(Crud):
     detail_fields = ["nome", "modelo", "data_inicio", "data_fim", "inclui_auto", "peso_gestor", "status"]
     related = (("avaliacoes", "Avaliações",
                 ["colaborador", "gestor", "status", "nota_auto", "nota_gestor", "nota_final", "nota_calibrada"]),)
+    acao_status = {
+        "rh:ciclo_abrir": ('rascunho',),
+        "rh:ciclo_calibrar": ('aberto', 'calibracao'),
+        "rh:ciclo_encerrar": ('aberto', 'calibracao'),
+    }
     actions = (
         ("rh:ciclo_abrir", "Abrir ciclo", "play-circle", "rh.gerir_avaliacao"),
         ("rh:ciclo_calibrar", "Calibrar notas", "sliders", "rh.gerir_avaliacao"),
@@ -430,6 +464,11 @@ class AvaliacaoCrud(Crud):
                      "nota_calibrada", "calibracao_motivo", "comentario_auto", "comentario_gestor"]
     related = (("respostas", "Notas por competência", ["item", "tipo", "nota", "comentario"]),
                ("acoes", "PDI", ["descricao", "competencia", "curso", "prazo", "status"]))
+    acao_status = {
+        "rh:avaliacao_responder_auto": ('pendente', 'andamento'),
+        "rh:avaliacao_responder_gestor": ('pendente', 'andamento'),
+        "rh:avaliacao_pdi": ('concluida',),
+    }
     actions = (
         ("rh:avaliacao_responder_auto", "Autoavaliação", "person-check", None),
         ("rh:avaliacao_responder_gestor", "Avaliar como gestor", "person-lines-fill", None),
@@ -450,6 +489,10 @@ class AcaoDesenvolvimentoCrud(Crud):
     list_display = ("avaliacao", "descricao", "competencia", "prazo", "status")
     search_fields = ("descricao", "avaliacao__colaborador__nome")
     filter_fields = ("status",)
+    acao_status = {
+        "rh:pdi_concluir": ('aberta',),
+        "rh:pdi_cancelar": ('aberta',),
+    }
     actions = (
         ("rh:pdi_concluir", "Concluir ação", "check2", "rh.gerir_avaliacao"),
         ("rh:pdi_cancelar", "Cancelar ação", "x-circle", "rh.gerir_avaliacao"),
@@ -473,6 +516,12 @@ class VagaCrud(Crud):
     detail_fields = ["numero", "titulo", "cargo", "departamento", "gestor", "tipo_contrato", "quantidade", "faixa_min",
                      "faixa_max", "status", "aberta_em", "fechada_em", "descricao"]
     related = (("candidaturas", "Candidaturas", ["candidato", "etapa", "proposta_status"]),)
+    acao_status = {
+        "rh:vaga_abrir": ('rascunho', 'pausada'),
+        "rh:vaga_pausar": ('aberta',),
+        "rh:vaga_cancelar": ('rascunho', 'aberta', 'pausada'),
+        "rh:vaga_funil": ('aberta', 'pausada', 'preenchida'),
+    }
     actions = (
         ("rh:vaga_abrir", "Abrir / reabrir vaga", "megaphone", "rh.gerir_recrutamento"),
         ("rh:vaga_pausar", "Pausar vaga", "pause-circle", "rh.gerir_recrutamento"),
@@ -579,6 +628,11 @@ class MovimentoSalarialCrud(Crud):
     detail_fields = ["colaborador", "tipo", "data_efetiva", "salario_anterior", "salario_novo", "cargo_anterior",
                      "cargo_novo", "faixa_nova", "excecao", "motivo", "lote", "status", "decidido_por", "decidido_em",
                      "parecer", "aplicado_em", "criado_por"]
+    acao_status = {
+        "rh:movimento_aprovar": ('pendente',),
+        "rh:movimento_rejeitar": ('pendente',),
+        "rh:movimento_cancelar": ('pendente', 'aprovado'),
+    }
     actions = (
         ("rh:movimento_aprovar", "Aprovar", "check2-circle", "rh.aprovar_salarios"),
         ("rh:movimento_rejeitar", "Rejeitar", "x-circle", "rh.aprovar_salarios"),

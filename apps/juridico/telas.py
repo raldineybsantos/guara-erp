@@ -188,6 +188,11 @@ class MedicaoCrud(Crud):
     detail_fields = ["contrato", "numero", "periodo_inicio", "periodo_fim", "descricao", "valor", "multas", "bonificacoes",
                      "valor_liquido", "vencimento", "status", "data_aprovacao", "aprovada_por", "contapagar", "contareceber",
                      "observacoes"]
+    acao_status = {
+        "juridico:medicao_aprovar": ('rascunho',),
+        "juridico:medicao_faturar": ('aprovada',),
+        "juridico:medicao_cancelar": ('rascunho', 'aprovada'),
+    }
     actions = (
         ("juridico:medicao_aprovar", "Aprovar medição", "check2-circle", "juridico.aprovar_contrato"),
         ("juridico:medicao_faturar", "Gerar título (a pagar / a receber)", "receipt", "juridico.change_contrato"),
@@ -205,6 +210,10 @@ class CaucaoCrud(Crud):
     list_display = ("contrato", "tipo", "valor", "emissor", "validade", "status")
     search_fields = ("contrato__numero", "emissor", "apolice")
     filter_fields = ("status", "tipo")
+    acao_status = {
+        "juridico:caucao_devolver": ('ativa',),
+        "juridico:caucao_executar": ('ativa',),
+    }
     actions = (
         ("juridico:caucao_devolver", "Devolver / liberar", "arrow-return-left", "juridico.change_contrato"),
         ("juridico:caucao_executar", "Executar a garantia", "exclamation-octagon", "juridico.change_contrato"),
@@ -258,6 +267,15 @@ class ProcessoCrud(Crud):
         ("envolvidos", "Envolvidos", ["nome", "papel", "documento", "contato"]),
         ("reavaliacoes", "Histórico de risco e provisão", ["data", "risco", "valor_estimado", "ajuste", "motivo"]),
     )
+    acao_status = {
+        "juridico:processo_andamento": ('andamento', 'suspenso'),
+        "juridico:processo_prazo": ('andamento', 'suspenso'),
+        "juridico:processo_envolvido": ('andamento', 'suspenso'),
+        "juridico:processo_risco": ('andamento', 'suspenso'),
+        "juridico:processo_suspender": ('andamento',),
+        "juridico:processo_retomar": ('suspenso',),
+        "juridico:processo_encerrar": ('andamento', 'suspenso'),
+    }
     actions = (
         ("juridico:processo_andamento", "Registrar andamento", "journal-plus", "juridico.add_andamento"),
         ("juridico:processo_prazo", "Novo prazo", "alarm", "juridico.add_prazo"),
@@ -280,6 +298,11 @@ class PrazoCrud(Crud):
     search_fields = ("descricao", "processo__numero", "processo__contraparte")
     filter_fields = ("status",)
     detail_fields = ["processo", "descricao", "data_fatal", "alertar_dias", "responsavel", "status", "observacoes"]
+    acao_status = {
+        "juridico:prazo_cumprir": ('pendente',),
+        "juridico:prazo_cancelar": ('pendente',),
+        "juridico:prazo_perdido": ('pendente',),
+    }
     actions = (("juridico:prazo_cumprir", "Marcar como cumprido", "check-lg", "juridico.change_prazo"),
                ("juridico:prazo_cancelar", "Cancelar prazo", "x-lg", "juridico.change_prazo"),
                ("juridico:prazo_perdido", "Registrar como perdido", "exclamation-octagon", "juridico.change_prazo"))

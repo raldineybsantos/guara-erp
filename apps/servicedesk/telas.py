@@ -158,6 +158,11 @@ class MudancaCrud(Crud):
     search_fields = ("numero", "titulo", "descricao")
     filter_fields = ("status", "tipo", "risco", "area")
     detail_template = "servicedesk/mudanca_detail.html"
+    acao_status = {
+        "servicedesk:mudanca_enviar": ('rascunho', 'recusada'),
+        "servicedesk:mudanca_executar": ('aprovada',),
+        "servicedesk:mudanca_concluir": ('execucao',),
+    }
     actions = (
         ("servicedesk:mudanca_enviar", "Enviar para aprovação", "send-check", "servicedesk.change_mudanca"),
         ("servicedesk:mudanca_executar", "Iniciar execução", "play-circle", "servicedesk.change_mudanca"),

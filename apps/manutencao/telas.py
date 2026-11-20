@@ -58,6 +58,11 @@ class OrdemServicoCrud(Crud):
                      "responsavel", "data_programada", "abertura", "inicio", "conclusao", "servico_executado",
                      "horas_trabalhadas", "custo_mao_obra", "custo_pecas", "custo_total", "plano"]
     related = (("pecas", "Peças", ["produto", "quantidade", "custo_unitario"]),)
+    acao_status = {
+        "manutencao:iniciar": ('aberta',),
+        "manutencao:concluir": ('aberta', 'execucao'),
+        "manutencao:cancelar": ('aberta', 'execucao'),
+    }
     actions = (
         ("manutencao:iniciar", "Iniciar", "play-circle", "manutencao.change_ordemservico"),
         ("manutencao:concluir", "Concluir", "check2-circle", "manutencao.change_ordemservico"),

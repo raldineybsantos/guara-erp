@@ -61,6 +61,15 @@ class ContaPagarCrud(Crud):
         ("retencoes", "Tributos retidos na fonte", ["regra", "base", "aliquota", "valor", "retido"]),
         ("rateios", "Rateio por centro de custo", ["centro_custo", "percentual"]),
     )
+    acao_status = {
+        "financeiro:titulo_baixar_pagar": ('aberto', 'parcial'),
+        "financeiro:compensar_pagar": ('aberto', 'parcial'),
+        "financeiro:titulo_retencoes": ('aberto',),
+        "financeiro:titulo_ratear_pagar": ('aberto', 'parcial'),
+        "financeiro:titulo_estornar_pagar": ('parcial', 'pago'),
+        "financeiro:titulo_cancelar_pagar": ('aberto',),
+        "workflow:iniciar_aprovacao_pagar": ('aberto',),
+    }
     actions = (
         ("financeiro:titulo_baixar_pagar", "Pagar", "cash-coin", "financeiro.baixar_contapagar"),
         ("financeiro:compensar_pagar", "Compensar com contas a receber", "arrow-left-right", "financeiro.add_compensacao"),
@@ -89,6 +98,15 @@ class ContaReceberCrud(Crud):
         ("cobrancas", "Cobranças", ["tipo", "vencimento", "valor", "status"]),
         ("rateios", "Rateio por centro de custo", ["centro_custo", "percentual"]),
     )
+    acao_status = {
+        "financeiro:titulo_baixar_receber": ('aberto', 'parcial'),
+        "financeiro:titulo_ratear_receber": ('aberto', 'parcial'),
+        "financeiro:compensar_receber": ('aberto', 'parcial'),
+        "financeiro:renegociar": ('aberto', 'parcial'),
+        "cobranca:gerar_cobranca": ('aberto', 'parcial'),
+        "financeiro:titulo_estornar_receber": ('parcial', 'pago'),
+        "financeiro:titulo_cancelar_receber": ('aberto',),
+    }
     actions = (
         ("financeiro:titulo_baixar_receber", "Receber", "cash-coin", "financeiro.baixar_contareceber"),
         ("financeiro:titulo_ratear_receber", "Ratear por centro de custo", "diagram-3", "financeiro.change_contareceber"),
@@ -137,6 +155,10 @@ class GuiaTributoCrud(Crud):
     detail_fields = ["tributo", "codigo_receita", "competencia", "vencimento", "valor", "multa", "juros", "status",
                      "data_pagamento", "conta_bancaria", "empresa"]
     related = (("itens", "Retenções que compõem a guia", ["retencao", "movimentacao", "valor"]),)
+    acao_status = {
+        "financeiro:guia_recolher": ('aberta',),
+        "financeiro:guia_estornar": ('paga',),
+    }
     actions = (
         ("financeiro:guia_recolher", "Registrar recolhimento", "bank", "financeiro.baixar_contapagar"),
         ("financeiro:guia_estornar", "Estornar recolhimento", "arrow-counterclockwise",
@@ -157,6 +179,9 @@ class CompensacaoCrud(Crud):
     filter_fields = ("status",)
     detail_fields = ["data", "conta_pagar", "conta_receber", "valor", "status", "observacoes", "criado_por",
                      "criado_em"]
+    acao_status = {
+        "financeiro:compensacao_estornar": ('ativa',),
+    }
     actions = (("financeiro:compensacao_estornar", "Estornar compensação", "arrow-counterclockwise",
                 "financeiro.change_compensacao"),)
     can_create = False
@@ -178,6 +203,9 @@ class RenegociacaoCrud(Crud):
         ("itens", "Títulos renegociados", ["titulo", "saldo"]),
         ("novos_titulos", "Novas parcelas", ["parcela", "vencimento", "valor", "status"]),
     )
+    acao_status = {
+        "financeiro:renegociacao_desfazer": ('ativa',),
+    }
     actions = (("financeiro:renegociacao_desfazer", "Desfazer renegociação", "arrow-counterclockwise",
                 "financeiro.change_renegociacao"),)
     can_create = False
@@ -203,6 +231,9 @@ class ApuracaoPDDCrud(Crud):
     filter_fields = ("status",)
     detail_fields = ["data", "base_vencida", "provisao_necessaria", "provisao_anterior", "ajuste", "status",
                      "observacoes", "criado_por", "criado_em"]
+    acao_status = {
+        "financeiro:pdd_estornar": ('ativa',),
+    }
     actions = (("financeiro:pdd_estornar", "Estornar apuração", "arrow-counterclockwise",
                 "financeiro.change_apuracaopdd"),)
     can_create = False
@@ -221,6 +252,9 @@ class LiquidacaoLoteCrud(Crud):
     detail_fields = ["numero", "tipo", "data", "conta_bancaria", "forma_pagamento", "quantidade", "total", "liquido",
                      "status", "criado_por", "criado_em"]
     related = (("itens", "Títulos liquidados", ["contapagar", "contareceber", "valor"]),)
+    acao_status = {
+        "financeiro:lote_estornar": ('efetivada',),
+    }
     actions = (("financeiro:lote_estornar", "Estornar lote", "arrow-counterclockwise", "financeiro.liquidar_lote"),)
     can_create = False
     can_edit = False
@@ -238,6 +272,9 @@ class BorderoImpostoCrud(Crud):
     filter_fields = ("status",)
     detail_fields = ["numero", "data", "conta_bancaria", "selic_pct", "total", "status", "criado_por", "criado_em"]
     related = (("itens", "Guias recolhidas", ["guia", "valor", "multa", "juros"]),)
+    acao_status = {
+        "financeiro:bordero_imposto_estornar": ('efetivado',),
+    }
     actions = (("financeiro:bordero_imposto_estornar", "Estornar borderô", "arrow-counterclockwise",
                 "financeiro.recolher_bordero_imposto"),)
     can_create = can_edit = can_delete = False

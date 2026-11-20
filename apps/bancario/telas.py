@@ -46,6 +46,11 @@ class BorderoCrud(Crud):
     detail_fields = ["numero", "conta_bancaria", "data_pagamento", "total", "status", "sequencial", "remetido_em",
                      "remetido_por"]
     related = (("itens", "Títulos", ["conta_pagar", "valor", "forma", "status", "ocorrencia"]),)
+    acao_status = {
+        "bancario:bordero_titulos": ('aberto',),
+        "bancario:bordero_remessa": ('aberto',),
+        "bancario:bordero_cancelar": ('aberto', 'remetido'),
+    }
     actions = (
         ("bancario:bordero_titulos", "Adicionar títulos", "plus-circle", "bancario.change_bordero"),
         ("bancario:bordero_remessa", "Gerar arquivo de remessa", "download", "bancario.gerar_remessa_bordero"),
@@ -76,6 +81,11 @@ class RemessaCobrancaCrud(Crud):
     filter_fields = ("status", "conta_bancaria")
     detail_fields = ["numero", "conta_bancaria", "total", "status", "sequencial", "gerada_em", "gerada_por"]
     related = (("itens", "Títulos", ["conta_receber", "nosso_numero", "status", "ocorrencia"]),)
+    acao_status = {
+        "bancario:remessa_titulos": ('aberta',),
+        "bancario:remessa_arquivo": ('aberta', 'gerada'),
+        "bancario:remessa_cancelar": ('aberta', 'gerada'),
+    }
     actions = (
         ("bancario:remessa_titulos", "Adicionar títulos", "plus-circle", "bancario.change_remessacobranca"),
         ("bancario:remessa_arquivo", "Gerar arquivo de remessa", "download", "bancario.gerar_remessa_cobranca"),

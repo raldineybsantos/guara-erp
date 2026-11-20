@@ -14,6 +14,9 @@ class InspecaoCrud(Crud):
     filter_fields = ("status", "origem")
     detail_fields = ["numero", "produto", "quantidade", "quantidade_aprovada", "armazem", "origem", "recebimento",
                      "fornecedor", "status", "inspetor", "data_inspecao", "resultado", "nao_conformidade"]
+    acao_status = {
+        "qualidade:concluir_inspecao": ('pendente',),
+    }
     actions = (("qualidade:concluir_inspecao", "Registrar resultado", "clipboard-check",
                 "qualidade.change_inspecao"),)
     can_delete = False

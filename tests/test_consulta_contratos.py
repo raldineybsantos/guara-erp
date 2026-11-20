@@ -242,3 +242,48 @@ class ColaboradorMatriculaCepTest(TestCase):
         with mock.patch.object(consulta.urllib.request, "urlopen", return_value=resp):
             r = consulta.consultar_cep("01001000")
         self.assertEqual(r, {"cep": "01001-000", "logradouro": "Rua A", "bairro": "Centro", "cidade": "São Paulo", "uf": "SP"})
+
+
+class AcoesPorStatusTest(TestCase):
+    """Todo Crud com acao_status deve apontar para ações e situações que existem."""
+
+    def _cruds(self):
+        import importlib, inspect
+        from django.apps import apps
+        from apps.core.crud import Crud
+        for cfg in apps.get_app_configs():
+            if not cfg.name.startswith("apps."):
+                continue
+            try:
+                m = importlib.import_module(cfg.name + ".telas")
+            except ImportError:
+                continue
+            for _n, c in inspect.getmembers(m, inspect.isclass):
+                if issubclass(c, Crud) and c is not Crud and getattr(c, "model", None) and c.__module__ == m.__name__:
+                    yield c
+
+    def test_acao_status_consistente(self):
+        total = 0
+        for c in self._cruds():
+            if not c.acao_status:
+                continue
+            nomes = {a[0] for a in c.actions}
+            validos = {v for v, _ in c.model._meta.get_field("status").choices}
+            for acao, situacoes in c.acao_status.items():
+                total += 1
+                self.assertIn(acao, nomes, f"{c.__name__}: ação inexistente {acao}")
+                self.assertTrue(set(situacoes) <= validos, f"{c.__name__}.{acao}: situação inválida")
+        self.assertGreater(total, 90)
+
+    def test_toda_acao_de_modelo_com_status_tem_restricao(self):
+        livres = []
+        for c in self._cruds():
+            if not c.actions or not any(f.name == "status" for f in c.model._meta.fields):
+                continue
+            for a in c.actions:
+                if a[0] not in c.acao_status:
+                    livres.append(f"{c.__name__}:{a[0]}")
+        # ações que valem em qualquer situação (consulta, arquivo, PDF…)
+        permitidas = {"compras:pdf_pedido", "financeiro:guia_darf", "rh:esocial_baixar", "esocial_baixar"}
+        livres = [x for x in livres if x.split(":", 1)[1] not in permitidas and not x.endswith(tuple(permitidas))]
+        self.assertEqual(livres, [])

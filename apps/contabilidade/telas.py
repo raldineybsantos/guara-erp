@@ -56,6 +56,9 @@ class BemCrud(Crud):
                      "depreciacao_acumulada", "valor_contabil", "centro_custo", "fornecedor", "contrapartida",
                      "localizacao", "data_baixa", "valor_venda", "motivo_baixa", "observacoes", "empresa"]
     related = (("depreciacoes", "Depreciações lançadas", ["competencia", "valor"]),)
+    acao_status = {
+        "contabilidade:bem_baixar": ('ativo',),
+    }
     actions = (("contabilidade:bem_baixar", "Baixar bem", "box-arrow-down", "contabilidade.change_bem"),)
     icon = "building-gear"
     menu = "Contabilidade"

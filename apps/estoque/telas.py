@@ -64,6 +64,9 @@ class InventarioCrud(Crud):
     list_display = ("numero", "armazem", "data", "status")
     filter_fields = ("status", "armazem")
     related = (("itens", "Contagem", ["produto", "quantidade_sistema", "quantidade_contada", "diferenca"]),)
+    acao_status = {
+        "estoque:encerrar_inventario": ('aberto',),
+    }
     actions = (("estoque:encerrar_inventario", "Encerrar e ajustar saldos", "check2-square",
                 "estoque.change_inventario"),)
     icon = "clipboard-check"

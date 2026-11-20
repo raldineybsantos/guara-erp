@@ -33,6 +33,13 @@ class NotaFiscalCrud(Crud):
                      "observacoes"]
     related = (("transmissoes", "Transmissões", ["data", "operacao", "emissor", "ambiente", "status", "codigo",
                                                   "mensagem", "protocolo", "usuario"]),)
+    acao_status = {
+        "fiscal:emitir_nota": ('rascunho',),
+        "fiscal:transmitir_nota": ('emitida',),
+        "fiscal:cancelar_fiscal": ('emitida',),
+        "fiscal:gerar_titulo_nota": ('rascunho', 'emitida'),
+        "fiscal:cancelar_nota": ('rascunho',),
+    }
     actions = (
         ("fiscal:emitir_nota", "Emitir", "send-check", "fiscal.emitir_notafiscal"),
         ("fiscal:transmitir_nota", "Transmitir ao fisco", "cloud-upload", "fiscal.emitir_notafiscal"),

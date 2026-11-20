@@ -15,6 +15,10 @@ class CobrancaCrud(Crud):
                      "observacoes", "criado_por", "criado_em"]
     detail_template = "cobranca/cobranca_detail.html"
     related = (("historico", "Histórico de envios", ["data", "destino", "assunto", "sucesso", "erro"]),)
+    acao_status = {
+        "cobranca:enviar_cobranca": ('gerada',),
+        "cobranca:cancelar_cobranca": ('gerada', 'enviada'),
+    }
     actions = (("cobranca:enviar_cobranca", "Enviar por e-mail", "envelope", "cobranca.change_cobranca"),
                ("cobranca:cancelar_cobranca", "Cancelar", "x-circle", "cobranca.change_cobranca"))
     icon = "receipt"

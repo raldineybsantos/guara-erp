@@ -17,6 +17,7 @@ vendas, contabilidade) e implantação no servidor vsl01.
 | 8 | Colaboradores | Matrícula ficava vazia e precisava ser digitada à mão | Gerada automaticamente (6 dígitos, sequencial por empresa) quando em branco; matrícula manual é respeitada | a393e6c |
 | 9 | Colaboradores | CPF sem máscara ao digitar e gravado ora com pontos, ora só com dígitos | Máscara visual 000.000.000-00; gravação sempre só com dígitos; lista continua mostrando formatado | a393e6c |
 | 10 | Endereço (todos os cadastros) | CEP não preenchia o endereço | Ao sair do campo CEP, logradouro, bairro, cidade e UF são preenchidos (BrasilAPI) | a393e6c |
+| 11 | Todos os módulos com situação (92 ações) | Botões de ação apareciam em qualquer situação do registro (ex.: Baixar em título pago, Estornar em título aberto, Aprovar férias já aprovadas, Liberar OP já encerrada) | `acao_status` aplicado a 32 telas: financeiro, cobrança, fiscal, jurídico, bancário, RH, produção, manutenção, qualidade, estoque, patrimônio e service desk; teste automático confere ações e situações | COMMIT |
 
 Nota: a suspeita de que o preço do produto não era aplicado ao pedido foi alarme falso; o modelo já usava a tabela ou
 o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibilidade na tela.
