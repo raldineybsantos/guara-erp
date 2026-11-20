@@ -1,0 +1,13 @@
+{% extends "crud/detail.html" %}
+{% block antes_detalhe %}
+{% if object.imagem %}<img src="{% url 'uniformes:imagem' 'conjunto' object.pk %}" class="img-fluid rounded border mb-3" style="max-height:220px" alt="{{ object.nome }}">{% endif %}
+<div class="card mb-3"><div class="card-header">Disponibilidade x necessidade <small class="text-muted">(colaboradores ativos {% if object.departamento %}de {{ object.departamento }}{% endif %}{% if object.cargo %} / {{ object.cargo }}{% endif %}: {{ object.colaboradores_alvo.count }})</small></div>
+<div class="card-body">
+{% for c in cobertura %}
+  <h6>{{ c.peca.quantidade }}× {{ c.peca.modelo.nome }} {% if c.falta_total %}<span class="badge text-bg-danger">faltam {{ c.falta_total|floatformat:0 }}</span>{% else %}<span class="badge text-bg-success">coberto</span>{% endif %}
+    {% if c.sem_tamanho %}<span class="badge text-bg-warning">{{ c.sem_tamanho }} colaborador(es) sem tamanho cadastrado</span>{% endif %}</h6>
+  <table class="table table-sm"><thead><tr><th>Tamanho</th><th class="text-end">Precisam</th><th class="text-end">Em estoque</th><th class="text-end">Falta</th></tr></thead><tbody>
+  {% for l in c.linhas %}<tr><td>{{ l.item.tamanho }}</td><td class="text-end">{{ l.precisam }}</td><td class="text-end">{{ l.disponivel|floatformat:0 }}</td><td class="text-end {% if l.falta %}text-danger fw-bold{% endif %}">{{ l.falta|floatformat:0 }}</td></tr>{% endfor %}</tbody></table>
+{% empty %}<p class="text-muted mb-0">Inclua as peças do conjunto (editar) para ver a disponibilidade.</p>{% endfor %}
+</div></div>
+{% endblock %}

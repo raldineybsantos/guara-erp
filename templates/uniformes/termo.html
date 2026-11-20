@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card" style="max-width:800px"><div class="card-body">
+  <h4 class="text-center">Termo de entrega de uniforme</h4>
+  <p>Declaro ter recebido de {{ request.empresa|default:"a empresa" }}, em {{ entrega.data|date:"d/m/Y" }}, as peças de uniforme abaixo, comprometendo-me a zelar por elas e usá-las durante o trabalho.</p>
+  <p><strong>Colaborador:</strong> {{ entrega.colaborador.nome }} {% if entrega.colaborador.matricula %}(matrícula {{ entrega.colaborador.matricula }}){% endif %}</p>
+  <table class="table table-sm"><thead><tr><th>Peça</th><th>Tamanho</th><th>Qtd</th><th>Trocar até</th></tr></thead><tbody>
+  {% for i in itens %}<tr><td>{{ i.item.modelo.nome }}</td><td>{{ i.item.tamanho }}</td><td>{{ i.quantidade }}</td><td>{{ i.trocar_ate|date:"d/m/Y"|default:"—" }}</td></tr>{% endfor %}</tbody></table>
+  <p class="mt-5">______________________________________<br>{{ entrega.colaborador.nome }} — {{ hoje|date:"d/m/Y" }}</p>
+  <button class="btn btn-outline-primary d-print-none" onclick="window.print()"><i class="bi bi-printer"></i> Imprimir</button>
+</div></div>
+{% endblock %}

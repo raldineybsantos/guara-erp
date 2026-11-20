@@ -1,0 +1,13 @@
+{% extends "crud/detail.html" %}
+{% block antes_detalhe %}
+<div class="row g-3 mb-3">
+  <div class="col-md-4">{% if object.imagem %}<img src="{% url 'uniformes:imagem' 'modelo' object.pk %}" class="img-fluid rounded border" alt="{{ object.nome }}">{% else %}<div class="border rounded text-center text-muted p-5"><i class="bi bi-image fs-1"></i><br>Sem imagem</div>{% endif %}</div>
+  <div class="col-md-8">
+    <div class="card"><div class="card-header">Numeração e disponibilidade no estoque</div>
+    <table class="table table-sm mb-0"><thead><tr><th>Tamanho</th><th>Produto (estoque)</th><th class="text-end">Disponível</th><th>Situação</th></tr></thead><tbody>
+    {% for p in painel %}<tr><td>{{ p.item.tamanho }}</td><td>{% if p.item.produto %}<a href="{% url 'fiscal:produto_detail' p.item.produto_id %}">{{ p.item.produto.codigo }}</a>{% endif %}</td><td class="text-end">{{ p.disponivel|floatformat:0 }}</td><td>{% include "uniformes/_situacao.html" with s=p.situacao %}</td></tr>
+    {% empty %}<tr><td colspan="4" class="text-muted">Sem tamanhos.</td></tr>{% endfor %}</tbody></table></div>
+    {% if perms.estoque.add_movimento %}<a class="btn btn-sm btn-outline-primary mt-2" href="{% url 'estoque:movimentar' %}"><i class="bi bi-box-arrow-in-down"></i> Dar entrada no estoque</a>{% endif %}
+  </div>
+</div>
+{% endblock %}

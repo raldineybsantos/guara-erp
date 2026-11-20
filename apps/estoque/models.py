@@ -99,7 +99,7 @@ class Movimento(models.Model):
     TIPOS = [("entrada", "Entrada"), ("saida", "Saída")]
     ORIGENS = [("compra", "Compra"), ("venda", "Venda"), ("producao", "Produção"), ("consumo", "Consumo"),
                ("transferencia", "Transferência"), ("inventario", "Inventário"), ("ajuste", "Ajuste manual"),
-               ("manutencao", "Manutenção"), ("epi", "Entrega de EPI"), ("qualidade", "Qualidade")]
+               ("manutencao", "Manutenção"), ("epi", "Entrega de EPI"), ("uniforme", "Entrega de uniforme"), ("qualidade", "Qualidade")]
     data = models.DateTimeField(default=timezone.now, db_index=True)
     tipo = models.CharField(max_length=7, choices=TIPOS)
     origem = models.CharField(max_length=13, choices=ORIGENS)

@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-4"><input class="form-control" name="q" value="{{ q }}" placeholder="Buscar por nome ou código"></div>
+  <div class="col-md-3"><select class="form-select" name="categoria"><option value="">Todas as categorias</option>{% for k, v in categorias %}<option value="{{ k }}" {% if k == categoria %}selected{% endif %}>{{ v }}</option>{% endfor %}</select></div>
+  <div class="col-md-3"><select class="form-select" name="situacao"><option value="">Qualquer situação</option><option value="ok" {% if situacao == "ok" %}selected{% endif %}>Disponível</option><option value="baixo" {% if situacao == "baixo" %}selected{% endif %}>Estoque baixo / faltando tamanho</option><option value="sem" {% if situacao == "sem" %}selected{% endif %}>Sem estoque</option></select></div>
+  <div class="col-md-2"><button class="btn btn-outline-primary w-100"><i class="bi bi-search"></i> Filtrar</button></div>
+</form>
+{% if perms.uniformes.add_modelouniforme %}<p><a class="btn btn-primary btn-sm" href="{% url 'uniformes:modelouniforme_create' %}"><i class="bi bi-plus-lg"></i> Nova peça</a></p>{% endif %}
+<div class="row g-3">
+{% for c in cartoes %}
+  <div class="col-sm-6 col-lg-4 col-xl-3">
+    <div class="card h-100">
+      {% if c.modelo.imagem %}<img src="{% url 'uniformes:imagem' 'modelo' c.modelo.pk %}" class="card-img-top" alt="{{ c.modelo.nome }}" style="height:180px;object-fit:contain;background:#f6f6f6">
+      {% else %}<div class="d-flex align-items-center justify-content-center text-muted" style="height:180px;background:#f6f6f6"><i class="bi bi-image fs-1"></i></div>{% endif %}
+      <div class="card-body">
+        <h6 class="card-title mb-1"><a href="{% url 'uniformes:modelouniforme_detail' c.modelo.pk %}">{{ c.modelo.nome }}</a></h6>
+        <div class="small text-muted mb-2">{{ c.modelo.codigo }} · {{ c.modelo.get_categoria_display }} · {{ c.modelo.get_genero_display }}</div>
+        {% include "uniformes/_situacao.html" with s=c.situacao %} <span class="small text-muted">{{ c.total|floatformat:0 }} un.</span>
+        <div class="mt-2 d-flex flex-wrap gap-1">
+          {% for p in c.painel %}<span class="badge border {% if p.situacao == 'sem' %}text-danger border-danger{% elif p.situacao == 'baixo' %}text-warning border-warning{% else %}text-success border-success{% endif %}" title="{{ p.disponivel|floatformat:0 }} em estoque">{{ p.item.tamanho }}: {{ p.disponivel|floatformat:0 }}</span>{% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+{% empty %}<div class="col-12"><div class="alert alert-info">Nenhuma peça encontrada.</div></div>{% endfor %}
+</div>
+{% endblock %}

@@ -486,6 +486,18 @@ Limites: o **inventário** ajusta o total do armazém, sem contar lote por lote 
 automático "inventário-data" e uma falta sai pelo FEFO); não há coletor de código de barras (ACD) nem
 rastreabilidade de lote nas notas fiscais.
 
+### 8.x Uniformes: catálogo, conjuntos e entrega
+
+Menu **Uniformes**. Serve para organizar o material de trabalho (camisas, calças, botas…) com numeração, imagem e estoque.
+
+1. **Peças (cadastro)** → *Nova peça*: código curto (ex.: POLO-AZ), nome, categoria, modelagem, **numeração** (letras PP–XGG, roupa 36–56, calçado 34–48 ou tamanho único), descrição, **imagem** (JPG/PNG/WebP até 5 MB), vida útil em meses (calcula a data de troca) e estoque mínimo por tamanho. Ao salvar, o sistema cria um produto de estoque por tamanho (`UNI-<código>-<tamanho>`).
+2. **Dar entrada no estoque**: use *Estoque → Movimentação manual* ou o recebimento de compras com o produto do tamanho (o detalhe da peça mostra a grade tamanho × disponível).
+3. **Catálogo**: galeria com foto, tamanhos e disponibilidade (verde = disponível, amarelo = abaixo do mínimo, vermelho = sem estoque); filtros por categoria e situação.
+4. **Conjuntos (kits)**: monte o conjunto de uma função (ex.: 3 camisas + 2 calças + 1 bota), opcionalmente por departamento/cargo. O detalhe mostra, por peça e tamanho, quantos colaboradores precisam (pela numeração cadastrada), quanto há e **quanto falta comprar**.
+5. **Tamanhos dos colaboradores**: cadastre a numeração de cada um (letras, roupa, calçado); ela vem sugerida na entrega.
+6. **Entregar**: no conjunto, *Entregar a um colaborador* (ou *Entregar uniforme* para peças avulsas). Confira tamanhos e quantidades; o estoque é baixado. Se faltar qualquer peça, nada é entregue.
+7. **Entregas**: imprimir o **termo** de entrega, marcar **termo assinado** e **estornar** (devolve ao estoque; só em entregas não estornadas). A entrega não é editável nem excluível: é prova de recebimento.
+
 ## 9. Produção e Qualidade
 
 ### 9.1 Estrutura e ordem de produção

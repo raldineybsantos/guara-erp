@@ -1,0 +1,7 @@
+{% extends "base.html" %}
+{% block content %}
+<form method="post" style="max-width:600px">{% csrf_token %}
+  <div class="alert alert-warning">Estornar a entrega #{{ entrega.pk }} a <strong>{{ entrega.colaborador }}</strong>? As peças voltam ao estoque. Não pode ser desfeito.</div>
+  <button class="btn btn-danger">Estornar</button> <a class="btn btn-outline-secondary" href="{% url 'uniformes:entregauniforme_detail' entrega.pk %}">Voltar</a>
+</form>
+{% endblock %}

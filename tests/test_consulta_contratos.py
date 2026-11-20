@@ -284,6 +284,6 @@ class AcoesPorStatusTest(TestCase):
                 if a[0] not in c.acao_status:
                     livres.append(f"{c.__name__}:{a[0]}")
         # ações que valem em qualquer situação (consulta, arquivo, PDF…)
-        permitidas = {"compras:pdf_pedido", "financeiro:guia_darf", "rh:esocial_baixar", "esocial_baixar"}
+        permitidas = {"compras:pdf_pedido", "financeiro:guia_darf", "rh:esocial_baixar", "esocial_baixar", "uniformes:entrega_termo"}
         livres = [x for x in livres if x.split(":", 1)[1] not in permitidas and not x.endswith(tuple(permitidas))]
         self.assertEqual(livres, [])

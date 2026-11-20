@@ -1,0 +1,5 @@
+{% extends "crud/detail.html" %}
+{% block antes_detalhe %}
+{% if object.status == "estornada" %}<div class="alert alert-secondary">Entrega estornada: as peças voltaram ao estoque.</div>
+{% elif not object.recebido_confirmado %}<div class="alert alert-warning py-2">Termo ainda não assinado pelo colaborador.</div>{% endif %}
+{% endblock %}

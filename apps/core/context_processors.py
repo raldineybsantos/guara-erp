@@ -4,8 +4,8 @@ from django.urls import reverse
 
 from .crud import REGISTRO
 
-ORDEM_GRUPOS = ["Principal", "Relatórios", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Produção", "Qualidade", "Manutenção", "Projetos", "RH", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
-ICONES_GRUPOS = {"Relatórios": "bar-chart-line", "Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "RH": "people", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Financeiro": "currency-dollar",
+ORDEM_GRUPOS = ["Principal", "Relatórios", "Service Desk", "Cadastros", "Compras", "Vendas", "CRM", "Estoque", "Uniformes", "Produção", "Qualidade", "Manutenção", "Projetos", "RH", "SST / EHS", "Financeiro", "Contabilidade", "Cobrança", "Fiscal", "Jurídico", "Workflow / BPM", "GED", "Administração"]
+ICONES_GRUPOS = {"Relatórios": "bar-chart-line", "Contabilidade": "journal-text", "Service Desk": "headset", "SST / EHS": "cone-striped", "CRM": "funnel", "Projetos": "kanban", "Manutenção": "wrench-adjustable", "Qualidade": "patch-check", "Produção": "gear-wide-connected", "Vendas": "bag-check", "RH": "people", "Principal": "speedometer2", "Cadastros": "person-lines-fill", "Compras": "cart3", "Estoque": "boxes", "Uniformes": "person-workspace", "Financeiro": "currency-dollar",
                  "Cobrança": "receipt-cutoff", "Fiscal": "file-earmark-ruled", "Workflow / BPM": "diagram-3",
                  "GED": "archive", "Jurídico": "bank2", "Administração": "gear"}
 
@@ -15,6 +15,8 @@ LINKS_EXTRAS = [
     ("Principal", "Primeiros passos", "primeiros_passos", "list-check", "core.add_empresa", 2),
     ("Principal", "Assistente de IA", "assistente:conversa", "stars", "assistente.add_solicitacaocadastro", 3),
     ("Administração", "Configuração da IA", "assistente:configuracao", "sliders", "assistente.change_configuracaoia", 3),
+    ("Uniformes", "Catálogo", "uniformes:catalogo", "grid", "uniformes.view_modelouniforme", 1),
+    ("Uniformes", "Entregar uniforme", "uniformes:entregar_avulso", "box-arrow-right", "uniformes.add_entregauniforme", 6),
     ("RH", "Bater ponto", "rh:bater_ponto", "fingerprint", None, 0),
     ("RH", "Pendências de documentos", "rh:pendencias_documentos", "file-earmark-excel", "rh.view_documentopessoal", 15),
     ("RH", "Meu espelho de ponto", "rh:meu_espelho", "calendar3", None, 1),
