@@ -53,6 +53,7 @@ LINKS_EXTRAS = [
     ("Cobrança", "Executar régua agora", "cobranca:executar_regua", "send", "cobranca.change_cobranca", 9),
     ("Jurídico", "Contencioso", "juridico:contencioso", "bank", "juridico.view_processo", 1),
     ("Jurídico", "Painel jurídico", "juridico:painel", "speedometer2", "juridico.view_contrato", 0),
+    ("Cadastros", "Produtos e serviços", "fiscal:produto_list", "box-seam", "fiscal.view_produto", 6),
     ("Estoque", "Movimentação manual", "estoque:movimentar", "pencil-square", "estoque.add_movimento", 3),
     ("Estoque", "Reposição (abaixo do mínimo)", "estoque:reposicao", "bell", "estoque.view_saldo", 6),
     ("Service Desk", "Abrir chamado", "servicedesk:catalogo", "plus-circle", "servicedesk.add_chamado", 1),

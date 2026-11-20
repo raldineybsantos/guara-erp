@@ -153,3 +153,11 @@ class ContratoContabilTest(TestCase):
         self.assertEqual(r.status_code, 302)
         self.assertEqual(ApropriacaoContrato.objects.count(), 2)
         self.assertEqual(self.client.get(reverse("contabilidade:contratocontabil_list")).status_code, 200)
+
+
+class MenuProdutosTest(TestCase):
+    def test_produtos_no_menu_cadastros(self):
+        u = User.objects.create_superuser("adm", "a@b.com", "x")
+        self.client.force_login(u)
+        html = self.client.get("/").content.decode()
+        self.assertIn(reverse("fiscal:produto_list"), html)
