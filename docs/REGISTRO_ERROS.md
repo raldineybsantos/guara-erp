@@ -1,7 +1,7 @@
 # Guará ERP — Registro de erros e ajustes encontrados nos testes
 
 Atualizado em 20/11/2026 (2ª rodada). Origem: rodada de testes pela interface web (empresa, departamentos, usuários, compras,
-vendas, contabilidade) e implantação no servidor vsl01.
+vendas, contabilidade) e implantação no servidor.
 
 ## Corrigidos
 
@@ -36,13 +36,13 @@ o preço do produto ao salvar com valor zero. O item 4 melhora apenas a visibili
 
 | # | Situação | Causa | Solução |
 |---|----------|-------|---------|
-| A | `git pull` no servidor: "not a git repository" | Comando executado em `/home/rbsantos`, fora da pasta do projeto | Entrar em `/home/rbsantos/guara-erp` antes de atualizar |
+| A | `git pull` no servidor: "not a git repository" | Comando executado no diretório pessoal, fora da pasta do projeto | Entrar na pasta do projeto (guara-erp) antes de atualizar |
 | B | `apt git install` / "Invalid operation git" | Comando digitado incorretamente | `apt install git` |
 | C | Testes pedindo confirmação ao recriar o banco | Banco de teste remanescente | `python manage.py test --noinput` |
 | D | Testes sem conexão | PostgreSQL parado | `service postgresql start` |
 | E | Testes em paralelo falhavam (erro de pickle) | Limitação do modo paralelo | Executar em série |
 
-Servidor vsl01 atualizado em 20/11/2026: containers web, agendador, banco, pgAdmin e ClamAV em execução.
+Servidor atualizado em 20/11/2026: containers web, agendador, banco, pgAdmin e ClamAV em execução.
 
 ## Em aberto (próximas correções)
 
